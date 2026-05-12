@@ -5,7 +5,7 @@ import tailwindcss from '@tailwindcss/vite';
 import mdx from '@astrojs/mdx';
 import sitemap from '@astrojs/sitemap';
 
-const site = process.env.SITE_URL || 'https://generativeai-community-site.pages.dev';
+const site = process.env.SITE_URL || 'https://genaicommunity.ai';
 
 // https://astro.build/config
 export default defineConfig({
