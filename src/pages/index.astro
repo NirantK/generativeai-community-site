@@ -1,17 +1,32 @@
 ---
+import { getEntry, render } from 'astro:content';
+import BaseLayout from '../layouts/BaseLayout.astro';
+import SectionLabel from '../components/SectionLabel.astro';
+import Button from '../components/Button.astro';
 
+const entry = await getEntry('community', 'index');
+if (!entry) throw new Error('community/index content not found');
+const { Content } = await render(entry);
 ---
+<BaseLayout title={entry.data.title} description={entry.data.description}>
+  <section class="mt-stack-md">
+    <span class="font-mono text-label-caps uppercase text-on-surface-variant">// GENAI_COMMUNITY</span>
+    <h1 class="mt-stack-sm text-headline-lg-mobile md:text-display-lg font-sans font-bold tracking-tight">
+      {entry.data.title}
+    </h1>
+    {entry.data.lead && (
+      <p class="mt-stack-sm text-on-surface-variant text-body-base max-w-prose">{entry.data.lead}</p>
+    )}
+    <div class="mt-stack-md flex flex-wrap gap-stack-sm">
+      <Button href="https://nas.io/the-generativeai-group" variant="primary" rel="noopener">JOIN_WHATSAPP</Button>
+      <Button href="/deephackdemos" variant="secondary">VIEW_DEMOS</Button>
+      <Button href="/demoday102023" variant="secondary">VIEW_EVENTS</Button>
+    </div>
+  </section>
 
-<html lang="en">
-	<head>
-		<meta charset="utf-8" />
-		<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-		<link rel="icon" href="/favicon.ico" />
-		<meta name="viewport" content="width=device-width" />
-		<meta name="generator" content={Astro.generator} />
-		<title>Astro</title>
-	</head>
-	<body>
-		<h1>Astro</h1>
-	</body>
-</html>
+  <SectionLabel label="GUIDE" />
+
+  <article class="prose-precision">
+    <Content />
+  </article>
+</BaseLayout>
