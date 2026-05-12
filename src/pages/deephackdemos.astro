@@ -9,7 +9,7 @@ if (!entry) throw new Error('community/deephackdemos content not found');
 const { Content } = await render(entry);
 const dateStr = entry.data.date ? entry.data.date.toISOString().slice(0, 10) : null;
 ---
-<BaseLayout title={entry.data.title} description={entry.data.description}>
+<BaseLayout title={entry.data.title} description={entry.data.description} sourcePath="src/content/community/deephackdemos.md">
   <a
     href="/"
     class="font-mono text-label-caps uppercase text-on-surface-variant hover:text-primary inline-flex items-center gap-2 min-h-tap mt-stack-sm"

@@ -1,0 +1,130 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --bg: #131313;
+    --surface: #1f1f1f;
+    --on-surface: #e2e2e2;
+    --variant: #c1c6d7;
+    --outline: #414754;
+    --primary: #aec6ff;
+    --secondary: #d0bcff;
+    --tertiary: #4edea3;
+  }
+  * { box-sizing: border-box; margin: 0; }
+  html, body { width: 1200px; height: 630px; }
+  body {
+    background:
+      linear-gradient(180deg, rgba(174,198,255,0.04) 0%, transparent 60%),
+      radial-gradient(circle at 90% -10%, rgba(208,188,255,0.10), transparent 50%),
+      var(--bg);
+    color: var(--on-surface);
+    font-family: 'Geist', system-ui, sans-serif;
+    padding: 56px 64px;
+    position: relative;
+    overflow: hidden;
+  }
+  /* technical-grid */
+  body::before {
+    content: '';
+    position: absolute; inset: 0;
+    background-image:
+      linear-gradient(rgba(65,71,84,0.18) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(65,71,84,0.18) 1px, transparent 1px);
+    background-size: 48px 48px;
+    mask-image: linear-gradient(180deg, transparent 0, #000 30%, #000 70%, transparent 100%);
+    pointer-events: none;
+  }
+  /* corner crosshair marks */
+  .corner { position: absolute; width: 28px; height: 28px; border: 1px solid var(--outline); }
+  .c-tl { top: 32px; left: 32px; border-right: none; border-bottom: none; }
+  .c-tr { top: 32px; right: 32px; border-left: none; border-bottom: none; }
+  .c-bl { bottom: 32px; left: 32px; border-right: none; border-top: none; }
+  .c-br { bottom: 32px; right: 32px; border-left: none; border-top: none; }
+
+  .topbar {
+    display: flex; justify-content: space-between; align-items: center;
+    font-family: 'JetBrains Mono', ui-monospace, monospace;
+    font-size: 14px; letter-spacing: 0.12em; text-transform: uppercase;
+    color: var(--variant);
+    border-bottom: 1px solid var(--outline);
+    padding-bottom: 16px;
+  }
+  .topbar .dot { display: inline-block; width: 8px; height: 8px; background: var(--tertiary); margin-right: 8px; vertical-align: middle; box-shadow: 0 0 12px rgba(78,222,163,0.5); }
+
+  .main {
+    margin-top: 56px;
+    display: flex; flex-direction: column; gap: 20px;
+  }
+  .label {
+    font-family: 'JetBrains Mono', ui-monospace, monospace;
+    font-size: 14px; letter-spacing: 0.16em; text-transform: uppercase;
+    color: var(--variant);
+  }
+  .label .slash { color: var(--primary); }
+  h1 {
+    font-family: 'Geist', system-ui, sans-serif;
+    font-size: 88px; font-weight: 800; letter-spacing: -0.04em;
+    line-height: 1.0; color: var(--on-surface);
+  }
+  h1 .accent { color: var(--primary); }
+  .tagline {
+    font-size: 26px; font-weight: 400; line-height: 1.35; color: var(--variant);
+    max-width: 900px;
+  }
+
+  .chips { display: flex; gap: 12px; margin-top: 8px; flex-wrap: wrap; }
+  .chip {
+    font-family: 'JetBrains Mono', ui-monospace, monospace;
+    font-size: 13px; letter-spacing: 0.1em; text-transform: uppercase;
+    color: var(--variant);
+    border: 1px solid var(--outline);
+    padding: 8px 14px;
+  }
+
+  .footer {
+    position: absolute;
+    left: 64px; right: 64px; bottom: 56px;
+    display: flex; justify-content: space-between; align-items: center;
+    font-family: 'JetBrains Mono', ui-monospace, monospace;
+    font-size: 14px; letter-spacing: 0.12em; text-transform: uppercase;
+    color: var(--variant);
+    border-top: 1px solid var(--outline);
+    padding-top: 16px;
+  }
+  .footer .url { color: var(--primary); }
+</style>
+</head>
+<body>
+  <div class="corner c-tl"></div>
+  <div class="corner c-tr"></div>
+  <div class="corner c-bl"></div>
+  <div class="corner c-br"></div>
+
+  <div class="topbar">
+    <span><span class="dot"></span>GENAI_COMMUNITY</span>
+    <span>v.2026.05</span>
+  </div>
+
+  <div class="main">
+    <span class="label"><span class="slash">//</span> 2,000+ AI BUILDERS</span>
+    <h1>GenAI<br/>Community<span class="accent">_</span></h1>
+    <p class="tagline">Rules, demos, and events for India's most active GenAI engineering community. Bangalore · San Francisco.</p>
+    <div class="chips">
+      <span class="chip">RAGAS</span>
+      <span class="chip">QDRANT</span>
+      <span class="chip">SARVAM</span>
+      <span class="chip">LLAMA_INDEX</span>
+      <span class="chip">FASTEMBED</span>
+    </div>
+  </div>
+
+  <div class="footer">
+    <span class="url">genaicommunity.ai</span>
+    <span>NAS.IO/THE-GENERATIVEAI-GROUP</span>
+  </div>
+</body>
+</html>

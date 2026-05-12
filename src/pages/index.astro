@@ -2,14 +2,13 @@
 import { getEntry, render } from 'astro:content';
 import BaseLayout from '../layouts/BaseLayout.astro';
 import SectionLabel from '../components/SectionLabel.astro';
-import Button from '../components/Button.astro';
 import CopyMarkdown from '../components/CopyMarkdown.astro';
 
 const entry = await getEntry('community', 'index');
 if (!entry) throw new Error('community/index content not found');
 const { Content } = await render(entry);
 ---
-<BaseLayout title={entry.data.title} description={entry.data.description}>
+<BaseLayout title={entry.data.title} description={entry.data.description} sourcePath="src/content/community/index.md">
   <section class="mt-stack-md">
     <span class="font-mono text-label-caps uppercase text-on-surface-variant">// GENAI_COMMUNITY</span>
     <h1 class="mt-stack-sm text-headline-lg-mobile md:text-display-lg font-sans font-bold tracking-tight">
@@ -18,12 +17,14 @@ const { Content } = await render(entry);
     {entry.data.lead && (
       <p class="mt-stack-sm text-on-surface-variant text-body-base max-w-prose">{entry.data.lead}</p>
     )}
-    <div class="mt-stack-md grid grid-cols-1 sm:grid-cols-3 gap-stack-sm">
-      <Button href="https://nas.io/the-generativeai-group" variant="primary" rel="noopener">JOIN_WHATSAPP</Button>
-      <Button href="/deephackdemos" variant="secondary">VIEW_DEMOS</Button>
-      <Button href="/demoday102023" variant="secondary">VIEW_EVENTS</Button>
-    </div>
-    <div class="mt-stack-md">
+    <div class="mt-stack-md flex flex-wrap gap-stack-sm items-center">
+      <a
+        href="https://nas.io/the-generativeai-group"
+        rel="noopener"
+        class="inline-flex items-center justify-center min-h-tap px-gutter font-mono text-label-caps uppercase bg-on-surface text-surface hover:opacity-90 transition-opacity"
+      >
+        JOIN_WHATSAPP
+      </a>
       <CopyMarkdown markdown={entry.body ?? ''} filename="index.md" />
     </div>
   </section>
