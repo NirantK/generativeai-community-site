@@ -17,7 +17,7 @@ const { Content } = await render(entry);
     {entry.data.lead && (
       <p class="mt-stack-sm text-on-surface-variant text-body-base max-w-prose">{entry.data.lead}</p>
     )}
-    <div class="mt-stack-md flex flex-wrap gap-stack-sm">
+    <div class="mt-stack-md grid grid-cols-1 sm:grid-cols-3 gap-stack-sm">
       <Button href="https://nas.io/the-generativeai-group" variant="primary" rel="noopener">JOIN_WHATSAPP</Button>
       <Button href="/deephackdemos" variant="secondary">VIEW_DEMOS</Button>
       <Button href="/demoday102023" variant="secondary">VIEW_EVENTS</Button>

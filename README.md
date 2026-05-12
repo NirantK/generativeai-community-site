@@ -1,43 +1,54 @@
-# Astro Starter Kit: Minimal
+# GenAI Community
 
-```sh
-npm create astro@latest -- --template minimal
+Static portal for the Generative AI Community (2,000+ members across Bangalore and San Francisco). Rules, demos, events.
+
+Source content migrated from `nirantk.com/community/*`.
+
+## Stack
+
+- **Astro 6** (`output: 'static'`) — server-rendered at build time, zero client JS.
+- **Tailwind v4** with the Technical Precision design system (`src/styles/global.css`).
+- **Self-hosted Geist + JetBrains Mono** variable fonts.
+- **Cloudflare Pages** for hosting.
+
+## Develop
+
+```bash
+npm install
+npm run dev               # http://localhost:4321
 ```
 
-> 🧑‍🚀 **Seasoned astronaut?** Delete this file. Have fun!
+## Build
 
-## 🚀 Project Structure
-
-Inside of your Astro project, you'll see the following folders and files:
-
-```text
-/
-├── public/
-├── src/
-│   └── pages/
-│       └── index.astro
-└── package.json
+```bash
+npm run build             # → dist/
+npm run preview           # serve dist/
 ```
 
-Astro looks for `.astro` or `.md` files in the `src/pages/` directory. Each page is exposed as a route based on its file name.
+## QA
 
-There's nothing special about `src/components/`, but that's where we like to put any Astro/React/Vue/Svelte/Preact components.
+Mobile viewport gate across iPhone SE / 14 / 11 Pro Max / Pixel 7 / desktop:
 
-Any static assets, like images, can be placed in the `public/` directory.
+```bash
+npm run test:e2e
+```
 
-## 🧞 Commands
+Checks: no horizontal scroll, header/nav tap targets ≥ 48px, Geist + JetBrains Mono apply, zero critical/serious WCAG AA violations (axe-core).
 
-All commands are run from the root of the project, from a terminal:
+Against a deployed URL:
 
-| Command                   | Action                                           |
-| :------------------------ | :----------------------------------------------- |
-| `npm install`             | Installs dependencies                            |
-| `npm run dev`             | Starts local dev server at `localhost:4321`      |
-| `npm run build`           | Build your production site to `./dist/`          |
-| `npm run preview`         | Preview your build locally, before deploying     |
-| `npm run astro ...`       | Run CLI commands like `astro add`, `astro check` |
-| `npm run astro -- --help` | Get help using the Astro CLI                     |
+```bash
+PLAYWRIGHT_BASE_URL=https://<preview>.pages.dev npm run test:e2e
+```
 
-## 👀 Want to learn more?
+## Content
 
-Feel free to check [our documentation](https://docs.astro.build) or jump into our [Discord server](https://astro.build/chat).
+Markdown lives under `src/content/community/`. Add a page by adding `<slug>.md` plus `src/pages/<slug>.astro`.
+
+## Design tokens
+
+Dark "Technical Precision" palette, type scale, spacing, 48px tap-target sizing — all encoded in `src/styles/global.css` via Tailwind v4 `@theme`. Utility classes (`bg-surface-container`, `text-on-surface-variant`, `font-mono`, `text-label-caps`, `min-h-tap`, …) derive from the tokens.
+
+## License
+
+Apache 2.0. See [`LICENSE`](./LICENSE).
