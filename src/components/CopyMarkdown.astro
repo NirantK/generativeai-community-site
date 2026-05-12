@@ -1,0 +1,52 @@
+---
+interface Props { markdown: string; filename: string; }
+const { markdown, filename } = Astro.props;
+const id = `md-source-${filename.replace(/[^a-z0-9-]/gi, '-')}`;
+---
+<div class="inline-flex">
+  <button
+    type="button"
+    data-copy-md-target={id}
+    class="font-mono text-label-caps uppercase border border-outline-variant px-3 min-h-tap inline-flex items-center gap-2 text-on-surface hover:border-primary hover:text-primary transition-colors"
+    aria-label={`Copy ${filename} as markdown`}
+  >
+    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square" stroke-linejoin="miter" aria-hidden="true">
+      <rect x="9" y="9" width="13" height="13" />
+      <path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1" />
+    </svg>
+    <span class="copy-md-label">COPY_AS_MARKDOWN</span>
+  </button>
+  <script type="text/plain" id={id} data-md set:html={markdown}></script>
+</div>
+
+<script>
+  document.querySelectorAll('button[data-copy-md-target]').forEach((btn) => {
+    btn.addEventListener('click', async () => {
+      const button = btn as HTMLButtonElement;
+      const targetId = button.dataset.copyMdTarget;
+      if (!targetId) return;
+      const source = document.getElementById(targetId);
+      if (!source) return;
+      const md = source.textContent ?? '';
+      const label = button.querySelector('.copy-md-label') as HTMLElement | null;
+      const original = label?.textContent ?? 'COPY_AS_MARKDOWN';
+      try {
+        await navigator.clipboard.writeText(md);
+        if (label) label.textContent = 'COPIED';
+      } catch {
+        const ta = document.createElement('textarea');
+        ta.value = md;
+        ta.style.position = 'fixed';
+        ta.style.opacity = '0';
+        document.body.appendChild(ta);
+        ta.select();
+        document.execCommand('copy');
+        document.body.removeChild(ta);
+        if (label) label.textContent = 'COPIED';
+      }
+      setTimeout(() => {
+        if (label) label.textContent = original;
+      }, 1500);
+    });
+  });
+</script>
