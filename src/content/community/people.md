@@ -12,11 +12,11 @@ Each sub-group has its own admin or moderator. Nirant is co-admin everywhere.
 
 | Theme | Admin / Moderator(s) |
 |---|---|
-| **The GenerativeAI Group** (main hub) | Nirant K |
-| **Project Demos & Events** | Dr. Pratik Desai — KissanAI |
+| **The GenerativeAI Group** (main hub) | Nirant K, [Ojasvi Yadav](https://www.linkedin.com/in/ojasviyadav/), [Pratyush Choudhury](https://www.linkedin.com/in/177pc/), [Aashay Sachdeva](https://www.linkedin.com/in/aashay-sachdeva-020806b7/), [Dev Aggarwal](https://www.linkedin.com/in/devxpy/), [Dr. Pratik Desai](https://www.linkedin.com/in/pratikkumardesai/), Paras Chopra, [Ravi Theja](https://www.linkedin.com/in/ravidesetty/), [Soumyadeep Mukherjee](https://www.linkedin.com/in/soumyadeepmukherjee/), [Sumod Mohan](https://www.linkedin.com/in/sumod-k-mohan-3a30127/) |
+| **Project Demos & Events** | [Dr. Pratik Desai](https://www.linkedin.com/in/pratikkumardesai/) — KissanAI, [Dhruv Anand](https://www.linkedin.com/in/dhruv-anand-ainorthstartech/), Nirant K, [Ojasvi Yadav](https://www.linkedin.com/in/ojasviyadav/), Paras Chopra, [Ravi Theja](https://www.linkedin.com/in/ravidesetty/), [Sandesh Anand](https://www.linkedin.com/in/anandsandesh/) |
 | **DeepMedia** (diffusion + audio) | Harsha Subramanyam, Manaswi |
 | **Generative AI x Security** | [Sandesh Anand](https://www.linkedin.com/in/anandsandesh/) |
-| **Agents and Harnesses** | Nirant K |
+| **Agents and Harnesses** | Nirant K, [Ojasvi Yadav](https://www.linkedin.com/in/ojasviyadav/), [Pratyush Choudhury](https://www.linkedin.com/in/177pc/), [Sachin Dharashivkar](https://www.linkedin.com/in/sachin-dharashivkar/) |
 | **India AI Research** | Shyamal Anandkat — OpenAI, [Mithil Vakde](https://www.linkedin.com/in/mvakde/) |
 | **Coffee & Code: Papers Club BLR** | Paras Chopra — Lossfunk |
 | **AI for Healthcare, Biology** | [Bargava](https://www.linkedin.com/in/bargava?originalSubdomain=in), [Ashish Makani](https://www.linkedin.com/in/tp53/) |
@@ -24,9 +24,9 @@ Each sub-group has its own admin or moderator. Nirant is co-admin everywhere.
 | **Women in AI** | [Pratiksha Dake](https://www.linkedin.com/in/pratikshadake/), [Navita Pareek](https://www.linkedin.com/in/navita-pareek-1430a79b/) |
 | **Agents and Tool Usage** | [Sachin Dharashivkar](https://www.linkedin.com/in/sachin-dharashivkar/), [Vignesh Baskaran](https://www.linkedin.com/in/vigneshbaskaran0123/) |
 | **Voice Agents** | [Atishay Ganesh](https://www.linkedin.com/in/atishay-ganesh) — Sarvam, [Dr. Pratik Desai](https://www.linkedin.com/in/pratikkumardesai/) — KissanAI |
-| Training and Inference | [Aashay Sachdeva](https://www.linkedin.com/in/aashay-sachdeva-020806b7/) — Sarvam, [Sachin Dharashivkar](https://www.linkedin.com/in/sachin-dharashivkar/) |
-| Search: Embedding, Infra, Text | Nirant K |
-| **Gen AI Startup Ecosystem** | [Aditya Agrawal](https://www.linkedin.com/in/meadityagrawal/) — SuperU, [Dr. Pratik Desai](https://www.linkedin.com/in/pratikkumardesai/) — KissanAI |
+| Training and Inference | [Ojasvi Yadav](https://www.linkedin.com/in/ojasviyadav/), [Aashay Sachdeva](https://www.linkedin.com/in/aashay-sachdeva-020806b7/) — Sarvam, [Abhishek Mishra](https://www.linkedin.com/in/abhishek-harshvardhan-mishra/), [Dr. Pratik Desai](https://www.linkedin.com/in/pratikkumardesai/), Nirant K, [Ravi Theja](https://www.linkedin.com/in/ravidesetty/), [Sachin Dharashivkar](https://www.linkedin.com/in/sachin-dharashivkar/) |
+| Search: Embedding, Infra, Text | Nirant K, [Dhruv Anand](https://www.linkedin.com/in/dhruv-anand-ainorthstartech/), [Kumar Shivendu](https://www.linkedin.com/in/kshivendu/), [Sachin Dharashivkar](https://www.linkedin.com/in/sachin-dharashivkar/) |
+| **Gen AI Startup Ecosystem** | [Aditya Agrawal](https://www.linkedin.com/in/meadityagrawal/) — SuperU, [Anshuman Pandey](https://www.linkedin.com/in/gpt4/), [Dr. Pratik Desai](https://www.linkedin.com/in/pratikkumardesai/) — KissanAI, Nirant K, [Pratyush Choudhury](https://www.linkedin.com/in/177pc/) |
 | Job Posts & Talent | _admin not yet identified_ |
 
 ## Expertise and Advisory Board
@@ -55,7 +55,7 @@ These are the folks who pitch in ideas, help with moderation, lend their experti
 20. [Navita Pareek](https://www.linkedin.com/in/navita-pareek-1430a79b/) — Founder, InstaPhotoAI
 21. [Sachin Dharashivkar](https://www.linkedin.com/in/sachin-dharashivkar/) — Founder, AthenaAgent
 22. [Vignesh Baskaran](https://www.linkedin.com/in/vigneshbaskaran0123/) — Co-founder, HexoAI
-23. [Dhruv Anand](https://www.linkedin.com/in/dhruv-anand-ainorthstartech/) — Search Consultant, VectorDB & LLM
+23. [Dhruv Anand](https://www.linkedin.com/in/dhruv-anand-ainorthstartech/) — AI Consultant, Agentic Search
 24. [Soumyadeep Mukherjee](https://www.linkedin.com/in/soumyadeepmukherjee/) — Co-founder and Engineer, Dashtoon
 25. [Aashay Sachdeva](https://www.linkedin.com/in/aashay-sachdeva-020806b7/) — Sarvam
 26. [Atishay Ganesh](https://www.linkedin.com/in/atishay-ganesh) — Sarvam
