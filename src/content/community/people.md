@@ -65,7 +65,7 @@ These are the folks who pitch in ideas, help with moderation, lend their experti
 30. Mithil Vakde
 31. Paras Chopra — Founder, Wingify
 32. Shyamal Anandkat — OpenAI
-33. Ashish (Acgt01)
+33. [Ashish Makani](https://www.linkedin.com/in/tp53/) (Twitter: [@Acgt01](https://x.com/Acgt01)) — ML/AI for cancer & rare disease; bioinformatics, protein design (RFdiffusion). ex-Xebia, Intel
 34. Ani — Dashverse
 
 ## Founding Members
