@@ -19,7 +19,7 @@ Each sub-group has its own admin or moderator. Nirant is co-admin everywhere.
 | **Agents and Harnesses** | Nirant K |
 | **India AI Research** | Shyamal Anandkat — OpenAI, Mithil Vakde |
 | **Coffee & Code: Papers Club BLR** | Paras Chopra — Lossfunk |
-| **AI for Healthcare, Biology** | Bargava, [Ashish Makani](https://www.linkedin.com/in/tp53/) |
+| **AI for Healthcare, Biology** | [Bargava](https://www.linkedin.com/in/bargava?originalSubdomain=in), [Ashish Makani](https://www.linkedin.com/in/tp53/) |
 | **AI for Creatives** | [Computational Mama](https://computationalmama.xyz/), [Divya Tak](https://www.linkedin.com/in/divya-tak-56019522/) |
 | **Women in AI** | [Pratiksha Dake](https://www.linkedin.com/in/pratikshadake/), [Navita Pareek](https://www.linkedin.com/in/navita-pareek-1430a79b/) |
 | **Agents and Tool Usage** | [Sachin Dharashivkar](https://www.linkedin.com/in/sachin-dharashivkar/), [Vignesh Baskaran](https://www.linkedin.com/in/vigneshbaskaran0123/) |
@@ -59,7 +59,7 @@ These are the folks who pitch in ideas, help with moderation, lend their experti
 24. [Soumyadeep Mukherjee](https://www.linkedin.com/in/soumyadeepmukherjee/) — Co-founder and Engineer, Dashtoon
 25. [Aashay Sachdeva](https://www.linkedin.com/in/aashay-sachdeva-020806b7/) — Sarvam
 26. [Atishay Ganesh](https://www.linkedin.com/in/atishay-ganesh) — Sarvam
-27. Bargava
+27. [Bargava](https://www.linkedin.com/in/bargava?originalSubdomain=in)
 28. Manaswi — Moderator, DeepMedia
 29. Harsha Subramanyam — Moderator, DeepMedia
 30. Mithil Vakde
