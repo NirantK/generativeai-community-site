@@ -176,7 +176,6 @@ These are the folks who pitch in ideas, help with moderation, lend their experti
 32. Shyamal Anandkat — OpenAI
 33. Ashish (Acgt01)
 34. Ani — Dashverse
-35. Pooja VA
 
 ### Founding Members
 
