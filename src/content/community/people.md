@@ -17,7 +17,7 @@ Each sub-group has its own admin or moderator. Nirant is co-admin everywhere.
 | **DeepMedia** (diffusion + audio) | Harsha Subramanyam, Manaswi |
 | **Generative AI x Security** | [Sandesh Anand](https://www.linkedin.com/in/anandsandesh/) |
 | **Agents and Harnesses** | Nirant K |
-| **India AI Research** | Shyamal Anandkat — OpenAI, Mithil Vakde |
+| **India AI Research** | Shyamal Anandkat — OpenAI, [Mithil Vakde](https://www.linkedin.com/in/mvakde/) |
 | **Coffee & Code: Papers Club BLR** | Paras Chopra — Lossfunk |
 | **AI for Healthcare, Biology** | [Bargava](https://www.linkedin.com/in/bargava?originalSubdomain=in), [Ashish Makani](https://www.linkedin.com/in/tp53/) |
 | **AI for Creatives** | [Computational Mama](https://computationalmama.xyz/), [Divya Tak](https://www.linkedin.com/in/divya-tak-56019522/) |
@@ -62,7 +62,7 @@ These are the folks who pitch in ideas, help with moderation, lend their experti
 27. [Bargava](https://www.linkedin.com/in/bargava?originalSubdomain=in)
 28. Manaswi — Moderator, DeepMedia
 29. Harsha Subramanyam — Moderator, DeepMedia
-30. Mithil Vakde
+30. [Mithil Vakde](https://www.linkedin.com/in/mvakde/)
 31. Paras Chopra — Founder, Wingify
 32. Shyamal Anandkat — OpenAI
 33. [Ashish Makani](https://www.linkedin.com/in/tp53/) (Twitter: [@Acgt01](https://x.com/Acgt01)) — ML/AI for cancer & rare disease; bioinformatics, protein design (RFdiffusion). ex-Xebia, Intel
