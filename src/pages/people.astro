@@ -1,0 +1,37 @@
+---
+import { getEntry, render } from 'astro:content';
+import BaseLayout from '../layouts/BaseLayout.astro';
+import SectionLabel from '../components/SectionLabel.astro';
+import CopyMarkdown from '../components/CopyMarkdown.astro';
+
+const entry = await getEntry('community', 'people');
+if (!entry) throw new Error('community/people content not found');
+const { Content } = await render(entry);
+---
+<BaseLayout title={entry.data.title} description={entry.data.description} sourcePath="src/content/community/people.md">
+  <a
+    href="/"
+    class="font-mono text-label-caps uppercase text-on-surface-variant hover:text-primary inline-flex items-center gap-2 min-h-tap mt-stack-sm"
+  >
+    <span aria-hidden="true">&larr;</span> <span>GENERATIVEAI_COMMUNITY</span>
+  </a>
+
+  <section class="mt-stack-sm">
+    <span class="font-mono text-label-caps uppercase text-on-surface-variant">// PEOPLE</span>
+    <h1 class="mt-stack-sm text-headline-lg-mobile md:text-display-lg font-sans font-bold tracking-tight">
+      {entry.data.title}
+    </h1>
+    {entry.data.lead && (
+      <p class="mt-stack-sm text-on-surface-variant text-body-base max-w-prose">{entry.data.lead}</p>
+    )}
+    <div class="mt-stack-md">
+      <CopyMarkdown markdown={entry.body ?? ''} filename="people.md" />
+    </div>
+  </section>
+
+  <SectionLabel label="ROSTER" />
+
+  <article class="prose-precision">
+    <Content />
+  </article>
+</BaseLayout>

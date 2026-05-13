@@ -1,6 +1,7 @@
 ---
 const items = [
   { label: 'HOME', href: '/' },
+  { label: 'PEOPLE', href: '/people' },
   { label: 'DEMOS', href: '/deephackdemos' },
   { label: 'EVENTS', href: '/demoday102023' },
   { label: 'JOIN', href: 'https://nas.io/the-generativeai-group' },
@@ -11,7 +12,7 @@ const path = Astro.url.pathname.replace(/\/$/, '') || '/';
   class="fixed bottom-0 inset-x-0 border-t border-outline-variant bg-background md:hidden"
   aria-label="Primary"
 >
-  <ul class="grid grid-cols-4">
+  <ul class="grid grid-cols-5">
     {items.map((it) => {
       const normalised = it.href.replace(/\/$/, '') || '/';
       const active = it.href.startsWith('/') && (
