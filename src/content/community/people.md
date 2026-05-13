@@ -23,7 +23,7 @@ Each sub-group has its own admin or moderator. Nirant is co-admin everywhere.
 | **AI for Creatives** | [Computational Mama](https://computationalmama.xyz/), [Divya Tak](https://www.linkedin.com/in/divya-tak-56019522/) |
 | **Women in AI** | [Pratiksha Dake](https://www.linkedin.com/in/pratikshadake/), [Navita Pareek](https://www.linkedin.com/in/navita-pareek-1430a79b/) |
 | **Agents and Tool Usage** | [Sachin Dharashivkar](https://www.linkedin.com/in/sachin-dharashivkar/), [Vignesh Baskaran](https://www.linkedin.com/in/vigneshbaskaran0123/) |
-| **Voice Agents** | Atishay — Sarvam, [Dr. Pratik Desai](https://www.linkedin.com/in/pratikkumardesai/) — KissanAI |
+| **Voice Agents** | [Atishay Ganesh](https://www.linkedin.com/in/atishay-ganesh) — Sarvam, [Dr. Pratik Desai](https://www.linkedin.com/in/pratikkumardesai/) — KissanAI |
 | Training and Inference | Aashay Sachdeva — Sarvam, [Sachin Dharashivkar](https://www.linkedin.com/in/sachin-dharashivkar/) |
 | Search: Embedding, Infra, Text | Nirant K |
 | Gen AI Startup Ecosystem | _admin not yet identified_ |
@@ -58,7 +58,7 @@ These are the folks who pitch in ideas, help with moderation, lend their experti
 23. [Dhruv Anand](https://www.linkedin.com/in/dhruv-anand-ainorthstartech/) — Search Consultant, VectorDB & LLM
 24. [Soumyadeep Mukherjee](https://www.linkedin.com/in/soumyadeepmukherjee/) — Co-founder and Engineer, Dashtoon
 25. Aashay Sachdeva — Sarvam
-26. Atishay — Sarvam
+26. [Atishay Ganesh](https://www.linkedin.com/in/atishay-ganesh) — Sarvam
 27. Bargava
 28. Manaswi — Moderator, DeepMedia
 29. Harsha Subramanyam — Moderator, DeepMedia
