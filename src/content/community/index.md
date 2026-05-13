@@ -79,6 +79,27 @@ These guides are good rules of thumb, but admins reserve all rights to remove or
 
 All our budget and expenses are public. You can see them here: [Generative AI Finances](https://docs.google.com/spreadsheets/d/1JJfUcYP2g8ZoAwxn_DGLMOOYJFozO1wtFY3vMNigKS8/edit#gid=401406164)
 
+## 🧵 Themes
+
+The community is organised into focused sub-groups (themes) so the main channel stays signal-dense. Each sub-group has its own moderators and norms:
+
+- **The GenerativeAI Group** — main hub channel
+- **Project Demos & Events** — member demos, meetup announcements
+- **Voice Agents** — speech, TTS, voice agents
+- **DeepMedia** — diffusion, image, video and audio generative models
+- **Generative AI x Security** — red-teaming, jailbreaks, AI security
+- **Training and Inference** — GPUs, training infra, inference stack
+- **Agents and Harnesses** — agent frameworks, code harnesses
+- **Job Posts & Talent** — hiring + candidate posts
+- **India AI Research** — India-focused research discussions
+- **Coffee & Code: Papers Club BLR** — Bangalore IRL paper-reading meetup
+- **Search: Embedding, Infra, Text** — search, embeddings, retrieval infra
+- **Gen AI Startup Ecosystem** — founders + startups in GenAI
+- **AI for Healthcare, Biology** — health and bio vertical
+- **AI for Creatives** — artists, musicians, directors, writers
+
+To request access to a specific theme, ping an admin on the main group with a one-line note on what you're working on.
+
 ## Code of Conduct
 
 We enforce the [Hasgeek Code of Conduct](https://hasgeek.com/about/policy/code) — by being part of our communications (e.g. the WhatsApp group) or attending any of our events, you agree to adhere to the same. In case of violations, please report to `nirant [at] scaledfocus [dot] com`.
@@ -145,6 +166,14 @@ These are the folks who pitch in ideas, help with moderation, lend their experti
 22. [Vignesh Baskaran](https://www.linkedin.com/in/vigneshbaskaran0123/) — Co-founder, HexoAI
 23. [Dhruv Anand](https://www.linkedin.com/in/dhruv-anand-ainorthstartech/) — Search Consultant, VectorDB & LLM
 24. [Soumyadeep Mukherjee](https://www.linkedin.com/in/soumyadeepmukherjee/) — Co-founder and Engineer, Dashtoon
+25. Aashay Sachdeva — Sarvam
+26. Atishay — Sarvam
+27. Bargava
+28. Manaswi — Moderator, DeepMedia
+29. Mithil Vakde
+30. Paras Chopra — Founder, Wingify
+31. Shyamal Anandkat — OpenAI
+32. Ashish (Acgt01)
 
 ### Founding Members
 
