@@ -25,7 +25,7 @@ Each sub-group has its own admin or moderator. Nirant is co-admin everywhere.
 | **Agents and Tool Usage** | [Sachin Dharashivkar](https://www.linkedin.com/in/sachin-dharashivkar/), [Vignesh Baskaran](https://www.linkedin.com/in/vigneshbaskaran0123/) |
 | **Voice Agents** | [Atishay Ganesh](https://www.linkedin.com/in/atishay-ganesh) — Sarvam, [Dr. Pratik Desai](https://www.linkedin.com/in/pratikkumardesai/) — KissanAI |
 | Training and Inference | [Aashay Sachdeva](https://www.linkedin.com/in/aashay-sachdeva-020806b7/) — Sarvam, [Sachin Dharashivkar](https://www.linkedin.com/in/sachin-dharashivkar/) |
-| Search: Embedding, Infra, Text | Nirant K |
+| Search: Embedding, Infra, Text | Nirant K, [Dhruv Anand](https://www.linkedin.com/in/dhruv-anand-ainorthstartech/), [Kumar Shivendu](https://www.linkedin.com/in/kshivendu/), [Sachin Dharashivkar](https://www.linkedin.com/in/sachin-dharashivkar/) |
 | **Gen AI Startup Ecosystem** | [Aditya Agrawal](https://www.linkedin.com/in/meadityagrawal/) — SuperU, [Dr. Pratik Desai](https://www.linkedin.com/in/pratikkumardesai/) — KissanAI |
 | Job Posts & Talent | _admin not yet identified_ |
 
@@ -55,7 +55,7 @@ These are the folks who pitch in ideas, help with moderation, lend their experti
 20. [Navita Pareek](https://www.linkedin.com/in/navita-pareek-1430a79b/) — Founder, InstaPhotoAI
 21. [Sachin Dharashivkar](https://www.linkedin.com/in/sachin-dharashivkar/) — Founder, AthenaAgent
 22. [Vignesh Baskaran](https://www.linkedin.com/in/vigneshbaskaran0123/) — Co-founder, HexoAI
-23. [Dhruv Anand](https://www.linkedin.com/in/dhruv-anand-ainorthstartech/) — Search Consultant, VectorDB & LLM
+23. [Dhruv Anand](https://www.linkedin.com/in/dhruv-anand-ainorthstartech/) — AI Consultant, Agentic Search
 24. [Soumyadeep Mukherjee](https://www.linkedin.com/in/soumyadeepmukherjee/) — Co-founder and Engineer, Dashtoon
 25. [Aashay Sachdeva](https://www.linkedin.com/in/aashay-sachdeva-020806b7/) — Sarvam
 26. [Atishay Ganesh](https://www.linkedin.com/in/atishay-ganesh) — Sarvam
