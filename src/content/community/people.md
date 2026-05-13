@@ -26,7 +26,7 @@ Each sub-group has its own admin or moderator. Nirant is co-admin everywhere.
 | **Voice Agents** | [Atishay Ganesh](https://www.linkedin.com/in/atishay-ganesh) — Sarvam, [Dr. Pratik Desai](https://www.linkedin.com/in/pratikkumardesai/) — KissanAI |
 | Training and Inference | [Aashay Sachdeva](https://www.linkedin.com/in/aashay-sachdeva-020806b7/) — Sarvam, [Sachin Dharashivkar](https://www.linkedin.com/in/sachin-dharashivkar/) |
 | Search: Embedding, Infra, Text | Nirant K |
-| Gen AI Startup Ecosystem | _admin not yet identified_ |
+| **Gen AI Startup Ecosystem** | [Aditya Agrawal](https://www.linkedin.com/in/meadityagrawal/) — SuperU, [Dr. Pratik Desai](https://www.linkedin.com/in/pratikkumardesai/) — KissanAI |
 | Job Posts & Talent | _admin not yet identified_ |
 
 ## Expertise and Advisory Board
