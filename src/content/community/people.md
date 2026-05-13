@@ -25,7 +25,7 @@ Each sub-group has its own admin or moderator. Nirant is co-admin everywhere.
 | **Agents and Tool Usage** | [Sachin Dharashivkar](https://www.linkedin.com/in/sachin-dharashivkar/), [Vignesh Baskaran](https://www.linkedin.com/in/vigneshbaskaran0123/) |
 | **Voice Agents** | [Atishay Ganesh](https://www.linkedin.com/in/atishay-ganesh) — Sarvam, [Dr. Pratik Desai](https://www.linkedin.com/in/pratikkumardesai/) — KissanAI |
 | Training and Inference | [Ojasvi Yadav](https://www.linkedin.com/in/ojasviyadav/), [Aashay Sachdeva](https://www.linkedin.com/in/aashay-sachdeva-020806b7/) — Sarvam, [Abhishek Mishra](https://www.linkedin.com/in/abhishek-harshvardhan-mishra/), [Dr. Pratik Desai](https://www.linkedin.com/in/pratikkumardesai/), Nirant K, [Ravi Theja](https://www.linkedin.com/in/ravidesetty/), [Sachin Dharashivkar](https://www.linkedin.com/in/sachin-dharashivkar/) |
-| Search: Embedding, Infra, Text | Nirant K, [Dhruv Anand](https://www.linkedin.com/in/dhruv-anand-ainorthstartech/), [Kumar Shivendu](https://www.linkedin.com/in/kshivendu/), [Sachin Dharashivkar](https://www.linkedin.com/in/sachin-dharashivkar/) |
+| Search: Embedding, Infra, Text | Nirant K, [Dhruv Anand](https://www.linkedin.com/in/dhruv-anand-ainorthstartech/), [Kumar Shivendu](https://kshivendu.dev/), [Sachin Dharashivkar](https://www.linkedin.com/in/sachin-dharashivkar/) |
 | **Gen AI Startup Ecosystem** | [Aditya Agrawal](https://www.linkedin.com/in/meadityagrawal/) — SuperU, [Anshuman Pandey](https://www.linkedin.com/in/gpt4/), [Dr. Pratik Desai](https://www.linkedin.com/in/pratikkumardesai/) — KissanAI, Nirant K, [Pratyush Choudhury](https://www.linkedin.com/in/177pc/) |
 | Job Posts & Talent | _admin not yet identified_ |
 
@@ -45,7 +45,7 @@ These are the folks who pitch in ideas, help with moderation, lend their experti
 10. [Sudharshan Chandra Babu](https://www.linkedin.com/in/cbsudux/) — Co-founder, FrontierAI
 11. [Sumod Mohan](https://www.linkedin.com/in/sumod-k-mohan-3a30127/) — CEO, AutoInfer
 12. [Rahul Bhatnagar](https://www.linkedin.com/in/rhlbhatnagar/) — Founder, Kidovo
-13. [Kumar Shivendu](https://www.linkedin.com/in/kshivendu/) — Systems Engineer, Qdrant
+13. [Kumar Shivendu](https://kshivendu.dev/) — Systems Engineer, Qdrant
 14. [Aditya Agrawal](https://www.linkedin.com/in/meadityagrawal/) — Co-founder, SuperU, ex-Tesla
 15. [Abhishek Mishra](https://www.linkedin.com/in/abhishek-harshvardhan-mishra/) — Technical Lead, Intel — Resident LLM Finetuning Expert
 16. [Sandesh Anand](https://www.linkedin.com/in/anandsandesh/) — Co-founder, Seezo, ex-Razorpay
