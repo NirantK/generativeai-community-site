@@ -40,7 +40,7 @@ These are the folks who pitch in ideas, help with moderation, lend their experti
 5. [Ravi Theja](https://www.linkedin.com/in/ravidesetty/) — Open Source Contributor, Llama Index
 6. [Pratyush Choudhury](https://www.linkedin.com/in/177pc/) — AI SaaS & Infrastructure Investor @ Together Fund
 7. [Ojasvi Yadav](https://www.linkedin.com/in/ojasviyadav/) — AI Lead, WriteSonic
-8. [Dev Aggarwal](https://www.linkedin.com/in/devxpy/) — Technical Founder at Gooey.AI
+8. [Dev Aggarwal](https://devxpy.com) — Co-founder & CTO, Gooey.AI
 9. [Kaushik Bokka](https://www.linkedin.com/in/kaushikbokka/) — Stealth Founder, ex-LightningAI, Fynd
 10. [Sudharshan Chandra Babu](https://www.linkedin.com/in/cbsudux/) — Co-founder, FrontierAI
 11. [Sumod Mohan](https://www.linkedin.com/in/sumod-k-mohan-3a30127/) — CEO, AutoInfer
