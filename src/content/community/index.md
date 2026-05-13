@@ -131,7 +131,7 @@ The community is run with sincere and ongoing efforts from the following people:
 - [Divya Tak](https://www.linkedin.com/in/divya-tak-56019522/)
 
 ### Women in AI
-- [Pratiksha Dake](https://www.linkedin.com/in/pratikshadake/) — Founder, Graphia
+- [Pratiksha Dake](https://www.linkedin.com/in/pratikshadake/) — Unacademy (formerly Founder, Graphia)
 - [Navita Pareek](https://www.linkedin.com/in/navita-pareek-1430a79b/) — Founder, InstaPhotoAI
 
 ### Agents and Tool Usage
@@ -160,7 +160,7 @@ These are the folks who pitch in ideas, help with moderation, lend their experti
 16. [Sandesh Anand](https://www.linkedin.com/in/anandsandesh/) — Co-founder, Seezo, ex-Razorpay
 17. [Aryaman Behera](https://www.linkedin.com/in/aryaman-behera/) — Co-founder, [Repello AI](https://www.linkedin.com/company/repello-ai)
 18. [Anshuman Pandey](https://www.linkedin.com/in/gpt4/) — CEO, NimbleBox.ai
-19. [Pratiksha Dake](https://www.linkedin.com/in/pratikshadake/) — Founder, Graphia
+19. [Pratiksha Dake](https://www.linkedin.com/in/pratikshadake/) — Unacademy (formerly Founder, Graphia)
 20. [Navita Pareek](https://www.linkedin.com/in/navita-pareek-1430a79b/) — Founder, InstaPhotoAI
 21. [Sachin Dharashivkar](https://www.linkedin.com/in/sachin-dharashivkar/) — Founder, AthenaAgent
 22. [Vignesh Baskaran](https://www.linkedin.com/in/vigneshbaskaran0123/) — Co-founder, HexoAI
@@ -170,10 +170,13 @@ These are the folks who pitch in ideas, help with moderation, lend their experti
 26. Atishay — Sarvam
 27. Bargava
 28. Manaswi — Moderator, DeepMedia
-29. Mithil Vakde
-30. Paras Chopra — Founder, Wingify
-31. Shyamal Anandkat — OpenAI
-32. Ashish (Acgt01)
+29. Harsha Subramanyam — Moderator, DeepMedia
+30. Mithil Vakde
+31. Paras Chopra — Founder, Wingify
+32. Shyamal Anandkat — OpenAI
+33. Ashish (Acgt01)
+34. Ani — Dashverse
+35. Pooja VA
 
 ### Founding Members
 
