@@ -1,4 +1,4 @@
-# GenAI Community
+# GenerativeAI Community
 
 Static portal for the Generative AI Community (2,000+ members across Bangalore and San Francisco). Rules, demos, events.
 

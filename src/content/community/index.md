@@ -1,5 +1,5 @@
 ---
-title: "GenAI Community"
+title: "GenerativeAI Community"
 description: "Rules, resources, and recommendations for the Generative AI Community."
 lead: "A 2,000+ member community of CTOs, ML engineers, and open-source hackers across Bangalore and San Francisco."
 ---

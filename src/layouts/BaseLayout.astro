@@ -15,7 +15,7 @@ const {
   description = 'Generative AI Community — rules, resources, recommendations, and events for India\'s most active GenAI builders.',
   sourcePath,
 } = Astro.props;
-const fullTitle = title === 'GenAI Community' ? 'GENAI_COMMUNITY' : `${title} — GENAI_COMMUNITY`;
+const fullTitle = title === 'GenerativeAI Community' ? 'GenerativeAI Community' : `${title} — GenerativeAI Community`;
 const siteUrl = Astro.site?.toString().replace(/\/$/, '') ?? 'https://genaicommunity.ai';
 const canonical = new URL(Astro.url.pathname, siteUrl).toString();
 const ogImage = `${siteUrl}/og.png`;
@@ -40,7 +40,7 @@ const ogImage = `${siteUrl}/og.png`;
     <meta property="og:image" content={ogImage} />
     <meta property="og:image:width" content="1200" />
     <meta property="og:image:height" content="630" />
-    <meta property="og:site_name" content="GENAI_COMMUNITY" />
+    <meta property="og:site_name" content="GenerativeAI Community" />
 
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:title" content={fullTitle} />
