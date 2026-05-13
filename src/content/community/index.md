@@ -81,7 +81,7 @@ All our budget and expenses are public. You can see them here: [Generative AI Fi
 
 ## Code of Conduct
 
-We enforce the [Hasgeek Code of Conduct](https://hasgeek.com/about/policy/code) — by being part of our communications (e.g. the WhatsApp group) or attending any of our events, you agree to adhere to the same. In case of violations, please report to `coc [at] nirantk [dot] com`.
+We enforce the [Hasgeek Code of Conduct](https://hasgeek.com/about/policy/code) — by being part of our communications (e.g. the WhatsApp group) or attending any of our events, you agree to adhere to the same. In case of violations, please report to `nirant [at] scaledfocus [dot] com`.
 
 ## ⚠️ Data Usage
 
