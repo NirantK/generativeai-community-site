@@ -17,9 +17,9 @@ Each sub-group has its own admin or moderator. Nirant is co-admin everywhere.
 | **DeepMedia** (diffusion + audio) | Harsha Subramanyam, Manaswi |
 | **Generative AI x Security** | [Sandesh Anand](https://www.linkedin.com/in/anandsandesh/) |
 | **Agents and Harnesses** | Nirant K |
-| **India AI Research** | Shyamal Anandkat — OpenAI |
+| **India AI Research** | Shyamal Anandkat — OpenAI, Mithil Vakde |
 | **Coffee & Code: Papers Club BLR** | Paras Chopra — Lossfunk |
-| **AI for Healthcare, Biology** | Bargava |
+| **AI for Healthcare, Biology** | Bargava, [Ashish Makani](https://www.linkedin.com/in/tp53/) |
 | **AI for Creatives** | [Computational Mama](https://computationalmama.xyz/), [Divya Tak](https://www.linkedin.com/in/divya-tak-56019522/) |
 | **Women in AI** | [Pratiksha Dake](https://www.linkedin.com/in/pratikshadake/), [Navita Pareek](https://www.linkedin.com/in/navita-pareek-1430a79b/) |
 | **Agents and Tool Usage** | [Sachin Dharashivkar](https://www.linkedin.com/in/sachin-dharashivkar/), [Vignesh Baskaran](https://www.linkedin.com/in/vigneshbaskaran0123/) |
