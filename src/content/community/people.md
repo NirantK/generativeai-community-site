@@ -6,19 +6,28 @@ lead: "The folks who pitch in ideas, help with moderation, and lend their expert
 
 The community is run with sincere and ongoing efforts from the following people.
 
-## Theme Moderators
+## Theme Admins & Moderators
 
-### AI for Creatives
-- [Computational Mama](https://computationalmama.xyz/)
-- [Divya Tak](https://www.linkedin.com/in/divya-tak-56019522/)
+Each sub-group has its own admin or moderator. Nirant is co-admin everywhere.
 
-### Women in AI
-- [Pratiksha Dake](https://www.linkedin.com/in/pratikshadake/) — Unacademy (formerly Founder, Graphia)
-- [Navita Pareek](https://www.linkedin.com/in/navita-pareek-1430a79b/) — Founder, InstaPhotoAI
-
-### Agents and Tool Usage
-- [Sachin Dharashivkar](https://www.linkedin.com/in/sachin-dharashivkar/) — Founder, AthenaAgent
-- [Vignesh Baskaran](https://www.linkedin.com/in/vigneshbaskaran0123/) — Co-founder, HexoAI
+| Theme | Admin / Moderator(s) | Source |
+|---|---|---|
+| **The GenerativeAI Group** (main hub) | Nirant K, Sparsh Jain | confirmed |
+| **Project Demos & Events** | Dr. Pratik Desai — KissanAI | confirmed |
+| **DeepMedia** (diffusion + audio) | Harsha Subramanyam, Manaswi | confirmed |
+| **Generative AI x Security** | Sthit, [Sandesh Anand](https://www.linkedin.com/in/anandsandesh/) | confirmed |
+| **Agents and Harnesses** | Aniket, Nirant K | confirmed |
+| **India AI Research** | Shyamal Anandkat — OpenAI | confirmed |
+| **Coffee & Code: Papers Club BLR** | Yatharth P, Paras Chopra — Lossfunk | confirmed |
+| **AI for Healthcare, Biology** | Bharat Shetty, Bargava | confirmed |
+| **AI for Creatives** | [Computational Mama](https://computationalmama.xyz/), [Divya Tak](https://www.linkedin.com/in/divya-tak-56019522/) | confirmed |
+| **Women in AI** | [Pratiksha Dake](https://www.linkedin.com/in/pratikshadake/), [Navita Pareek](https://www.linkedin.com/in/navita-pareek-1430a79b/) | confirmed |
+| **Agents and Tool Usage** | [Sachin Dharashivkar](https://www.linkedin.com/in/sachin-dharashivkar/), [Vignesh Baskaran](https://www.linkedin.com/in/vigneshbaskaran0123/) | confirmed |
+| Voice Agents | Sparsh Agarwal — Nova GenZ, Sid | inferred from activity |
+| Training and Inference | Aashay Sachdeva — Sarvam, [Sachin Dharashivkar](https://www.linkedin.com/in/sachin-dharashivkar/) | inferred from activity |
+| Search: Embedding, Infra, Text | Nirant K | inferred from activity |
+| Gen AI Startup Ecosystem | Yashwardhan Chaudhuri — Noteweave.io | inferred from activity |
+| Job Posts & Talent | _admin not yet identified_ | — |
 
 ## Expertise and Advisory Board
 
