@@ -12,7 +12,7 @@ Each sub-group has its own admin or moderator. Nirant is co-admin everywhere.
 
 | Theme | Admin / Moderator(s) |
 |---|---|
-| **The GenerativeAI Group** (main hub) | Nirant K |
+| **The GenerativeAI Group** (main hub) | Nirant K, [Ojasvi Yadav](https://www.linkedin.com/in/ojasviyadav/), [Pratyush Choudhury](https://www.linkedin.com/in/177pc/), [Aashay Sachdeva](https://www.linkedin.com/in/aashay-sachdeva-020806b7/), [Dev Aggarwal](https://www.linkedin.com/in/devxpy/), [Dr. Pratik Desai](https://www.linkedin.com/in/pratikkumardesai/), Paras Chopra, [Ravi Theja](https://www.linkedin.com/in/ravidesetty/), [Soumyadeep Mukherjee](https://www.linkedin.com/in/soumyadeepmukherjee/), [Sumod Mohan](https://www.linkedin.com/in/sumod-k-mohan-3a30127/) |
 | **Project Demos & Events** | Dr. Pratik Desai — KissanAI |
 | **DeepMedia** (diffusion + audio) | Harsha Subramanyam, Manaswi |
 | **Generative AI x Security** | [Sandesh Anand](https://www.linkedin.com/in/anandsandesh/) |
