@@ -59,7 +59,7 @@ These are the folks who pitch in ideas, help with moderation, lend their experti
 24. [Soumyadeep Mukherjee](https://www.linkedin.com/in/soumyadeepmukherjee/) — Co-founder and Engineer, Dashtoon
 25. [Aashay Sachdeva](https://www.linkedin.com/in/aashay-sachdeva-020806b7/) — Sarvam
 26. [Atishay Ganesh](https://www.linkedin.com/in/atishay-ganesh) — Sarvam
-27. [Bargava](https://www.linkedin.com/in/bargava?originalSubdomain=in)
+27. [Bargava Subramanian](https://www.linkedin.com/in/bargava?originalSubdomain=in) — 4x founder, 20+ years in Computer Vision and LLMs; last 6 years focused on improving patient outcomes through AI. Ships AI systems across B2B use cases. Mentors early-career professionals and companies in AI.
 28. Manaswi — Moderator, DeepMedia
 29. Harsha Subramanyam — Moderator, DeepMedia
 30. [Mithil Vakde](https://www.linkedin.com/in/mvakde/)
