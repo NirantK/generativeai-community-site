@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key><string>com.genaicommunity.outbox</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>/usr/local/bin/node</string>
+    <string>--experimental-strip-types</string>
+    <string>/Users/nirantk/Desktop/scratchpad/generativeai-community-site/scripts/post-to-whatsapp.ts</string>
+  </array>
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>OUTBOX_API_KEY</key><string>REPLACE_ME</string>
+    <key>SITE_URL</key><string>https://genaicommunity.ai</string>
+    <key>WA_CHAT</key><string>GenAI Jobs</string>
+  </dict>
+  <key>StartInterval</key><integer>60</integer>
+  <key>RunAtLoad</key><false/>
+  <key>StandardOutPath</key><string>/tmp/genai-outbox.log</string>
+  <key>StandardErrorPath</key><string>/tmp/genai-outbox.err</string>
+</dict>
+</plist>

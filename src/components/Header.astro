@@ -36,12 +36,20 @@ const path = Astro.url.pathname.replace(/\/$/, '') || '/';
         );
       })}
     </nav>
-    <a
-      href={whatsappUrl}
-      rel="noopener"
-      class="font-mono text-label-caps uppercase border border-outline-variant px-3 min-h-tap inline-flex items-center text-on-surface hover:border-primary hover:text-primary transition-colors"
-    >
-      JOIN_WHATSAPP
-    </a>
+    <div class="flex items-center gap-1">
+      <a
+        href="/login"
+        class="hidden sm:inline-flex font-mono text-label-caps uppercase px-3 min-h-tap items-center text-on-surface-variant hover:text-on-surface transition-colors"
+      >
+        SIGN_IN
+      </a>
+      <a
+        href={whatsappUrl}
+        rel="noopener"
+        class="font-mono text-label-caps uppercase border border-outline-variant px-3 min-h-tap inline-flex items-center text-on-surface hover:border-primary hover:text-primary transition-colors"
+      >
+        JOIN_WHATSAPP
+      </a>
+    </div>
   </div>
 </header>
