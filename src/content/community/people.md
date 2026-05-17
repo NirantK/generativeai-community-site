@@ -12,8 +12,8 @@ Each sub-group has its own admin or moderator. Nirant is co-admin everywhere.
 
 | Theme | Admin / Moderator(s) |
 |---|---|
-| **The GenerativeAI Group** (main hub) | Nirant K, [Ojasvi Yadav](https://www.linkedin.com/in/ojasviyadav/), [Pratyush Choudhury](https://www.linkedin.com/in/177pc/), [Aashay Sachdeva](https://www.linkedin.com/in/aashay-sachdeva-020806b7/), [Dev Aggarwal](https://www.linkedin.com/in/devxpy/), [Dr. Pratik Desai](https://www.linkedin.com/in/pratikkumardesai/), Paras Chopra, [Ravi Theja](https://www.linkedin.com/in/ravidesetty/), [Soumyadeep Mukherjee](https://www.linkedin.com/in/soumyadeepmukherjee/), [Sumod Mohan](https://www.linkedin.com/in/sumod-k-mohan-3a30127/) |
-| **Project Demos & Events** | [Dr. Pratik Desai](https://www.linkedin.com/in/pratikkumardesai/) — KissanAI, [Dhruv Anand](https://www.linkedin.com/in/dhruv-anand-ainorthstartech/), Nirant K, [Ojasvi Yadav](https://www.linkedin.com/in/ojasviyadav/), Paras Chopra, [Ravi Theja](https://www.linkedin.com/in/ravidesetty/), [Sandesh Anand](https://www.linkedin.com/in/anandsandesh/) |
+| **The GenerativeAI Group** (main hub) | Nirant K, [Pratyush Choudhury](https://www.linkedin.com/in/177pc/), [Aashay Sachdeva](https://www.linkedin.com/in/aashay-sachdeva-020806b7/), [Dev Aggarwal](https://www.linkedin.com/in/devxpy/), [Dr. Pratik Desai](https://www.linkedin.com/in/pratikkumardesai/), Paras Chopra, [Ravi Theja](https://www.linkedin.com/in/ravidesetty/), [Soumyadeep Mukherjee](https://www.linkedin.com/in/soumyadeepmukherjee/), [Sumod Mohan](https://www.linkedin.com/in/sumod-k-mohan-3a30127/) |
+| **Project Demos & Events** | [Dr. Pratik Desai](https://www.linkedin.com/in/pratikkumardesai/) — KissanAI, [Dhruv Anand](https://www.linkedin.com/in/dhruv-anand-ainorthstartech/), Nirant K, Paras Chopra, [Ravi Theja](https://www.linkedin.com/in/ravidesetty/), [Sandesh Anand](https://www.linkedin.com/in/anandsandesh/) |
 | **DeepMedia** (diffusion + audio) | Harsha Subramanyam, Manaswi |
 | **Generative AI x Security** | [Sandesh Anand](https://www.linkedin.com/in/anandsandesh/) |
 | **Agents and Harnesses** | Nirant K, [Ojasvi Yadav](https://www.linkedin.com/in/ojasviyadav/), [Pratyush Choudhury](https://www.linkedin.com/in/177pc/), [Sachin Dharashivkar](https://www.linkedin.com/in/sachin-dharashivkar/) |
@@ -27,6 +27,7 @@ Each sub-group has its own admin or moderator. Nirant is co-admin everywhere.
 | Training and Inference | [Ojasvi Yadav](https://www.linkedin.com/in/ojasviyadav/), [Aashay Sachdeva](https://www.linkedin.com/in/aashay-sachdeva-020806b7/) — Sarvam, [Abhishek Mishra](https://www.linkedin.com/in/abhishek-harshvardhan-mishra/), [Dr. Pratik Desai](https://www.linkedin.com/in/pratikkumardesai/), Nirant K, [Ravi Theja](https://www.linkedin.com/in/ravidesetty/), [Sachin Dharashivkar](https://www.linkedin.com/in/sachin-dharashivkar/) |
 | Search: Embedding, Infra, Text | Nirant K, [Dhruv Anand](https://www.linkedin.com/in/dhruv-anand-ainorthstartech/), [Kumar Shivendu](https://kshivendu.dev/), [Sachin Dharashivkar](https://www.linkedin.com/in/sachin-dharashivkar/) |
 | **Gen AI Startup Ecosystem** | [Aditya Agrawal](https://www.linkedin.com/in/meadityagrawal/) — SuperU, [Anshuman Pandey](https://www.linkedin.com/in/gpt4/), [Dr. Pratik Desai](https://www.linkedin.com/in/pratikkumardesai/) — KissanAI, Nirant K, [Pratyush Choudhury](https://www.linkedin.com/in/177pc/) |
+| **Watercooler** | [Ojasvi Yadav](https://www.linkedin.com/in/ojasviyadav/) |
 | Job Posts & Talent | _admin not yet identified_ |
 
 ## Expertise and Advisory Board
@@ -39,7 +40,7 @@ These are the folks who pitch in ideas, help with moderation, lend their experti
 4. [Shubhi Saxena](https://www.linkedin.com/in/shubhi-saxena-28241975/) — Product at Quizizz
 5. [Ravi Theja](https://www.linkedin.com/in/ravidesetty/) — Open Source Contributor, Llama Index
 6. [Pratyush Choudhury](https://www.linkedin.com/in/177pc/) — AI SaaS & Infrastructure Investor @ Together Fund
-7. [Ojasvi Yadav](https://www.linkedin.com/in/ojasviyadav/) — AI Lead, WriteSonic
+7. [Ojasvi Yadav](https://www.linkedin.com/in/ojasviyadav/) — Founding Engineer, Sabi.com
 8. [Dev Aggarwal](https://devxpy.com) — Co-founder & CTO, Gooey.AI
 9. [Kaushik Bokka](https://www.linkedin.com/in/kaushikbokka/) — Stealth Founder, ex-LightningAI, Fynd
 10. [Sudharshan Chandra Babu](https://www.linkedin.com/in/cbsudux/) — Co-founder, FrontierAI
