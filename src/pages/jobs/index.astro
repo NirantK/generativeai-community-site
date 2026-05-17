@@ -1,0 +1,35 @@
+---
+export const prerender = false;
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import SectionLabel from '../../components/SectionLabel.astro';
+import JobRow from '../../components/JobRow.astro';
+import { env } from 'cloudflare:workers';
+import { db } from '../../lib/db/client';
+import { jobs } from '../../lib/db/schema';
+import { desc, eq } from 'drizzle-orm';
+
+const rows = await db(env.DB)
+  .select()
+  .from(jobs)
+  .where(eq(jobs.status, 'live'))
+  .orderBy(desc(jobs.postedAt))
+  .limit(200);
+
+Astro.response.headers.set('Cache-Control', 'public, s-maxage=300, stale-while-revalidate=600');
+---
+<BaseLayout title="Jobs" description="Roles posted by the GenerativeAI Community.">
+  <section class="mt-stack-md">
+    <span class="font-mono text-label-caps uppercase text-on-surface-variant">// JOBS</span>
+    <h1 class="mt-stack-sm text-headline-lg-mobile md:text-display-lg font-sans font-bold tracking-tight">Open roles</h1>
+    <p class="mt-stack-sm text-on-surface-variant text-body-base max-w-prose">
+      Roles posted by community members. Most recent first. To post,
+      <a href="/jobs/post" class="underline">use the form</a> ($X) — or post directly in the WhatsApp group if you're a contributor.
+    </p>
+  </section>
+  <SectionLabel label="LISTINGS" />
+  {rows.length === 0 ? (
+    <p class="text-on-surface-variant">No live jobs yet. <a href="/jobs/post" class="underline">Be the first</a>.</p>
+  ) : (
+    <div>{rows.map((j) => <JobRow job={j} />)}</div>
+  )}
+</BaseLayout>

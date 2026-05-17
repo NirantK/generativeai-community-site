@@ -1,0 +1,19 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+const id = Astro.url.searchParams.get('id');
+---
+<BaseLayout title="Job posted" description="Your job is live.">
+  <section class="mt-stack-md">
+    <span class="font-mono text-label-caps uppercase text-on-surface-variant">// POSTED</span>
+    <h1 class="mt-stack-sm text-headline-lg-mobile md:text-display-lg font-sans font-bold tracking-tight">Your job is live.</h1>
+    <p class="mt-stack-sm text-on-surface-variant text-body-base max-w-prose">
+      It's also queued for the WhatsApp group. If anything looks wrong, email
+      <a href="mailto:nirant@scaledfocus.com" class="underline">nirant@scaledfocus.com</a>.
+    </p>
+    {id && (
+      <div class="mt-stack-md">
+        <a href={`/jobs/${id}`} class="inline-flex items-center justify-center min-h-tap px-gutter font-mono text-label-caps uppercase bg-on-surface text-surface">VIEW_LISTING</a>
+      </div>
+    )}
+  </section>
+</BaseLayout>

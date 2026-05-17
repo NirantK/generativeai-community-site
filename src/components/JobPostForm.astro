@@ -1,0 +1,65 @@
+---
+const priceLabel = Astro.props.priceLabel ?? '$X';
+---
+<form id="job-form" class="mt-stack-md grid gap-stack-sm max-w-prose">
+  <label class="grid gap-1">
+    <span class="font-mono text-label-caps uppercase text-on-surface-variant">ROLE</span>
+    <input name="role" required minlength="2" maxlength="100" class="min-h-tap px-3 bg-surface-container text-on-surface border border-outline-variant" />
+  </label>
+  <label class="grid gap-1">
+    <span class="font-mono text-label-caps uppercase text-on-surface-variant">COMPANY</span>
+    <input name="company" required minlength="2" maxlength="100" class="min-h-tap px-3 bg-surface-container text-on-surface border border-outline-variant" />
+  </label>
+  <label class="grid gap-1">
+    <span class="font-mono text-label-caps uppercase text-on-surface-variant">LOCATION</span>
+    <input name="location" required class="min-h-tap px-3 bg-surface-container text-on-surface border border-outline-variant" />
+  </label>
+  <label class="grid gap-1">
+    <span class="font-mono text-label-caps uppercase text-on-surface-variant">COMP (OPTIONAL)</span>
+    <input name="comp" class="min-h-tap px-3 bg-surface-container text-on-surface border border-outline-variant" />
+  </label>
+  <label class="grid gap-1">
+    <span class="font-mono text-label-caps uppercase text-on-surface-variant">APPLY URL (WEB)</span>
+    <input type="url" name="applyWeb" required class="min-h-tap px-3 bg-surface-container text-on-surface border border-outline-variant" />
+  </label>
+  <label class="grid gap-1">
+    <span class="font-mono text-label-caps uppercase text-on-surface-variant">APPLY URL (API, OPTIONAL)</span>
+    <input type="url" name="applyApi" class="min-h-tap px-3 bg-surface-container text-on-surface border border-outline-variant" />
+  </label>
+  <label class="grid gap-1">
+    <span class="font-mono text-label-caps uppercase text-on-surface-variant">CONTACT EMAIL</span>
+    <input type="email" name="contactEmail" required class="min-h-tap px-3 bg-surface-container text-on-surface border border-outline-variant" />
+  </label>
+  <label class="grid gap-1">
+    <span class="font-mono text-label-caps uppercase text-on-surface-variant">BLURB (20–280 CHARS)</span>
+    <textarea name="blurb" required minlength="20" maxlength="280" rows="4" class="px-3 py-2 bg-surface-container text-on-surface border border-outline-variant"></textarea>
+  </label>
+  <p class="text-body-sm text-on-surface-variant">Your post is permanent. We don't auto-expire.</p>
+  <button type="submit" class="inline-flex items-center justify-center min-h-tap px-gutter font-mono text-label-caps uppercase bg-on-surface text-surface hover:opacity-90">
+    POST_JOB — {priceLabel}
+  </button>
+  <p id="err" class="text-error text-body-sm hidden" role="alert"></p>
+</form>
+<script>
+  const form = document.getElementById('job-form') as HTMLFormElement;
+  const err = document.getElementById('err') as HTMLParagraphElement;
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    err.classList.add('hidden');
+    const fd = new FormData(form);
+    const data: Record<string, string> = {};
+    fd.forEach((v, k) => { if (typeof v === 'string' && v.length > 0) data[k] = v; });
+    const res = await fetch('/api/jobs/draft', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+    if (!res.ok) {
+      err.textContent = `Error ${res.status}. Check fields and retry.`;
+      err.classList.remove('hidden');
+      return;
+    }
+    const { url } = await res.json();
+    window.location.href = url;
+  });
+</script>

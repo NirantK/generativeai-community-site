@@ -1,0 +1,17 @@
+---
+import type { Job } from '../lib/db/schema';
+type Props = { job: Job };
+const { job } = Astro.props;
+const posted = job.postedAt ? new Date(job.postedAt).toISOString().slice(0, 10) : '';
+---
+<article class="border-t border-outline-variant py-stack-sm">
+  <div class="flex items-baseline justify-between gap-stack-sm flex-wrap">
+    <h2 class="text-title-lg font-sans">
+      <a href={`/jobs/${job.id}`} class="hover:underline">{job.role}</a>
+      <span class="text-on-surface-variant"> · {job.company}</span>
+    </h2>
+    <span class="font-mono text-label-caps uppercase text-on-surface-variant">{posted}</span>
+  </div>
+  <p class="mt-1 text-body-base text-on-surface-variant">{job.location}{job.comp ? ` · ${job.comp}` : ''}</p>
+  <p class="mt-2 text-body-base max-w-prose">{job.blurb}</p>
+</article>

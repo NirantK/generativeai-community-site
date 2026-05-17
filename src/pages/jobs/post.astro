@@ -1,0 +1,20 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import SectionLabel from '../../components/SectionLabel.astro';
+import JobPostForm from '../../components/JobPostForm.astro';
+const cancelled = Astro.url.searchParams.has('cancelled');
+---
+<BaseLayout title="Post a Job" description="Paid job posting for the GenerativeAI Community.">
+  <section class="mt-stack-md">
+    <span class="font-mono text-label-caps uppercase text-on-surface-variant">// POST_JOB</span>
+    <h1 class="mt-stack-sm text-headline-lg-mobile md:text-display-lg font-sans font-bold tracking-tight">Post a job</h1>
+    <p class="mt-stack-sm text-on-surface-variant text-body-base max-w-prose">
+      Paid listing. Pays for itself in one good hire. Free posts go directly to the WhatsApp group.
+    </p>
+    {cancelled && (
+      <p class="mt-stack-sm text-error text-body-sm">Payment cancelled. Submit again to retry.</p>
+    )}
+  </section>
+  <SectionLabel label="DETAILS" />
+  <JobPostForm priceLabel="$X" />
+</BaseLayout>

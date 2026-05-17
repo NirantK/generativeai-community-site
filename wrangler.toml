@@ -1,0 +1,15 @@
+name = "genaicommunity-site"
+compatibility_date = "2026-05-17"
+compatibility_flags = ["nodejs_compat"]
+
+[[d1_databases]]
+binding = "DB"
+database_name = "genai_jobboard"
+# Replace with real database_id from `npx wrangler d1 create genai_jobboard`
+database_id = "00000000-0000-0000-0000-000000000000"
+migrations_dir = "src/lib/db/migrations"
+
+[observability]
+enabled = true
+
+# Secrets are set via `wrangler secret put <NAME>` after deploy — do NOT commit values.

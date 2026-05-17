@@ -4,6 +4,7 @@ import { defineConfig } from 'astro/config';
 import tailwindcss from '@tailwindcss/vite';
 import mdx from '@astrojs/mdx';
 import sitemap from '@astrojs/sitemap';
+import cloudflare from '@astrojs/cloudflare';
 
 const site = process.env.SITE_URL || 'https://genaicommunity.ai';
 
@@ -11,6 +12,8 @@ const site = process.env.SITE_URL || 'https://genaicommunity.ai';
 export default defineConfig({
   site,
   trailingSlash: 'never',
+  output: 'static',
+  adapter: cloudflare({ imageService: 'passthrough' }),
   vite: {
     plugins: [tailwindcss()],
   },
