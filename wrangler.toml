@@ -13,3 +13,8 @@ migrations_dir = "src/lib/db/migrations"
 enabled = true
 
 # Secrets are set via `wrangler secret put <NAME>` after deploy — do NOT commit values.
+
+[[services]]
+binding = "ADMISSIONS"
+service = "genaicommunity-admissions"
+entrypoint = "AdmissionsGateway"

@@ -1,0 +1,49 @@
+---
+import BaseLayout from "../layouts/BaseLayout.astro";
+import "../styles/admissions.css";
+---
+
+<BaseLayout title="Apply using an agent">
+  <article class="admissions">
+    <p class="eyebrow">Application API · v1</p>
+    <h1>Let your agent help you apply.</h1>
+    <ol class="list-decimal pl-6 space-y-3">
+      <li>
+        <a href="/apply">Sign in with LinkedIn</a>, verify your email, and save
+        consent.
+      </li>
+      <li>Generate an application token in “Apply using an AI agent.”</li>
+      <li>
+        Give the instructions below and the token to your chosen agent through
+        its secure credential mechanism.
+      </li>
+    </ol>
+    <section>
+      <h2>Instructions for Codex and other agents</h2>
+      <pre>Help me apply to the GenerativeAI Community.
+
+Use https://genaicommunity.ai/openapi.json for the API contract.
+Use my application token as an Authorization: Bearer credential.
+Do not print the token, commit it, put it in URLs, or send it to another host.
+
+1. GET /api/v1/application to read existing details and requirements.
+2. Ask me for any missing background. Never invent qualifications.
+3. Prepare linkedinUrl, role, organization, education, project,
+   contribution, outcome, and motivation. Show me the application.
+4. After I authorize submission, POST /api/v1/application with JSON
+   and a fresh UUID in Idempotency-Key. Reuse that key and exact body
+   if a network failure requires a retry.
+5. GET /api/v1/application to check status. Honor Retry-After and
+   do not poll more often than once per minute.
+
+The token expires after 24 hours. It permits one submission and
+status reads; it cannot change my identity, email, or consent.
+If those details are incomplete, direct me back to /apply.
+Approval invitations are emailed to my verified address.</pre>
+      <p>
+        <a href="/openapi.json">OpenAPI specification</a> ·{" "}
+        <a href="/apply">Back to your application</a>
+      </p>
+    </section>
+  </article>
+</BaseLayout>

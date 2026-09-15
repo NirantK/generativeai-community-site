@@ -1,16 +1,4 @@
 ---
-import BaseLayout from '../layouts/BaseLayout.astro';
+export const prerender = false;
+return Astro.redirect('/apply', 302);
 ---
-<BaseLayout title="Sign in" description="Sign in to manage posts and API keys.">
-  <section class="mt-stack-md max-w-prose">
-    <span class="font-mono text-label-caps uppercase text-on-surface-variant">// SIGN_IN</span>
-    <h1 class="mt-stack-sm text-headline-lg-mobile md:text-display-lg font-sans font-bold tracking-tight">Sign in</h1>
-    <p class="mt-stack-sm text-on-surface-variant text-body-base">
-      Accounts are coming soon. They'll be required for the public API and for managing your job posts.
-      For now, post a job using the form — receipts go to whatever email you give Stripe.
-    </p>
-    <div class="mt-stack-md">
-      <a href="/jobs/post" class="inline-flex items-center justify-center min-h-tap px-gutter font-mono text-label-caps uppercase bg-on-surface text-surface hover:opacity-90">POST_A_JOB</a>
-    </div>
-  </section>
-</BaseLayout>

@@ -1,14 +1,15 @@
 ---
-const whatsappUrl = 'https://nas.io/the-generativeai-group';
+const whatsappUrl = "/apply";
 const navItems = [
-  { label: 'HOME', href: '/' },
-  { label: 'JOBS', href: '/jobs' },
-  { label: 'PEOPLE', href: '/people/' },
-  { label: 'DEMOS', href: '/deephackdemos/' },
-  { label: 'EVENTS', href: '/demoday102023/' },
+  { label: "HOME", href: "/" },
+  { label: "JOBS", href: "/jobs" },
+  { label: "PEOPLE", href: "/people/" },
+  { label: "DEMOS", href: "/deephackdemos/" },
+  { label: "EVENTS", href: "/demoday102023/" },
 ];
-const path = Astro.url.pathname.replace(/\/$/, '') || '/';
+const path = Astro.url.pathname.replace(/\/$/, "") || "/";
 ---
+
 <header class="border-b border-outline-variant bg-background sticky top-0 z-10">
   <div class="mx-auto max-w-3xl flex items-center justify-between px-margin-mobile md:px-margin-desktop min-h-tap gap-gutter">
     <a
@@ -20,16 +21,21 @@ const path = Astro.url.pathname.replace(/\/$/, '') || '/';
     </a>
     <nav class="hidden md:flex items-center gap-1" aria-label="Primary">
       {navItems.map((it) => {
-        const normalised = it.href.replace(/\/$/, '') || '/';
-        const active = (it.href === '/' && path === '/') || (it.href !== '/' && (path === normalised || path.startsWith(normalised + '/')));
+        const normalised = it.href.replace(/\/$/, "") || "/";
+        const active =
+          (it.href === "/" && path === "/") ||
+          (it.href !== "/" &&
+            (path === normalised || path.startsWith(normalised + "/")));
         return (
           <a
             href={it.href}
             class:list={[
-              'font-mono text-label-caps uppercase px-3 min-h-tap inline-flex items-center transition-colors',
-              active ? 'text-primary' : 'text-on-surface-variant hover:text-on-surface',
+              "font-mono text-label-caps uppercase px-3 min-h-tap inline-flex items-center transition-colors",
+              active
+                ? "text-primary"
+                : "text-on-surface-variant hover:text-on-surface",
             ]}
-            aria-current={active ? 'page' : undefined}
+            aria-current={active ? "page" : undefined}
           >
             {it.label}
           </a>
@@ -48,7 +54,7 @@ const path = Astro.url.pathname.replace(/\/$/, '') || '/';
         rel="noopener"
         class="font-mono text-label-caps uppercase border border-outline-variant px-3 min-h-tap inline-flex items-center text-on-surface hover:border-primary hover:text-primary transition-colors"
       >
-        JOIN_WHATSAPP
+        APPLY
       </a>
     </div>
   </div>

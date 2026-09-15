@@ -6,7 +6,7 @@ Source content migrated from `nirantk.com/community/*`.
 
 ## Stack
 
-- **Astro 6** with `@astrojs/cloudflare` adapter — static by default, SSR only where needed (`/jobs`, `/jobs/[id]`, `/me`, `/api/*`).
+- **Astro 7** with `@astrojs/cloudflare` adapter — static by default, SSR only where needed (`/jobs`, `/jobs/[id]`, `/me`, `/api/*`).
 - **Tailwind v4** with the Technical Precision design system (`src/styles/global.css`).
 - **Self-hosted Geist + JetBrains Mono** variable fonts.
 - **Cloudflare Workers + D1** — D1 (`genai_jobboard`) backs the paid job board; secrets via `wrangler secret put`.
@@ -95,3 +95,7 @@ tail -f /tmp/genai-outbox.log
 ## License
 
 Apache 2.0. See [`LICENSE`](./LICENSE).
+
+## Membership applications
+
+LinkedIn sign-in, browser and agent applications, automated/human review, and Cloudflare email invitations. See [admissions setup and operations](admissions/README.md) for deployment status and required launch inputs.

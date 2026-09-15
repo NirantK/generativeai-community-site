@@ -11,6 +11,7 @@ const site = process.env.SITE_URL || 'https://genaicommunity.ai';
 // https://astro.build/config
 export default defineConfig({
   site,
+  compressHTML: true,
   trailingSlash: 'never',
   output: 'static',
   adapter: cloudflare({ imageService: 'passthrough' }),

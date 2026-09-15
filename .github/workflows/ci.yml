@@ -18,6 +18,14 @@ jobs:
         run: npm ci
       - name: Install Playwright browsers
         run: npx playwright install --with-deps chromium webkit
+      - name: Admissions checks
+        run: |
+          cp admissions/.dev.vars.example admissions/.dev.vars
+          npm run check:admissions
+          npm run test:admissions
+          npm run build:admissions
+      - name: Local job database
+        run: npx wrangler d1 migrations apply genai_jobboard --local
       - name: Build
         run: npm run build
       - name: Playwright tests

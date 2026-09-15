@@ -14,7 +14,7 @@ As a team, we have done monthly events since February, which include talks, demo
 
 Our community's impact is evident in the success stories it has nurtured. Ragas has evolved into a business and recently got into YCombinator. Previous speaker Ravi Theja found a significant role at Llama Index, while collaborator Shivendu Kumar joined Qdrant. Notably, FastEmbed itself was born out of the community's articulated needs, exemplifying our commitment to fostering real-world AI solutions.
 
-In essence, our community is not just a forum for discussion but a melting pot for AI Engineering innovation and collaboration. You can join us on WhatsApp [here](https://nas.io/the-generativeai-group).
+In essence, our community is not just a forum for discussion but a melting pot for AI Engineering innovation and collaboration. You can join us on WhatsApp [here](/apply).
 
 ## WhatsApp Community Rules
 
@@ -38,7 +38,7 @@ These guides are good rules of thumb, but admins reserve all rights to remove or
 
 ## Adding Friends
 
-✅ Share the group link with your friends and ask them to apply: [nas.io/the-generativeai-group](https://nas.io/the-generativeai-group)
+✅ Share the group link with your friends and ask them to apply: [Apply to join](/apply)
 
 👎 Asking on main to add your friend. Ping admins directly.
 
