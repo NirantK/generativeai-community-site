@@ -283,7 +283,7 @@ test("administrator invites a colleague by email and sees the pending invitation
     }
     return r.fulfill({json:{invitations:invited?[{id:"test",email:"colleague@example.com",expires_at:Date.now()+86400000,accepted_at:null,revoked_at:null,delivery:"accepted"}]:[]}});
   });
-  await page.goto("/admin/");
+  await page.goto("/admin");
   await page.getByLabel("New administrator email").fill("colleague@example.com");
   await page.getByRole("button",{name:"Send administrator invitation"}).click();
   await expect(page.getByRole("status")).toHaveText("Administrator invitation accepted by the email provider.");

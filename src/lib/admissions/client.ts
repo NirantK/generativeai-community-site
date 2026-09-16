@@ -182,7 +182,7 @@ export function initApplication() {
   });
   action("accept-admin", async () => {
     await api("/api/admin-invitation", "POST");
-    location.href = "/admin/";
+    location.href = "/admin";
   });
   action("logout", async () => {
     await api("/auth/logout", "POST");
