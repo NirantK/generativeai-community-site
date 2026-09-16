@@ -142,7 +142,13 @@ export function initApplication() {
     });
   }
   form("email-form", async (d) => {
-    await api("/api/application-email", "POST", { email: d.get("email") });
+    try {
+      await api("/api/application-email", "POST", { email: d.get("email") });
+    } finally {
+      el("token-value").textContent = "";
+      el("token-output").hidden = true;
+      await refresh();
+    }
     el("verify-form").hidden = false;
     notice("Check your inbox for an 8-digit code.");
   });

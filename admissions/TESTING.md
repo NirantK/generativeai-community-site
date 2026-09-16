@@ -64,3 +64,17 @@ References checked 16 September 2026:
 All subsequent live smoke tests use `https://staging.genaicommunity.ai`; production
 checks use `https://genaicommunity.ai`. The staging callback-domain change requires
 one new live login because the previous host-only session cannot transfer safely.
+
+## Official-domain smoke test — 16 September 2026
+
+On deployed build `1b666fb`, sign-in on `staging.genaicommunity.ai` returned the
+expected owner's profile with verified email. Email-allowlisted administrator
+access loaded successfully and showed no submitted applications.
+
+The owner authorized one verification email. The native Cloudflare binding
+accepted the send; inbox receipt and code verification remain pending. During
+reverification, token issuance was denied by the server as required. The stale
+verified-email label and enabled controls observed in this test were corrected,
+with a regression check passing on all five browser/device profiles.
+
+No application or invitation has been submitted in this smoke test yet.

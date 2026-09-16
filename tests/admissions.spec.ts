@@ -229,3 +229,20 @@ test("failed and cancelled sign-ins offer a retry", async ({ page }) => {
     ).toBeVisible();
   }
 });
+
+test("requesting email verification immediately disables submission and token issuance", async ({ page }) => {
+  let verified = true;
+  await page.route("**/api/v1/application", route => route.fulfill({ json: { ...draft, profile: { ...draft.profile, emailVerified: verified } } }));
+  await page.route("**/api/application-email", route => {
+    verified = false;
+    return route.fulfill({ json: { sent: true } });
+  });
+  await page.goto("/apply");
+  await page.getByRole("button", { name: "Change email", exact: true }).click();
+  await page.getByRole("button", { name: "Send verification code", exact: true }).click();
+  await expect(page.getByText("Verify your email before submitting.", { exact: true })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Submit application", exact: true })).toBeDisabled();
+  await page.getByText("Apply using an AI agent", { exact: true }).click();
+  await expect(page.getByRole("button", { name: "Generate application token", exact: true })).toBeDisabled();
+  await expect(page.getByRole("textbox", { name: "8-digit verification code", exact: true })).toBeVisible();
+});
