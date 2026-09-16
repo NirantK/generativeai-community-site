@@ -41,3 +41,16 @@ Normal CI uses its local build only. Explicit public-site smoke tests can be run
 These do not authenticate with LinkedIn. Personal-account sign-in tests must be run
 manually and recorded once; repeat authentication regression tests use signed synthetic
 OIDC responses in the separate admissions implementation, never personal cookies or tokens.
+
+## LinkedIn link verification
+
+On 16 September 2026, the footer link was followed from the built Terms page in
+Nirant Kasliwal's existing signed-in browser session. LinkedIn opened the GenerativeAI
+Community admin page for organization `146602087`, confirming the public vanity URL
+`https://www.linkedin.com/company/genaicommunity/` resolves to the correct Page.
+This was a link-navigation smoke test, not an OIDC sign-in test.
+
+`tests/footer.spec.ts` repeats the actual footer navigation using an intercepted
+LinkedIn destination. CI never calls LinkedIn or stores personal-account cookies.
+The real signed-in check is test-once by default; repeat it only after the target
+Page/URL changes or when explicitly requested.
