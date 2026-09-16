@@ -72,6 +72,8 @@ jobs:
         env:
           CLOUDFLARE_ACCOUNT_ID: 076c525b59739562570401e48fc0651c
           LINKEDIN_CLIENT_SECRET: ${{ secrets.LINKEDIN_CLIENT_SECRET }}
+          ADMIN_SUBJECTS: ${{ secrets.ADMIN_SUBJECTS }}
+          WHATSAPP_INVITE_URL: ${{ secrets.WHATSAPP_INVITE_URL }}
         run: |
           node scripts/check-production-config.mjs
           python3 scripts/write-worker-secrets.py "$RUNNER_TEMP/admissions-secrets.json"
@@ -118,6 +120,8 @@ jobs:
         env:
           CLOUDFLARE_ACCOUNT_ID: 076c525b59739562570401e48fc0651c
           LINKEDIN_CLIENT_SECRET: ${{ secrets.LINKEDIN_CLIENT_SECRET }}
+          ADMIN_SUBJECTS: ${{ secrets.ADMIN_SUBJECTS }}
+          WHATSAPP_INVITE_URL: ${{ secrets.WHATSAPP_INVITE_URL }}
           WRANGLER_SEND_METRICS: 'false'
         run: |
           python3 scripts/write-worker-secrets.py "$RUNNER_TEMP/admissions-secrets.json"

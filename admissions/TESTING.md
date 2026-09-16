@@ -32,7 +32,8 @@ codes, cookies, email addresses, or LinkedIn subject identifiers. Do not mark th
 passed based on a community-page link opening or a mocked callback.
 
 Current live OIDC status: **not run**. The LinkedIn app/product and callback registrations
-exist, but its secret and staging frontend still need configuration.
+exist, and the client secret is stored in GitHub. The staging deployment must pass
+before the one-time real account test.
 
 Repeat the live test only when explicitly requested or after a material provider,
 client credential, callback-domain, or authentication integration change; explain why

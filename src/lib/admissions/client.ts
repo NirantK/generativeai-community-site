@@ -26,6 +26,9 @@ async function api<T = Snapshot>(
     },
     body: data ? JSON.stringify(data) : undefined,
   });
+  if (!response.headers.get("content-type")?.includes("application/json")) {
+    throw new Error("Applications are temporarily unavailable. Please try again later.");
+  }
   const result = (await response.json()) as T & {
     error?: {
       message?: string;

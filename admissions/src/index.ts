@@ -78,7 +78,7 @@ async function admin(req: Request, env: Env) {
   const state = await auth.agent.publicState();
   if (
     !state.profile ||
-    !env.ADMIN_SUBJECTS.split(",")
+    !(env.ADMIN_SUBJECTS ?? "").split(",")
       .map((s) => s.trim())
       .filter(Boolean)
       .includes(state.profile.sub)

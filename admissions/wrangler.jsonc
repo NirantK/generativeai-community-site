@@ -19,7 +19,6 @@
     "AUTO_APPROVALS_ENABLED": "false",
     "EMAIL_ENABLED": "false",
     "AI_MODEL": "@cf/meta/llama-3.3-70b-instruct-fp8-fast",
-    "ADMIN_SUBJECTS": "",
     "LINKEDIN_CLIENT_ID": "78fhwyrcspfuoe"
   },
   "durable_objects": {
@@ -72,7 +71,6 @@
         "AUTO_APPROVALS_ENABLED": "false",
         "EMAIL_ENABLED": "false",
         "AI_MODEL": "@cf/meta/llama-3.3-70b-instruct-fp8-fast",
-        "ADMIN_SUBJECTS": "",
         "LINKEDIN_CLIENT_ID": "78fhwyrcspfuoe"
       },
       "durable_objects": {

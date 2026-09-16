@@ -198,3 +198,13 @@ test("administrator can read evidence and record a decision", async ({
   await expect(page.getByRole("status")).toHaveText("Decision recorded.");
   expect(decided).toBe(true);
 });
+
+// A Pages/proxy outage may return HTML rather than the API's JSON error envelope.
+test("HTML gateway failures show a useful message", async ({ page }) => {
+  await page.route("**/api/v1/application", (route) => route.fulfill({
+    status: 502, contentType: "text/html", body: "<!doctype html><h1>Bad gateway</h1>",
+  }));
+  await page.goto("/apply");
+  await expect(page.getByRole("status")).toContainText("Applications are temporarily unavailable");
+  await expect(page.getByRole("status")).not.toContainText("Unexpected token");
+});
