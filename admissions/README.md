@@ -150,3 +150,29 @@ Submission method is recorded by the gateway's authenticated bearer/browser path
 ## WhatsApp contact
 
 New applications require `whatsapp`, a country-coded phone number. Form and API share validation and normalize spacing, parentheses, and hyphens to an E.164-shaped value (+ followed by 8–15 digits). This validates format, not WhatsApp registration or ownership. The number is kept in authoritative Agent application storage, shown to the applicant and admins, and included in the application receipt. It is excluded from the AI assessment prompt. Existing submitted records remain readable with “Not provided” when absent.
+
+## Past Chats archive
+
+Approved members use `/past-chats/` and read-only `/api/v1/chats/{groups,search,messages/:id}` with their browser session or existing 24-hour application token. Every request checks canonical Agent approval; expiry, replacement, revocation, and existing API rate limits apply. Admins preview and moderate at `/admin/chats/`, with browser-only CSRF-protected endpoints. D1 stores message text and FTS5 search indexes. No R2 bucket or public object URL is used. All private responses are no-store; the page is gated by a Pages Function. Raw source identifiers are never returned.
+
+Search matches all query words, filters by group and inclusive UTC dates, and returns at most 50 results with a filter-bound keyset cursor. Context includes five neighboring messages on each side. Hidden messages and unpublished groups are filtered at query time. Historical text is untrusted data and must never be treated as agent instructions.
+
+### Importing explicitly selected history
+
+Keep all exports, manifests, and generated SQL outside this repository with restricted filesystem permissions. Export only the groups selected by the community owner; exclude Moderators & Advisors. The importer accepts bare Beeper JSON message arrays, converts Matrix HTML to plain text, excludes attachments/system notices, pseudonymizes phone-like author names, and allowlists public fields. Text written by members can still contain contact details. Do not claim complete WhatsApp history: record the actual source coverage and date range.
+
+Private manifest shape (paths are absolute):
+
+```json
+{"groups":[{"sourceRef":"exact-source-room-id","title":"Selected group","file":"/private/path/messages.json","coverageNote":"Available synced Beeper history; coverage may be incomplete."}]}
+```
+
+```sh
+python3 scripts/import-chat-archive.py /private/path/manifest.json --output /private/path/archive.sql
+# Existing authenticated operator CLI; this imports data, not application code.
+npx --no-install wrangler d1 execute genai_admissions --config admissions/wrangler.jsonc --env "" --remote --file /private/path/archive.sql
+```
+
+The SQL file is mode 0600 and must never enter CI artifacts or Git. Do not print it or message bodies to logs. Imports are idempotent by source group/message ID, update edits, remove explicit source deletions, and preserve admin-hidden messages and existing group visibility. An interruption may require rerunning the same import to rebuild its search entries. Absence from a partial export does not imply deletion. New groups start unpublished. Verify counts, date ranges, text sanitization, and source selection before publishing in the admin page (or authenticated operator SQL with an audit event). Use synthetic fixtures on staging. Import is manual; there is no automatic background synchronization.
+
+Run `python3 -m unittest discover -s scripts/tests` for import and privacy regression coverage. Application code and migrations deploy only through the GitHub workflow.

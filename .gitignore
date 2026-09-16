@@ -33,3 +33,6 @@ playwright-report/
 .dev.vars.*
 !.dev.vars.example
 .wrangler/
+
+# Python import-tool caches
+__pycache__/
