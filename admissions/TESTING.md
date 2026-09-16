@@ -31,12 +31,12 @@ Record date, environment, build commit, and pass/fail here without tokens, autho
 codes, cookies, email addresses, or LinkedIn subject identifiers. Do not mark this test
 passed based on a community-page link opening or a mocked callback.
 
-Current live OIDC status: **first attempt failed; corrections awaiting live verification**.
-The owner's callback reached the staging Worker on 16 September 2026, but the token
-exchange failed. The originally transferred client secret was incorrect and has
-been replaced from the actual LinkedIn credential field. Live provider discovery
-also revealed the current `/oauth` issuer; verification and fixtures now match it.
-No application or invitation was submitted during the failed attempt.
+Current live OIDC status: **sign-in passed; sign-out verification pending**.
+Verified on staging on 16 September 2026, build `61cee8b`: LinkedIn consent returned
+successfully, a session was created, and the correct owner's profile and verified
+email appeared. No application or invitation was submitted. The first attempt
+failed because the transferred client secret was incorrect; it was replaced, and
+issuer verification was aligned with live provider discovery.
 
 Repeat the live test only when explicitly requested or after a material provider,
 client credential, callback-domain, or authentication integration change; explain why

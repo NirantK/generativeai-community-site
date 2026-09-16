@@ -3,32 +3,11 @@ import BaseLayout from "../layouts/BaseLayout.astro";
 import "../styles/admissions.css";
 const fields = [
   [
-    "linkedinUrl",
-    "LinkedIn profile URL",
-    "https://www.linkedin.com/in/your-name",
-    "url",
-    300,
-  ],
-  [
     "role",
     "Current or most recent role",
     "Student, engineer, researcher, between roles…",
     "text",
     300,
-  ],
-  [
-    "organization",
-    "Organization or independent work",
-    "Your organization, school, or independent practice",
-    "text",
-    300,
-  ],
-  [
-    "education",
-    "Highest or current education",
-    "Course and institution, self-taught, or no formal education",
-    "text",
-    600,
   ],
   [
     "project",
@@ -41,13 +20,6 @@ const fields = [
     "contribution",
     "Your contribution",
     "Describe what you personally did.",
-    "textarea",
-    2000,
-  ],
-  [
-    "outcome",
-    "Result or learning",
-    "What happened, and what did you learn?",
     "textarea",
     2000,
   ],
@@ -168,8 +140,8 @@ const fields = [
       <section id="form-section">
         <h2>A little about your work</h2>
         <p class="help">
-          All fields are required. “Independent,” “between roles,” and “no
-          formal education” are valid answers where appropriate.
+          All fields are required. Students, independent builders, and people
+          between roles are welcome.
         </p>
         <form id="application-form">
           {fields.map(([name, label, placeholder, type, max]) => (

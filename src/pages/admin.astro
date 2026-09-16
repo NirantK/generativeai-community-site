@@ -100,14 +100,9 @@ import "../styles/admissions.css";
           "Applicant",
           `${record.profile?.name ?? ""} · ${record.profile?.email ?? ""}`,
         ],
-        [
-          "Role and organization",
-          `${application?.role ?? ""} · ${application?.organization ?? ""}`,
-        ],
-        ["Education", application?.education ?? ""],
+        ["Role", application?.role ?? ""],
         ["AI project or use case", application?.project ?? ""],
         ["Personal contribution", application?.contribution ?? ""],
-        ["Outcome", application?.outcome ?? ""],
         ["Reason for joining", application?.motivation ?? ""],
         [
           "Assessment",
@@ -126,14 +121,6 @@ import "../styles/admissions.css";
         paragraph.style.overflowWrap = "anywhere";
         container.appendChild(heading);
         container.appendChild(paragraph);
-      }
-      if (application?.linkedinUrl) {
-        const link = document.createElement("a");
-        link.href = application.linkedinUrl;
-        link.textContent = "Open supplied LinkedIn profile";
-        link.rel = "noopener noreferrer";
-        link.target = "_blank";
-        container.appendChild(link);
       }
       get("audit-record").textContent = JSON.stringify(
         {

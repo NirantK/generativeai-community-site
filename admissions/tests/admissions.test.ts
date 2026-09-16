@@ -13,15 +13,13 @@ import {
 import { digest, randomToken, csrf } from "../src/security";
 import migration from "../migrations/0001_admissions.sql?raw";
 const sample = {
-  linkedinUrl: "https://www.linkedin.com/in/builder",
   role: "Student",
-  organization: "Independent",
-  education: "Self taught",
+
   project:
     "I built a retrieval augmented AI assistant for a local library catalog.",
   contribution:
     "I implemented document ingestion and evaluated retrieval quality.",
-  outcome: "We reduced irrelevant search results in a pilot.",
+
   motivation:
     "I want to share evaluation methods and learn from other builders.",
 };
@@ -29,14 +27,18 @@ beforeAll(async () => {
   for (const query of migration.split(";").filter((s) => s.trim()))
     await env.INDEX.prepare(query).run();
 });
-async function account(verified = true, sub = crypto.randomUUID()) {
+async function account(
+  verified = true,
+  sub = crypto.randomUUID(),
+  email = "applicant@example.com",
+) {
   const id = await digest(sub),
     agent = await getAgentByName(env.ADMISSION, id);
   await agent.identify({
     id,
     sub,
     name: "Test applicant",
-    email: "applicant@example.com",
+    email,
     emailVerified: verified,
   });
   return { id, agent };
@@ -68,15 +70,66 @@ function gateway(
   );
 }
 
+describe("administrator identity", () => {
+  it("permits only the configured browser account and fails closed", async () => {
+    const owner = await account();
+    const other = await account(true, crypto.randomUUID(), "other@example.com");
+    const unverified = await account(false);
+    const previous = env.ADMIN_EMAILS;
+    try {
+      env.ADMIN_EMAILS = "  APPLICANT@example.com  ";
+      expect(
+        (
+          await gateway("/api/admin/applications", "GET", {
+            Cookie: await browser(owner.id),
+          })
+        ).status,
+      ).toBe(200);
+      expect(
+        (
+          await gateway("/api/admin/applications", "GET", {
+            Cookie: await browser(other.id),
+          })
+        ).status,
+      ).toBe(403);
+      expect(
+        (
+          await gateway("/api/admin/applications", "GET", {
+            Cookie: await browser(unverified.id),
+          })
+        ).status,
+      ).toBe(403);
+      await owner.agent.consent();
+      const { token } = await owner.agent.token();
+      expect(
+        (
+          await gateway("/api/admin/applications", "GET", {
+            Authorization: `Bearer ${token}`,
+          })
+        ).status,
+      ).toBe(403);
+      env.ADMIN_EMAILS = "";
+      expect(
+        (
+          await gateway("/api/admin/applications", "GET", {
+            Cookie: await browser(owner.id),
+          })
+        ).status,
+      ).toBe(403);
+    } finally {
+      env.ADMIN_EMAILS = previous;
+    }
+  });
+});
+
 describe("policy and validation", () => {
-  it("accepts students and no formal education", () =>
+  it("accepts students without collecting education or organization", () =>
     expect(
       applicationSchema.safeParse({
         ...sample,
-        education: "No formal education",
       }).success,
     ).toBe(true));
-  it("rejects identity/email/consent injection and misleading LinkedIn domains", () => {
+  it("rejects identity injection and removed application fields", () => {
     expect(
       applicationSchema.safeParse({ ...sample, email: "other@example.com" })
         .success,
@@ -84,7 +137,7 @@ describe("policy and validation", () => {
     expect(
       applicationSchema.safeParse({
         ...sample,
-        linkedinUrl: "https://linkedin.com.evil.example/in/a",
+        education: "No formal education",
       }).success,
     ).toBe(false);
   });
@@ -531,9 +584,12 @@ it("validates signed LinkedIn callbacks and repeats failure cases without a pers
       const nextState = nextLocation.searchParams.get("state")!;
       if (scenario.nonce) {
         await env.INDEX.prepare("UPDATE oauth_states SET nonce=? WHERE hash=?")
-          .bind("legacy-request-nonce", await digest(nextState)).run();
+          .bind("legacy-request-nonce", await digest(nextState))
+          .run();
       }
-      signed = await new SignJWT(scenario.nonce ? { nonce: scenario.nonce } : {})
+      signed = await new SignJWT(
+        scenario.nonce ? { nonce: scenario.nonce } : {},
+      )
         .setProtectedHeader({ alg: "RS256", kid: "oidc-test" })
         .setSubject(scenario.subject ?? "oidc-applicant")
         .setIssuer(scenario.issuer ?? "https://www.linkedin.com/oauth")
@@ -586,15 +642,19 @@ it("validates signed LinkedIn callbacks and repeats failure cases without a pers
   }
 });
 
-
 it("returns failed browser callbacks to a safe retry page without exposing codes", async () => {
   const response = await gateway(
     "/auth/linkedin/callback?state=invalid&code=must-not-be-reflected",
-    "GET", { accept: "text/html", cookie: "__Host-ga-oauth=different" },
+    "GET",
+    { accept: "text/html", cookie: "__Host-ga-oauth=different" },
   );
   expect(response.status).toBe(302);
-  expect(response.headers.get("location")).toBe("https://genaicommunity.ai/apply?signin=failed");
+  expect(response.headers.get("location")).toBe(
+    "https://genaicommunity.ai/apply?signin=failed",
+  );
   expect(response.headers.get("set-cookie")).toContain("__Host-ga-oauth=; ");
-  expect(response.headers.get("set-cookie")).not.toContain("__Host-ga-session=");
+  expect(response.headers.get("set-cookie")).not.toContain(
+    "__Host-ga-session=",
+  );
   expect(await response.text()).not.toContain("must-not-be-reflected");
 });

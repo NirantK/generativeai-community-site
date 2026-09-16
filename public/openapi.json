@@ -342,36 +342,16 @@
         "type": "object",
         "additionalProperties": false,
         "required": [
-          "linkedinUrl",
           "role",
-          "organization",
-          "education",
           "project",
           "contribution",
-          "outcome",
           "motivation"
         ],
         "properties": {
-          "linkedinUrl": {
-            "type": "string",
-            "format": "uri",
-            "maxLength": 300,
-            "pattern": "^https://(www\\.)?linkedin\\.com/in/[^/?#]+/?$"
-          },
           "role": {
             "type": "string",
             "minLength": 2,
             "maxLength": 300
-          },
-          "organization": {
-            "type": "string",
-            "minLength": 2,
-            "maxLength": 300
-          },
-          "education": {
-            "type": "string",
-            "minLength": 2,
-            "maxLength": 600
           },
           "project": {
             "type": "string",
@@ -381,11 +361,6 @@
           "contribution": {
             "type": "string",
             "minLength": 20,
-            "maxLength": 2000
-          },
-          "outcome": {
-            "type": "string",
-            "minLength": 10,
             "maxLength": 2000
           },
           "motivation": {

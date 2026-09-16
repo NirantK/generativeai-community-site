@@ -31,9 +31,10 @@ automatic approvals remain paused until those launch checks complete.
 Remaining launch inputs and checks:
 
 1. Configure `WHATSAPP_INVITE_URL` securely for each admissions Worker.
-2. Sign in as the administrator once and obtain that account's `profile.sub` from
-   authenticated `GET /api/v1/application`. Configure `ADMIN_SUBJECTS` with that
-   identifier; never authorize by display name or applicant-supplied email.
+2. Configure `ADMIN_EMAILS` as a comma-separated email allowlist in deployment
+   secrets. Administrator requests require an authenticated browser session and a
+   verified matching email. Unverified addresses and application tokens cannot
+   access administration. Comparison is case-insensitive with whitespace trimmed.
 3. Verify staging login, browser/API submissions, review, and controlled email
    delivery. Record the real LinkedIn test in `TESTING.md`; repeatable tests use
    signed synthetic OIDC tokens and no personal credentials.

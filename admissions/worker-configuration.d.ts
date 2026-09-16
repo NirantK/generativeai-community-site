@@ -9,7 +9,7 @@ interface __BaseEnv_Env {
 	AUTO_APPROVALS_ENABLED: string;
 	EMAIL_ENABLED: string;
 	AI_MODEL: string;
-	ADMIN_SUBJECTS: string;
+	ADMIN_EMAILS: string;
 	LINKEDIN_CLIENT_ID: string;
 	LINKEDIN_CLIENT_SECRET: string;
 	WHATSAPP_INVITE_URL: string;
@@ -29,7 +29,7 @@ declare namespace Cloudflare {
 		AUTO_APPROVALS_ENABLED: string;
 		EMAIL_ENABLED: string;
 		AI_MODEL: string;
-		ADMIN_SUBJECTS: string;
+		ADMIN_EMAILS: string;
 		LINKEDIN_CLIENT_ID: string;
 		LINKEDIN_CLIENT_SECRET: string;
 		WHATSAPP_INVITE_URL: string;
@@ -43,7 +43,7 @@ type StringifyValues<EnvType extends Record<string, unknown>> = {
 	[Binding in keyof EnvType]: EnvType[Binding] extends string ? EnvType[Binding] : string;
 };
 declare namespace NodeJS {
-	interface ProcessEnv extends StringifyValues<Pick<Cloudflare.Env, "SITE_URL" | "AUTO_APPROVALS_ENABLED" | "EMAIL_ENABLED" | "AI_MODEL" | "ADMIN_SUBJECTS" | "LINKEDIN_CLIENT_ID" | "LINKEDIN_CLIENT_SECRET" | "WHATSAPP_INVITE_URL">> {}
+	interface ProcessEnv extends StringifyValues<Pick<Cloudflare.Env, "SITE_URL" | "AUTO_APPROVALS_ENABLED" | "EMAIL_ENABLED" | "AI_MODEL" | "ADMIN_EMAILS" | "LINKEDIN_CLIENT_ID" | "LINKEDIN_CLIENT_SECRET" | "WHATSAPP_INVITE_URL">> {}
 }
 
 // Begin runtime types

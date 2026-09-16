@@ -69,7 +69,7 @@
       "vars": {
         "SITE_URL": "https://staging.generativeai-community-site.pages.dev",
         "AUTO_APPROVALS_ENABLED": "false",
-        "EMAIL_ENABLED": "false",
+        "EMAIL_ENABLED": "true",
         "AI_MODEL": "@cf/meta/llama-3.3-70b-instruct-fp8-fast",
         "LINKEDIN_CLIENT_ID": "78fhwyrcspfuoe"
       },

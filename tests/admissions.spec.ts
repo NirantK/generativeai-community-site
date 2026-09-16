@@ -57,14 +57,12 @@ test("verified applicant submits a short application and sees saved status", asy
   await page.goto("/apply");
   await expect(page.getByText("Signed in as Test Builder")).toBeVisible();
   const fields = {
-    linkedinUrl: "https://www.linkedin.com/in/builder",
     role: "Student",
-    organization: "Independent",
-    education: "No formal education",
+
     project:
       "I built an AI library search tool to retrieve and summarize documents.",
     contribution: "I built the ingestion and retrieval evaluation pipeline.",
-    outcome: "Users found relevant documents faster.",
+
     motivation: "I want to learn from other builders and share my findings.",
   };
   for (const [name, value] of Object.entries(fields))
@@ -158,13 +156,11 @@ test("administrator can read evidence and record a decision", async ({
         profile: draft.profile,
         application: {
           role: "Student",
-          organization: "Independent",
-          education: "Self taught",
+
           project: "AI library assistant",
           contribution: "Built retrieval evaluation",
-          outcome: "Improved search",
+
           motivation: "Learn from others",
-          linkedinUrl: "https://www.linkedin.com/in/builder",
         },
         status: decided ? "approved" : "review",
         assessment: {
@@ -201,22 +197,35 @@ test("administrator can read evidence and record a decision", async ({
 
 // A Pages/proxy outage may return HTML rather than the API's JSON error envelope.
 test("HTML gateway failures show a useful message", async ({ page }) => {
-  await page.route("**/api/v1/application", (route) => route.fulfill({
-    status: 502, contentType: "text/html", body: "<!doctype html><h1>Bad gateway</h1>",
-  }));
+  await page.route("**/api/v1/application", (route) =>
+    route.fulfill({
+      status: 502,
+      contentType: "text/html",
+      body: "<!doctype html><h1>Bad gateway</h1>",
+    }),
+  );
   await page.goto("/apply");
-  await expect(page.getByRole("status")).toContainText("Applications are temporarily unavailable");
+  await expect(page.getByRole("status")).toContainText(
+    "Applications are temporarily unavailable",
+  );
   await expect(page.getByRole("status")).not.toContainText("Unexpected token");
 });
 
-
 test("failed and cancelled sign-ins offer a retry", async ({ page }) => {
-  await page.route("**/api/v1/application", route => route.fulfill({
-    status: 401, json: { error: { message: "Sign in" } },
-  }));
-  for (const [reason, message] of [["failed", "LinkedIn sign-in didn’t finish"], ["cancelled", "LinkedIn sign-in was cancelled"]]) {
+  await page.route("**/api/v1/application", (route) =>
+    route.fulfill({
+      status: 401,
+      json: { error: { message: "Sign in" } },
+    }),
+  );
+  for (const [reason, message] of [
+    ["failed", "LinkedIn sign-in didn’t finish"],
+    ["cancelled", "LinkedIn sign-in was cancelled"],
+  ]) {
     await page.goto(`/apply?signin=${reason}`);
     await expect(page.getByRole("status")).toContainText(message);
-    await expect(page.getByRole("link", { name: "Sign in with LinkedIn", exact: true })).toBeVisible();
+    await expect(
+      page.getByRole("link", { name: "Sign in with LinkedIn", exact: true }),
+    ).toBeVisible();
   }
 });

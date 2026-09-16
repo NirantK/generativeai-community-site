@@ -10,7 +10,7 @@ export default defineConfig({
           SITE_URL: "https://genaicommunity.ai",
           EMAIL_ENABLED: "false",
           AUTO_APPROVALS_ENABLED: "false",
-          ADMIN_SUBJECTS: "admin-sub",
+          ADMIN_EMAILS: "admin-sub",
         },
       },
     }),

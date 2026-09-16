@@ -1,30 +1,12 @@
 import { z } from "zod";
-export const POLICY = "practitioners-v1";
+export const POLICY = "practitioners-v2";
 export const CONSENT = "admissions-v1";
 export const TOKEN_TTL = 24 * 60 * 60 * 1000;
 export const applicationSchema = z
   .object({
-    linkedinUrl: z
-      .string()
-      .trim()
-      .url()
-      .max(300)
-      .refine((v) => {
-        const u = new URL(v);
-        return (
-          u.protocol === "https:" &&
-          ["linkedin.com", "www.linkedin.com"].includes(u.hostname) &&
-          /^\/in\/[^/]+\/?$/.test(u.pathname) &&
-          !u.search &&
-          !u.hash
-        );
-      }, "Use an https://www.linkedin.com/in/ profile URL"),
     role: z.string().trim().min(2).max(300),
-    organization: z.string().trim().min(2).max(300),
-    education: z.string().trim().min(2).max(600),
     project: z.string().trim().min(40).max(4000),
     contribution: z.string().trim().min(20).max(2000),
-    outcome: z.string().trim().min(10).max(2000),
     motivation: z.string().trim().min(20).max(2000),
   })
   .strict();
@@ -98,11 +80,7 @@ export function initialRecord(): RecordState {
   };
 }
 export function qualifies(a: Assessment, application: Application): boolean {
-  const text = [
-    application.project,
-    application.contribution,
-    application.outcome,
-  ].join("\n");
+  const text = [application.project, application.contribution].join("\n");
   return (
     a.relevant &&
     a.concrete &&

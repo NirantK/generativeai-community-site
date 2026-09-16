@@ -76,12 +76,13 @@ async function authenticated(req: Request, env: Env, browserOnly = false) {
 async function admin(req: Request, env: Env) {
   const auth = await authenticated(req, env, true);
   const state = await auth.agent.publicState();
+  const administrators = (env.ADMIN_EMAILS ?? "")
+    .split(",")
+    .map((s) => s.trim().toLowerCase())
+    .filter(Boolean);
   if (
-    !state.profile ||
-    !(env.ADMIN_SUBJECTS ?? "").split(",")
-      .map((s) => s.trim())
-      .filter(Boolean)
-      .includes(state.profile.sub)
+    !state.profile?.emailVerified ||
+    !administrators.includes(state.profile.email.trim().toLowerCase())
   )
     throw new ApiError(403, "forbidden", "Administrator access required.");
   return { ...auth, sub: state.profile.sub };
