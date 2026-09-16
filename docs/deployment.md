@@ -11,7 +11,7 @@ Every pull request builds the website and runs accessibility, mobile layout,
 font and navigation checks. Merging to `main` repeats those checks and publishes
 the exact tested artifact to the existing Cloudflare Pages project automatically.
 Same-repository pull requests also deploy isolated staging at
-`https://staging.generativeai-community-site.pages.dev` after checks pass.
+`https://staging.genaicommunity.ai` after checks pass.
 The preview service binding points to the staging admission Worker and database.
 
 There are no workstation uploads or dashboard drag-and-drop deployments.
@@ -65,7 +65,7 @@ Page/URL changes or when explicitly requested.
 ## Verified rollout status — 16 September 2026
 
 - GitHub Actions run `35092606550` passed all checks and deployed staging from commit `214a232`.
-- Staging frontend: https://staging.generativeai-community-site.pages.dev
+- Staging frontend: https://staging.genaicommunity.ai
 - Staging Pages Functions successfully reach the private admission Worker; the application page shows the signed-out LinkedIn entry flow.
 - LinkedIn and WhatsApp secrets are stored in GitHub and were deployed to the staging Worker.
 - Replacement deployment token `genaicommunity-github-deploy-v2` authenticated successfully. The original token was removed from Cloudflare after confirmation.

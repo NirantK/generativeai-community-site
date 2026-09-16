@@ -106,7 +106,7 @@ jobs:
     runs-on: ubuntu-latest
     environment:
       name: staging
-      url: https://staging.generativeai-community-site.pages.dev
+      url: https://staging.genaicommunity.ai
     concurrency:
       group: community-staging
       cancel-in-progress: false

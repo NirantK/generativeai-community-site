@@ -67,7 +67,7 @@
     "staging": {
       "name": "genaicommunity-admissions-staging",
       "vars": {
-        "SITE_URL": "https://staging.generativeai-community-site.pages.dev",
+        "SITE_URL": "https://staging.genaicommunity.ai",
         "AUTO_APPROVALS_ENABLED": "false",
         "EMAIL_ENABLED": "true",
         "AI_MODEL": "@cf/meta/llama-3.3-70b-instruct-fp8-fast",

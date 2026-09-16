@@ -18,7 +18,7 @@ The LinkedIn app is `266495208`; its OIDC product is enabled. Configure these ex
 callbacks in the developer portal:
 
 - `https://genaicommunity.ai/auth/linkedin/callback`
-- `https://staging.generativeai-community-site.pages.dev/auth/linkedin/callback`
+- `https://staging.genaicommunity.ai/auth/linkedin/callback`
 
 Store `LINKEDIN_CLIENT_SECRET` in GitHub Actions secrets. The client ID is public
 configuration. Never commit secrets, include them in CLI arguments, or print them.

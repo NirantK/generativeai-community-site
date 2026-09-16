@@ -60,3 +60,7 @@ Old in-flight requests that did send a nonce still require a matching claim.
 References checked 16 September 2026:
 - https://www.linkedin.com/oauth/.well-known/openid-configuration
 - https://github.com/nextauthjs/next-auth/blob/main/packages/core/src/providers/linkedin.ts
+
+All subsequent live smoke tests use `https://staging.genaicommunity.ai`; production
+checks use `https://genaicommunity.ai`. The staging callback-domain change requires
+one new live login because the previous host-only session cannot transfer safely.
