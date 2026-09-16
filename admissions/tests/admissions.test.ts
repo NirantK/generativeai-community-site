@@ -850,7 +850,7 @@ describe("administrator invitations", () => {
 });
 
 it("qualifies explicit company affiliations with conservative one-year dates", () => {
-  const now=Date.parse("2026-09-16T00:00:00Z");
+  const now=Date.parse("2026-09-16T12:00:00Z");
   for (const company of ["Dashverse","Frameo","Lossfunk","OpenAI","Anthropic","ElevenLabs","Cartesia"] as const) {
     const role=`Engineer at ${company}`;
     const a={relevant:false,concrete:false,contribution:false,uncertain:false,reasons:"Affiliation",evidence:[sample.project],affiliation:{company,current:true,endedOn:null,evidence:role}};

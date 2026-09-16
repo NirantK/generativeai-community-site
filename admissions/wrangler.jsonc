@@ -16,7 +16,7 @@
   },
   "vars": {
     "SITE_URL": "https://genaicommunity.ai",
-    "AUTO_APPROVALS_ENABLED": "false",
+    "AUTO_APPROVALS_ENABLED": "true",
     "EMAIL_ENABLED": "true",
     "AI_MODEL": "@cf/meta/llama-3.3-70b-instruct-fp8-fast",
     "LINKEDIN_CLIENT_ID": "78fhwyrcspfuoe"
@@ -68,7 +68,7 @@
       "name": "genaicommunity-admissions-staging",
       "vars": {
         "SITE_URL": "https://staging.genaicommunity.ai",
-        "AUTO_APPROVALS_ENABLED": "false",
+        "AUTO_APPROVALS_ENABLED": "true",
         "EMAIL_ENABLED": "true",
         "AI_MODEL": "@cf/meta/llama-3.3-70b-instruct-fp8-fast",
         "LINKEDIN_CLIENT_ID": "78fhwyrcspfuoe"

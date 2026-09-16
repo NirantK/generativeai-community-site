@@ -93,7 +93,7 @@ export function qualifies(a: Assessment, application: Application, now = Date.no
   if (affiliation && !a.uncertain && application.role.includes(affiliation.evidence)) {
     const named = new RegExp(`\\b${affiliation.company}\\b`, "i").test(affiliation.evidence);
     const globalCompany = ["OpenAI", "Anthropic", "ElevenLabs", "Cartesia"].includes(affiliation.company);
-    const cutoff = new Date(now); cutoff.setUTCFullYear(cutoff.getUTCFullYear() - 1);
+    const cutoff = new Date(now); cutoff.setUTCFullYear(cutoff.getUTCFullYear() - 1); cutoff.setUTCHours(0, 0, 0, 0);
     const ended = affiliation.endedOn && /^\d{4}-\d{2}-\d{2}$/.test(affiliation.endedOn) ? Date.parse(affiliation.endedOn + "T00:00:00Z") : NaN;
     const validDate = Number.isFinite(ended) && new Date(ended).toISOString().slice(0,10) === affiliation.endedOn;
     if (named && (affiliation.current || (globalCompany && validDate && ended >= cutoff.getTime() && ended <= now))) return true;
