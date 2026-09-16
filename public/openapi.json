@@ -7,7 +7,8 @@
   },
   "servers": [
     {
-      "url": "https://genaicommunity.ai"
+      "url": "/",
+      "description": "Use the same origin that issued the token (genaicommunity.ai or staging.genaicommunity.ai)."
     }
   ],
   "security": [

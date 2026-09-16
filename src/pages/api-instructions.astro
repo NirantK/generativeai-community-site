@@ -20,9 +20,10 @@ import "../styles/admissions.css";
     </ol>
     <section>
       <h2>Instructions for Codex and other agents</h2>
-      <pre>Help me apply to the GenerativeAI Community.
+      <pre id="agent-instructions">Help me apply to the GenerativeAI Community.
 
 Use https://genaicommunity.ai/openapi.json for the API contract.
+Send requests only to the same origin that issued my token.
 Use my application token as an Authorization: Bearer credential.
 Do not print the token, commit it, put it in URLs, or send it to another host.
 
@@ -46,3 +47,12 @@ Approval invitations are emailed to my verified address.</pre>
     </section>
   </article>
 </BaseLayout>
+
+<script>
+  const instructions = document.getElementById("agent-instructions");
+  if (instructions && window.location.hostname === "staging.genaicommunity.ai") {
+    instructions.textContent = instructions.textContent?.replaceAll(
+      "https://genaicommunity.ai", window.location.origin,
+    ) ?? "";
+  }
+</script>

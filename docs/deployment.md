@@ -69,5 +69,5 @@ Page/URL changes or when explicitly requested.
 - Staging Pages Functions successfully reach the private admission Worker; the application page shows the signed-out LinkedIn entry flow.
 - LinkedIn and WhatsApp secrets are stored in GitHub and were deployed to the staging Worker.
 - Replacement deployment token `genaicommunity-github-deploy-v2` authenticated successfully. The original token was removed from Cloudflare after confirmation.
-- The first real OAuth callback failed at token exchange. The incorrect transferred secret was corrected; issuer/provider-flow corrections are covered by regression tests and await live verification.
+- The initial failed OAuth exchange was fixed by correcting the client secret and provider issuer. Real staging login passed on build `61cee8b`. The official staging hostname now needs its own callback smoke test.
 - Production publishing, app privacy-policy registration, administrator configuration, and controlled email delivery remain pending.
