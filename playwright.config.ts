@@ -2,6 +2,8 @@ import { defineConfig, devices } from '@playwright/test';
 
 export default defineConfig({
   testDir: './tests',
+  // Production smoke checks are explicit; normal CI only exercises its own build.
+  testIgnore: process.env.RUN_LIVE_SITE_TESTS === '1' ? [] : ['**/live-domain.spec.ts'],
   fullyParallel: true,
   retries: 0,
   reporter: 'list',

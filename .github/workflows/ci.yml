@@ -3,8 +3,12 @@ on:
   push:
     branches: [main]
   pull_request:
+  workflow_dispatch:
 permissions:
   contents: read
+concurrency:
+  group: community-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
 jobs:
   test:
     runs-on: ubuntu-latest
@@ -23,6 +27,11 @@ jobs:
       - name: Playwright tests
         run: npm run test:e2e
       - uses: actions/upload-artifact@v4
+        with:
+          name: community-site-${{ github.sha }}
+          path: dist/
+          retention-days: 7
+      - uses: actions/upload-artifact@v4
         if: failure()
         with:
           name: playwright-report
@@ -30,3 +39,32 @@ jobs:
             playwright-report/
             test-results/
           retention-days: 7
+  deploy:
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    needs: test
+    runs-on: ubuntu-latest
+    environment:
+      name: production
+      url: https://genaicommunity.ai
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+      - run: npm ci
+      - uses: actions/download-artifact@v4
+        with:
+          name: community-site-${{ github.sha }}
+          path: dist/
+      - name: Deploy tested commit to Cloudflare Pages
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: 076c525b59739562570401e48fc0651c
+          WRANGLER_SEND_METRICS: 'false'
+        run: |
+          if [ -z "$CLOUDFLARE_API_TOKEN" ]; then
+            echo '::error::Set the CLOUDFLARE_API_TOKEN repository or production-environment secret with Cloudflare Pages Edit permission.'
+            exit 1
+          fi
+          npx --no-install wrangler pages deploy dist --project-name=generativeai-community-site --branch=main --commit-hash="$GITHUB_SHA" --commit-dirty=false

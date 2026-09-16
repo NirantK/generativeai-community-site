@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 
-const pages = ['/', '/deephackdemos', '/demoday102023'];
+const pages = ['/', '/people', '/deephackdemos', '/demoday102023', '/privacy-policy', '/terms-and-conditions'];
 
 for (const path of pages) {
   test(`header + nav tap targets ≥ 48px on ${path}`, async ({ page }) => {
