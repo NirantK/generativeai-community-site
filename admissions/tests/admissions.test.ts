@@ -425,6 +425,39 @@ describe("submission recovery and approval decisions", () => {
     });
     expect((await other.agent.inspect()).status).toBe("review");
   });
+  it("accepts structured JSON model output and only reassesses undecided review cases", async () => {
+    const { agent } = await account();
+    await runInDurableObject(agent, async (instance) => {
+      instance.setState({
+        ...instance.state,
+        application: sample,
+        status: "review",
+      });
+      instance["env"].AUTO_APPROVALS_ENABLED = "true";
+      const assessment = {
+        relevant: true,
+        concrete: true,
+        contribution: true,
+        uncertain: false,
+        reasons: "Concrete work",
+        evidence: [sample.project],
+      };
+      const run = vi
+        .spyOn(instance["env"].AI, "run")
+        .mockResolvedValue({ response: assessment } as never)
+        .mockClear();
+      await instance.reassess("admin");
+      expect(instance.state.status).toBe("approved");
+      expect(instance.state.assessment).toEqual(assessment);
+      expect(run.mock.calls[0][1]).toHaveProperty(
+        "response_format.type",
+        "json_schema",
+      );
+      await expect(instance.reassess("admin")).rejects.toThrow(
+        "assessment_conflict",
+      );
+    });
+  });
   it("refreshes draft email only from a validated provider identity and revokes old tokens", async () => {
     const { id, agent } = await account();
     await agent.consent();

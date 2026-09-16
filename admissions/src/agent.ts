@@ -1,3 +1,4 @@
+import { z } from "zod";
 import { Agent } from "agents";
 import { AgentWorkflow } from "agents/workflows";
 import type { AgentWorkflowEvent, AgentWorkflowStep } from "agents/workflows";
@@ -222,6 +223,8 @@ export class AdmissionAgent extends Agent<Env, RecordState> {
       if (this.state.status !== "submitted") return;
       const application = this.state.application!;
       let assessment: Assessment | null = null;
+      let failure: "model_unavailable" | "invalid_model_output" | null =
+        "model_unavailable";
       try {
         const output = await this.env.AI.run(
           this.env.AI_MODEL as Parameters<Ai["run"]>[0],
@@ -235,14 +238,21 @@ export class AdmissionAgent extends Agent<Env, RecordState> {
               { role: "user", content: JSON.stringify(application) },
             ],
             max_tokens: 900,
+            response_format: {
+              type: "json_schema",
+              json_schema: z.toJSONSchema(assessmentSchema),
+            },
           },
         );
+        failure = "invalid_model_output";
         const raw =
           typeof output === "object" && output !== null && "response" in output
             ? output.response
             : null;
-        if (typeof raw === "string")
-          assessment = assessmentSchema.parse(JSON.parse(raw));
+        assessment = assessmentSchema.parse(
+          typeof raw === "string" ? JSON.parse(raw) : raw,
+        );
+        failure = null;
       } catch {
         /* Fail closed to human review; never reject on infrastructure failure. */
       }
@@ -253,6 +263,7 @@ export class AdmissionAgent extends Agent<Env, RecordState> {
       this.write(
         {
           assessment,
+          assessmentFailure: failure,
           policy: POLICY,
           model: this.env.AI_MODEL,
           status: approved ? "approved" : "review",
@@ -263,7 +274,23 @@ export class AdmissionAgent extends Agent<Env, RecordState> {
         approved ? "auto_approved" : "review_required",
       );
       await this.index();
+      if (approved) await this.schedule(1, "deliver");
     });
+  }
+  async reassess(actor: string) {
+    await this.serial(async () => {
+      if (this.state.status !== "review" || this.state.decision)
+        throw new ApiError(
+          409,
+          "assessment_conflict",
+          "Only undecided applications awaiting review can be reassessed.",
+        );
+      this.write({ status: "submitted" }, "reassessment_requested", actor);
+      await this.schedule(1, "assess");
+      await this.index();
+    });
+    await this.assess();
+    return this.publicState();
   }
   async decide(action: "approve" | "decline", reason: string, actor: string) {
     return this.serial(async () => {

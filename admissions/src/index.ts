@@ -270,7 +270,7 @@ async function handle(req: Request, env: Env): Promise<Response> {
       return json({ applications: rows.results });
     }
     const match = path.match(
-      /^\/api\/admin\/applications\/([a-f0-9]{64})(?:\/(decision|retry|reconcile))?$/,
+      /^\/api\/admin\/applications\/([a-f0-9]{64})(?:\/(decision|retry|reconcile|reassess))?$/,
     );
     if (!match) throw new ApiError(404, "not_found", "Endpoint not found.");
     const target = await actor(env, match[1]);
@@ -280,6 +280,7 @@ async function handle(req: Request, env: Env): Promise<Response> {
         application,
         status,
         assessment,
+        assessmentFailure,
         policy,
         model,
         decision,
@@ -292,6 +293,7 @@ async function handle(req: Request, env: Env): Promise<Response> {
         application,
         status,
         assessment,
+        assessmentFailure,
         policy,
         model,
         decision,
@@ -300,6 +302,8 @@ async function handle(req: Request, env: Env): Promise<Response> {
         history,
       });
     }
+    if (req.method === "POST" && match[2] === "reassess")
+      return json(await target.reassess(auth.sub));
     if (req.method === "POST" && match[2] === "decision") {
       const data = z
         .object({

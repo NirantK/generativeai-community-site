@@ -29,6 +29,7 @@ import "../styles/admissions.css";
         <summary>Decision and delivery history</summary>
         <pre id="audit-record"></pre>
       </details>
+      <button id="reassess" type="button" hidden>Retry AI assessment</button>
       <form id="decision">
         <label for="reason">Decision reason</label>
         <textarea
@@ -142,6 +143,7 @@ import "../styles/admissions.css";
         {
           policy: record.policy,
           model: record.model,
+          assessmentFailure: record.assessmentFailure,
           decision: record.decision,
           delivery: record.delivery,
           receipt: record.receipt,
@@ -152,6 +154,7 @@ import "../styles/admissions.css";
       );
       get("review").hidden = false;
       get("decision").hidden = record.status !== "review";
+      get("reassess").hidden = record.status !== "review" || !!record.decision;
       emailControls();
       get("review").scrollIntoView({ block: "start" });
     } catch (e) {
@@ -226,6 +229,13 @@ import "../styles/admissions.css";
       submitter.disabled = false;
     }
   });
+  get("reassess").onclick = async () => {
+    const button=get("reassess") as HTMLButtonElement;
+    button.disabled=true;
+    try { await api(`/api/admin/applications/${selected}/reassess`, {}); await inspect(selected); }
+    catch(e) { message((e as Error).message); }
+    finally { button.disabled=false; }
+  };
   get("retry").onclick = async () => {
     try {
       await api(`/api/admin/applications/${selected}/retry`, {kind:(get("email-kind") as HTMLSelectElement).value});

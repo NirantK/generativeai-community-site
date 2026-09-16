@@ -54,6 +54,7 @@ export type RecordState = {
   idempotencyKey: string | null;
   status: "draft" | "submitted" | "review" | "approved" | "declined";
   assessment: Assessment | null;
+  assessmentFailure?: "model_unavailable" | "invalid_model_output" | null;
   policy: string;
   model: string | null;
   decision: { actor: string; reason: string; at: number } | null;
