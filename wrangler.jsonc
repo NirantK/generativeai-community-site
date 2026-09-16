@@ -1,7 +1,6 @@
 {
   "$schema": "./node_modules/wrangler/config-schema.json",
   "name": "generativeai-community-site",
-  "account_id": "076c525b59739562570401e48fc0651c",
   "pages_build_output_dir": "./dist",
   "compatibility_date": "2026-09-16",
   "services": [
