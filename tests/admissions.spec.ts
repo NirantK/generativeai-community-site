@@ -46,6 +46,7 @@ test("verified applicant submits a short application and sees saved status", asy
     if (route.request().method() === "POST") {
       expect(route.request().headers()["idempotency-key"]).toBeTruthy();
       expect(route.request().postDataJSON().role).toBe("Student");
+      expect(route.request().postDataJSON().whatsapp).toBe("+14155552671");
       submitted = true;
     }
     await route.fulfill({
@@ -57,6 +58,7 @@ test("verified applicant submits a short application and sees saved status", asy
   await page.goto("/apply");
   await expect(page.getByText("Signed in as Test Builder")).toBeVisible();
   const fields = {
+    whatsapp: "+14155552671",
     role: "Student",
 
     project:

@@ -2,6 +2,7 @@
 import BaseLayout from "../layouts/BaseLayout.astro";
 import "../styles/admissions.css";
 const fields = [
+  ["whatsapp", "WhatsApp phone number (include country code)", "+91 98765 43210", "tel", 32],
   [
     "role",
     "Current or most recent role",
@@ -179,6 +180,7 @@ const fields = [
                   id={name}
                   name={name}
                   type={type}
+                  autocomplete={name === "whatsapp" ? "tel" : undefined}
                   placeholder={placeholder}
                   maxlength={max}
                   required

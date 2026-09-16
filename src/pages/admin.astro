@@ -128,6 +128,7 @@ import "../styles/admissions.css";
           `${record.profile?.name ?? ""} · ${record.profile?.email ?? ""}`,
         ],
         ["Submission method", record.submissionChannel ?? "Unknown (legacy application)"],
+        ["WhatsApp phone number", application?.whatsapp ?? "Not provided"],
         ["Role", application?.role ?? ""],
         ["AI project or use case", application?.project ?? ""],
         ["Personal contribution", application?.contribution ?? ""],
