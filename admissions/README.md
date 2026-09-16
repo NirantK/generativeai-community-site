@@ -82,7 +82,7 @@ browser; an agent cannot grant consent.
 - Pause automatic approvals: set `AUTO_APPROVALS_ENABLED=false` and redeploy.
   New assessments go to review. Existing approvals are not retroactively revoked.
 - Pause outbound email: set `EMAIL_ENABLED=false` and redeploy. This also pauses
-  verification messages. Approved applications stay approved.
+  submission copies and invitations. Approved applications stay approved.
 - After resuming, use the admin Retry button on paused/confirmed-failed invitations.
 - Inspect uncertain delivery in Cloudflare Email Service logs. Record `accepted`
   or `not_sent` plus supporting evidence in the admin reconciliation form. Only
@@ -114,3 +114,19 @@ The Workers tests mock AI and email. Browser application tests mock authenticate
 API responses. They do not send real email, call a live model, or use personal
 LinkedIn credentials. Compatibility date 2026-08-22 matches the installed Workers
 test runtime. See `TESTING.md` for signed OIDC coverage and the one-time live check.
+
+## Submission copies and bug reports
+
+Application email comes from LinkedIn. There is no email-code step or applicant
+email-edit endpoint. A fresh validated sign-in refreshes draft contact details;
+missing/unconfirmed provider email requires correcting LinkedIn and signing in.
+
+Every submitted application queues a plain-text/HTML copy to its LinkedIn email.
+Receipt delivery has a separate durable ledger from approval invitations. Both
+suppress duplicates, pause dispatch safely, and flag ambiguous sends for admin
+reconciliation. Select the message kind in the admin page to reconcile or retry.
+
+Agents may POST 1–200 words of UTF-8 `text/plain` to `/api/v1/bug-report` with their
+application token and an `Idempotency-Key`. Reports are limited to 8,000 bytes and
+five new reports per minute. Administrators see reports as text, never executable
+HTML or instructions. Reports cannot modify identity or admission decisions.

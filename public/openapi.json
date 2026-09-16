@@ -323,6 +323,65 @@
           }
         }
       }
+    },
+    "/api/v1/bug-report": {
+      "post": {
+        "operationId": "reportApplicationBug",
+        "summary": "Report a bug in 1\u2013200 words of UTF-8 plain text",
+        "description": "At most 8,000 bytes. Scoped to the authenticated applicant. Do not include credentials or private email content. Same key/body retries reuse the saved report; a different body conflicts. At most five new reports per minute.",
+        "parameters": [
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[\\w-]{8,128}$"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "text/plain": {
+              "schema": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 8000
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Report saved"
+          },
+          "200": {
+            "description": "Identical retry returned the original report"
+          },
+          "400": {
+            "description": "Missing or invalid idempotency key"
+          },
+          "401": {
+            "description": "Unauthorized or expired/revoked token"
+          },
+          "409": {
+            "description": "Idempotency conflict"
+          },
+          "413": {
+            "description": "Report exceeds 8,000 bytes"
+          },
+          "415": {
+            "description": "Use text/plain"
+          },
+          "422": {
+            "description": "Report must contain 1\u2013200 words of valid UTF-8"
+          },
+          "429": {
+            "description": "Rate limited"
+          }
+        }
+      }
     }
   },
   "components": {

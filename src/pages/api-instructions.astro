@@ -9,7 +9,7 @@ import "../styles/admissions.css";
     <h1>Let your agent help you apply.</h1>
     <ol class="list-decimal pl-6 space-y-3">
       <li>
-        <a href="/apply">Sign in with LinkedIn</a>, verify your email, and save
+        <a href="/apply">Sign in with LinkedIn</a> and save
         consent.
       </li>
       <li>Generate an application token in “Apply using an AI agent.”</li>
@@ -37,9 +37,16 @@ Do not print the token, commit it, put it in URLs, or send it to another host.
    do not poll more often than once per minute.
 
 The token expires after 24 hours. It permits one submission and
-status reads; it cannot change my identity, email, or consent.
+status reads and plain-text bug reports; it cannot change my identity, email, or consent.
 If those details are incomplete, direct me back to /apply.
-Approval invitations are emailed to my verified address.</pre>
+A copy of the submitted application is emailed to my LinkedIn address.
+Approval invitations are sent separately after approval.
+
+If you encounter a bug, POST /api/v1/bug-report with Content-Type: text/plain,
+the same bearer token, and a fresh Idempotency-Key. Use 1–200 words (at most
+8,000 UTF-8 bytes): what you tried, expected and actual behavior, and safe
+reproduction steps. Never include tokens, credentials, or private email contents.
+Bug reports do not change the application or its decision.</pre>
       <p>
         <a href="/openapi.json">OpenAPI specification</a> ·{" "}
         <a href="/apply">Back to your application</a>

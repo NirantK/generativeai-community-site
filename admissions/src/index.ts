@@ -241,7 +241,8 @@ async function handle(req: Request, env: Env): Promise<Response> {
   }
   if (req.method !== "GET") {
     const apiBearer =
-      path === "/api/v1/application" && req.headers.has("authorization");
+      ["/api/v1/application", "/api/v1/bug-report"].includes(path) &&
+      req.headers.has("authorization");
     if (!apiBearer) csrf(req, env.SITE_URL);
   }
   if (path === "/auth/logout" && req.method === "POST") {
@@ -254,6 +255,12 @@ async function handle(req: Request, env: Env): Promise<Response> {
   }
   if (path.startsWith("/api/admin/")) {
     const auth = await admin(req, env);
+    if (path === "/api/admin/bug-reports" && req.method === "GET") {
+      const rows = await env.INDEX.prepare(
+        "SELECT b.id,b.account_id,b.report,b.created_at,a.name FROM bug_reports b LEFT JOIN applications a ON a.id=b.account_id ORDER BY b.created_at DESC LIMIT 100",
+      ).all();
+      return json({ reports: rows.results });
+    }
     if (path === "/api/admin/applications" && req.method === "GET") {
       const rows = await env.INDEX.prepare(
         "SELECT * FROM applications WHERE status<>? ORDER BY updated_at DESC LIMIT 100",
@@ -277,6 +284,7 @@ async function handle(req: Request, env: Env): Promise<Response> {
         model,
         decision,
         delivery,
+        receipt,
         history,
       } = await target.inspect();
       return json({
@@ -288,6 +296,7 @@ async function handle(req: Request, env: Env): Promise<Response> {
         model,
         decision,
         delivery,
+        receipt,
         history,
       });
     }
@@ -305,20 +314,127 @@ async function handle(req: Request, env: Env): Promise<Response> {
       const data = z
         .object({
           outcome: z.enum(["accepted", "not_sent"]),
+          kind: z.enum(["invite", "receipt"]).default("invite"),
           reason: z.string().trim().min(10).max(1500),
         })
         .strict()
         .parse(await body(req));
       return json(
-        await target.reconcileDelivery(data.outcome, data.reason, auth.sub),
+        await target.reconcileDelivery(
+          data.outcome,
+          data.reason,
+          auth.sub,
+          data.kind,
+        ),
       );
     }
-    if (req.method === "POST" && match[2] === "retry")
-      return json(await target.retryDelivery(auth.sub));
+    if (req.method === "POST" && match[2] === "retry") {
+      const data = z
+        .object({ kind: z.enum(["invite", "receipt"]).default("invite") })
+        .strict()
+        .parse(await body(req));
+      return json(await target.retryDelivery(auth.sub, data.kind));
+    }
     throw new ApiError(405, "method", "Method not allowed.");
   }
-  const browserOnly = path !== "/api/v1/application";
+  const browserOnly = !["/api/v1/application", "/api/v1/bug-report"].includes(
+    path,
+  );
   const auth = await authenticated(req, env, browserOnly);
+  if (path === "/api/v1/bug-report" && req.method === "POST") {
+    if (
+      req.headers.get("content-type")?.split(";")[0].trim().toLowerCase() !==
+      "text/plain"
+    )
+      throw new ApiError(415, "content_type", "Send the report as text/plain.");
+    const key = req.headers.get("Idempotency-Key");
+    if (!key || !/^[\w-]{8,128}$/.test(key))
+      throw new ApiError(
+        400,
+        "idempotency_key",
+        "Supply an Idempotency-Key of 8–128 letters, digits, underscores or hyphens.",
+      );
+    const reader = req.body?.getReader();
+    if (!reader)
+      throw new ApiError(
+        422,
+        "validation",
+        "Provide a plain-text bug report of up to 200 words.",
+      );
+    const chunks: Uint8Array[] = [];
+    let size = 0;
+    while (true) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      size += value.byteLength;
+      if (size > 8000) {
+        await reader.cancel();
+        throw new ApiError(
+          413,
+          "report_too_large",
+          "Reports must fit within 8,000 UTF-8 bytes and 200 words.",
+        );
+      }
+      chunks.push(value);
+    }
+    const bytes = new Uint8Array(size);
+    let offset = 0;
+    for (const chunk of chunks) {
+      bytes.set(chunk, offset);
+      offset += chunk.length;
+    }
+    let report: string;
+    try {
+      report = new TextDecoder("utf-8", { fatal: true, ignoreBOM: false })
+        .decode(bytes)
+        .trim();
+    } catch {
+      throw new ApiError(422, "validation", "Use UTF-8 plain text.");
+    }
+    if (!report || report.split(/\s+/u).length > 200 || report.includes("\0"))
+      throw new ApiError(
+        422,
+        "validation",
+        "Provide a plain-text bug report of 1–200 words.",
+      );
+    const hash = await digest(report);
+    const existing = await env.INDEX.prepare(
+      "SELECT id,payload_hash FROM bug_reports WHERE account_id=? AND idempotency_key=?",
+    )
+      .bind(auth.id, key)
+      .first<{ id: string; payload_hash: string }>();
+    if (existing) {
+      if (existing.payload_hash !== hash)
+        throw new ApiError(
+          409,
+          "idempotency_conflict",
+          "This key was already used for a different report.",
+        );
+      return json({ id: existing.id, status: "received" });
+    }
+    await limit(env, `bug:${auth.id}`, 5);
+    const id = crypto.randomUUID();
+    await env.INDEX.prepare(
+      "INSERT OR IGNORE INTO bug_reports(id,account_id,idempotency_key,payload_hash,report,created_at) VALUES(?,?,?,?,?,?)",
+    )
+      .bind(id, auth.id, key, hash, report, Date.now())
+      .run();
+    const saved = await env.INDEX.prepare(
+      "SELECT id,payload_hash FROM bug_reports WHERE account_id=? AND idempotency_key=?",
+    )
+      .bind(auth.id, key)
+      .first<{ id: string; payload_hash: string }>();
+    if (!saved || saved.payload_hash !== hash)
+      throw new ApiError(
+        409,
+        "idempotency_conflict",
+        "This key was already used for a different report.",
+      );
+    return json(
+      { id: saved.id, status: "received" },
+      saved.id === id ? 201 : 200,
+    );
+  }
   if (path === "/api/v1/application") {
     if (req.method === "GET") return json(await auth.agent.publicState());
     if (req.method === "POST") {
@@ -348,21 +464,6 @@ async function handle(req: Request, env: Env): Promise<Response> {
       .strict()
       .parse(await body(req));
     return json(await auth.agent.consent());
-  }
-  if (path === "/api/application-email" && req.method === "POST") {
-    await limit(env, `email:${auth.id}`, 2);
-    const data = z
-      .object({ email: z.string().trim().email().max(254) })
-      .strict()
-      .parse(await body(req));
-    return json(await auth.agent.changeEmail(data.email));
-  }
-  if (path === "/api/application-email/verify" && req.method === "POST") {
-    const data = z
-      .object({ code: z.string().regex(/^\d{8}$/) })
-      .strict()
-      .parse(await body(req));
-    return json(await auth.agent.verify(data.code));
   }
   throw new ApiError(404, "not_found", "Endpoint not found.");
 }

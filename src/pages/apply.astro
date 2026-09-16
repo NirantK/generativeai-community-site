@@ -75,41 +75,10 @@ const fields = [
       <section id="email-section">
         <h2>Your email</h2>
         <p class="help">
-          We’ll send your verification code and community invitation here.
+          Your LinkedIn email receives a copy of your application and, after approval, your invitation.
         </p>
-        <form id="email-form">
-          <label for="email">Email address</label>
-          <input
-            id="email"
-            name="email"
-            type="email"
-            autocomplete="email"
-            required
-            maxlength="254"
-          />
-          <div class="actions">
-            <button type="submit">Send verification code</button>
-          </div>
-        </form>
-        <form id="verify-form" hidden>
-          <label for="code">8-digit verification code</label>
-          <input
-            id="code"
-            name="code"
-            autocomplete="one-time-code"
-            inputmode="numeric"
-            pattern="[0-9]{8}"
-            maxlength="8"
-            required
-          />
-          <div class="actions">
-            <button type="submit">Verify email</button>
-          </div>
-        </form>
         <p id="email-status" class="help"></p>
-        <button id="change-email" type="button" hidden>
-          Change email
-        </button>
+        <a id="refresh-linkedin" href="/auth/linkedin" hidden>Refresh LinkedIn sign-in</a>
       </section>
       <section id="consent-section">
         <h2>Before you apply</h2>
@@ -137,8 +106,42 @@ const fields = [
           Refresh status
         </button>
       </section>
+      <details id="agent-section" open>
+        <summary>Apply using an AI agent</summary>
+        <p>
+          Use Codex or another agent to prepare and submit your application.
+          Save consent above, then generate a token for your agent.
+        </p>
+        <p class="help">
+          The token lasts 24 hours and allows one application submission plus
+          status checks and bug reports of up to 200 words. Replacing it immediately revokes the old token. It
+          cannot change your account or email.
+        </p>
+        <div class="actions">
+          <button id="issue-token" type="button">
+            Generate application token
+          </button>
+          <button id="revoke-token" type="button">
+            Revoke token
+          </button>
+        </div>
+        <div id="token-output" hidden>
+          <p class="notice">
+            Copy this token now. It is shown only once. Share it only with the
+            agent you want to submit your application.
+          </p>
+          <pre id="token-value"></pre>
+          <button id="copy-token" type="button">
+            Copy token
+          </button>
+        </div>
+        <p>
+          <a href="/api-instructions">Read agent instructions</a> ·{" "}
+          <a href="/openapi.json">OpenAPI specification</a>
+        </p>
+      </details>
       <section id="form-section">
-        <h2>A little about your work</h2>
+        <h2>Or apply with the form</h2>
         <p class="help">
           All fields are required. Students, independent builders, and people
           between roles are welcome.
@@ -178,40 +181,7 @@ const fields = [
           </p>
         </form>
       </section>
-      <details id="agent-section">
-        <summary>Apply using an AI agent</summary>
-        <p>
-          Use Codex or another agent to prepare and submit your application.
-          First verify your email and save consent above.
-        </p>
-        <p class="help">
-          The token lasts 24 hours and allows one application submission plus
-          status checks. Replacing it immediately revokes the old token. It
-          cannot change your account or email.
-        </p>
-        <div class="actions">
-          <button id="issue-token" type="button">
-            Generate application token
-          </button>
-          <button id="revoke-token" type="button">
-            Revoke token
-          </button>
-        </div>
-        <div id="token-output" hidden>
-          <p class="notice">
-            Copy this token now. It is shown only once. Share it only with the
-            agent you want to submit your application.
-          </p>
-          <pre id="token-value"></pre>
-          <button id="copy-token" type="button">
-            Copy token
-          </button>
-        </div>
-        <p>
-          <a href="/api-instructions">Read agent instructions</a> ·{" "}
-          <a href="/openapi.json">OpenAPI specification</a>
-        </p>
-      </details>
+
     </div>
   </div>
 </BaseLayout>

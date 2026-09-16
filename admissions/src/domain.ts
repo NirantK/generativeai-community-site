@@ -58,6 +58,7 @@ export type RecordState = {
   model: string | null;
   decision: { actor: string; reason: string; at: number } | null;
   delivery: Delivery;
+  receipt?: Delivery;
   history: { event: string; actor: string; at: number }[];
 };
 export function initialRecord(): RecordState {
@@ -76,6 +77,7 @@ export function initialRecord(): RecordState {
     model: null,
     decision: null,
     delivery: { status: "pending", attempts: 0 },
+    receipt: { status: "pending", attempts: 0 },
     history: [],
   };
 }

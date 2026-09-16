@@ -18,6 +18,10 @@ import "../styles/admissions.css";
       <a href="/apply">Your account</a>
     </div>
     <section id="applications"></section>
+    <section aria-labelledby="bug-reports-title">
+      <h2 id="bug-reports-title">Agent bug reports</h2>
+      <div id="bug-reports"></div>
+    </section>
     <section id="review" hidden>
       <h2>Review application</h2>
       <div id="record"></div>
@@ -42,6 +46,8 @@ import "../styles/admissions.css";
           </button>
         </div>
       </form>
+      <label for="email-kind">Email to inspect or retry</label>
+      <select id="email-kind"><option value="invite">Approval invitation</option><option value="receipt">Submitted application copy</option></select>
       <form id="reconcile" hidden>
         <label for="reconcile-outcome">Cloudflare email log result</label>
         <select id="reconcile-outcome" name="outcome">
@@ -61,7 +67,7 @@ import "../styles/admissions.css";
         </div>
       </form>
       <div class="actions">
-        <button id="retry">Retry confirmed failed or paused invitation</button>
+        <button id="retry">Retry confirmed failed or paused email</button>
       </div>
       <p class="help">
         For uncertain delivery, inspect Cloudflare email logs first. The
@@ -88,10 +94,20 @@ import "../styles/admissions.css";
   function message(text: string) {
     get("admin-message").textContent = text;
   }
+  let currentRecord: RecordState | null = null;
+  function emailControls() {
+    if (!currentRecord) return;
+    const kind = (get("email-kind") as HTMLSelectElement).value;
+    const ledger = kind === "receipt" ? currentRecord.receipt : currentRecord.delivery;
+    get("retry").hidden = kind === "invite" ? currentRecord.status !== "approved" : !currentRecord.application;
+    get("reconcile").hidden = !["uncertain", "sending"].includes(ledger?.status ?? "pending");
+  }
+  get("email-kind").onchange = emailControls;
   async function inspect(id: string) {
     selected = id;
     try {
       const record = await api<RecordState>(`/api/admin/applications/${id}`);
+      currentRecord = record;
       const container = get("record");
       container.replaceChildren();
       const application = record.application;
@@ -128,6 +144,7 @@ import "../styles/admissions.css";
           model: record.model,
           decision: record.decision,
           delivery: record.delivery,
+          receipt: record.receipt,
           history: record.history,
         },
         null,
@@ -135,10 +152,7 @@ import "../styles/admissions.css";
       );
       get("review").hidden = false;
       get("decision").hidden = record.status !== "review";
-      get("retry").hidden = record.status !== "approved";
-      get("reconcile").hidden = !["uncertain", "sending"].includes(
-        record.delivery.status,
-      );
+      emailControls();
       get("review").scrollIntoView({ block: "start" });
     } catch (e) {
       message((e as Error).message);
@@ -170,6 +184,21 @@ import "../styles/admissions.css";
         item.appendChild(button);
         get("applications").appendChild(item);
       }
+      const bugs = await api<{ reports: { id: string; name: string; report: string; created_at: number }[] }>("/api/admin/bug-reports");
+      get("bug-reports").replaceChildren();
+      for (const bug of bugs.reports) {
+        const article = document.createElement("article");
+        article.className = "review-item";
+        const title = document.createElement("h3");
+        title.textContent = `${bug.name ?? "Applicant"} · ${new Date(bug.created_at).toLocaleString()}`;
+        const content = document.createElement("p");
+        content.textContent = bug.report;
+        content.style.whiteSpace = "pre-wrap";
+        content.style.overflowWrap = "anywhere";
+        article.append(title, content);
+        get("bug-reports").append(article);
+      }
+      if (!bugs.reports.length) get("bug-reports").textContent = "No bug reports yet.";
       message(
         result.applications.length
           ? `${result.applications.length} recent applications`
@@ -199,7 +228,7 @@ import "../styles/admissions.css";
   });
   get("retry").onclick = async () => {
     try {
-      await api(`/api/admin/applications/${selected}/retry`, {});
+      await api(`/api/admin/applications/${selected}/retry`, {kind:(get("email-kind") as HTMLSelectElement).value});
       await inspect(selected);
     } catch (e) {
       message((e as Error).message);
@@ -209,6 +238,7 @@ import "../styles/admissions.css";
     e.preventDefault();
     try {
       await api(`/api/admin/applications/${selected}/reconcile`, {
+        kind: (get("email-kind") as HTMLSelectElement).value,
         outcome: new FormData(get("reconcile") as HTMLFormElement).get(
           "outcome",
         ),

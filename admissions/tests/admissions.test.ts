@@ -12,6 +12,7 @@ import {
 } from "../src/domain";
 import { digest, randomToken, csrf } from "../src/security";
 import migration from "../migrations/0001_admissions.sql?raw";
+import bugMigration from "../migrations/0002_bug_reports.sql?raw";
 const sample = {
   role: "Student",
 
@@ -24,7 +25,9 @@ const sample = {
     "I want to share evaluation methods and learn from other builders.",
 };
 beforeAll(async () => {
-  for (const query of migration.split(";").filter((s) => s.trim()))
+  for (const query of (migration + bugMigration)
+    .split(";")
+    .filter((s) => s.trim()))
     await env.INDEX.prepare(query).run();
 });
 async function account(
@@ -422,26 +425,86 @@ describe("submission recovery and approval decisions", () => {
     });
     expect((await other.agent.inspect()).status).toBe("review");
   });
-  it("email verification binds the code to the current email and limits guesses", async () => {
-    const { agent } = await account(false);
-    const code = "01234567";
+  it("refreshes draft email only from a validated provider identity and revokes old tokens", async () => {
+    const { id, agent } = await account();
+    await agent.consent();
+    const { token } = await agent.token();
+    const original = (await agent.inspect()).profile!;
+    await agent.identify({
+      ...original,
+      email: "updated@example.com",
+      emailVerified: true,
+    });
+    expect((await agent.inspect()).profile?.email).toBe("updated@example.com");
+    expect(await agent.authorizeToken(await digest(token))).toBe(false);
+    expect(
+      (
+        await gateway(
+          "/api/application-email",
+          "POST",
+          { Cookie: await browser(id), Origin: env.SITE_URL },
+          { email: "attacker@example.com" },
+        )
+      ).status,
+    ).toBe(404);
+  });
+  it("sends one escaped submitted copy to the LinkedIn email without an invitation", async () => {
+    const { agent } = await account();
     await runInDurableObject(agent, async (instance) => {
       instance.setState({
         ...instance.state,
-        verification: {
-          hash: await digest(code),
-          email: "new@example.com",
-          expires: Date.now() + 60000,
-          attempts: 0,
+        application: {
+          ...sample,
+          project: sample.project + " <script>alert(1)</script>",
         },
+        status: "submitted",
       });
+      instance["env"].EMAIL_ENABLED = "true";
+      const send = vi
+        .spyOn(instance["env"].EMAIL, "send")
+        .mockResolvedValue({ messageId: "receipt-test" });
+      await Promise.all([instance.deliverReceipt(), instance.deliverReceipt()]);
+      expect(send).toHaveBeenCalledTimes(1);
+      const email = send.mock.calls[0][0] as {
+        to: string;
+        text: string;
+        html: string;
+      };
+      expect(email.to).toBe("applicant@example.com");
+      expect(email.text).toContain(sample.project);
+      expect(email.text).toContain(sample.contribution);
+      expect(email.html).toContain("&lt;script&gt;");
+      expect(email.html).not.toContain("<script>");
+      expect(email.text).not.toContain("chat.whatsapp.com");
+      expect(instance.state.receipt?.status).toBe("accepted");
+      expect(instance.state.delivery.status).toBe("pending");
     });
-    await agent.verify(code);
-    expect((await agent.inspect()).profile?.email).toBe("new@example.com");
-    expect((await agent.inspect()).profile?.emailVerified).toBe(true);
-    await expect((async () => await agent.verify(code))()).rejects.toThrow(
-      "verification_expired",
-    );
+  });
+  it("does not blindly resend a receipt after an ambiguous send or recovered in-flight send", async () => {
+    const { agent } = await account();
+    await runInDurableObject(agent, async (instance) => {
+      instance.setState({
+        ...instance.state,
+        application: sample,
+        status: "review",
+      });
+      instance["env"].EMAIL_ENABLED = "true";
+      const send = vi
+        .spyOn(instance["env"].EMAIL, "send")
+        .mockRejectedValue(new Error("connection lost"))
+        .mockClear();
+      await instance.deliverReceipt();
+      await instance.deliverReceipt();
+      expect(send).toHaveBeenCalledTimes(1);
+      expect(instance.state.receipt?.status).toBe("uncertain");
+      instance.setState({
+        ...instance.state,
+        receipt: { status: "sending", attempts: 1 },
+      });
+      await instance.deliverReceipt();
+      expect(send).toHaveBeenCalledTimes(1);
+      expect(instance.state.receipt?.status).toBe("uncertain");
+    });
   });
   it("accepted email is sent once and a manual reconciliation can unblock a known non-send", async () => {
     const { agent } = await account();
@@ -657,4 +720,48 @@ it("returns failed browser callbacks to a safe retry page without exposing codes
     "__Host-ga-session=",
   );
   expect(await response.text()).not.toContain("must-not-be-reflected");
+});
+
+describe("agent bug reports", () => {
+  it("stores scoped plain text, deduplicates retries, rejects changed keys and oversized reports", async () => {
+    const { agent } = await account();
+    await agent.consent();
+    const { token } = await agent.token();
+    const send = (text: string, key = "bug-smoke-123", type = "text/plain") =>
+      new AdmissionsGateway(createExecutionContext(), env).fetch(
+        new Request("https://genaicommunity.ai/api/v1/bug-report", {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": type,
+            "Idempotency-Key": key,
+          },
+          body: text,
+        }),
+      );
+    const content =
+      "The token copy button did not provide feedback. Expected a confirmation message after copying.";
+    const first = await send(content);
+    expect(first.status).toBe(201);
+    const saved = await first.json();
+    const retry = await send(content);
+    expect(retry.status).toBe(200);
+    expect(await retry.json()).toEqual(saved);
+    expect((await send("Different report")).status).toBe(409);
+    expect((await send("word ".repeat(201), "too-many-words")).status).toBe(
+      422,
+    );
+    expect((await send("x".repeat(8001), "too-many-bytes")).status).toBe(413);
+    expect(
+      (await send("{}", "wrong-content-type", "application/json")).status,
+    ).toBe(415);
+    expect((await send("word ".repeat(200), "allowed-word-count")).status).toBe(
+      201,
+    );
+    expect((await agent.inspect()).application).toBeNull();
+    await agent.revoke();
+    expect(
+      (await send("Revoked token report", "revoked-token-report")).status,
+    ).toBe(401);
+  });
 });

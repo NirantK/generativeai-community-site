@@ -12,7 +12,7 @@ import {
   submissionResult,
   emailFailure,
 } from "./domain";
-import type { RecordState, Profile, Assessment } from "./domain";
+import type { RecordState, Profile, Assessment, Delivery } from "./domain";
 import { ApiError, digest, randomToken, escapeHtml } from "./security";
 
 export class AdmissionAgent extends Agent<Env, RecordState> {
@@ -52,11 +52,18 @@ export class AdmissionAgent extends Agent<Env, RecordState> {
     return this.serial(async () => {
       if (this.state.profile && this.state.profile.sub !== profile.sub)
         throw new ApiError(403, "identity", "Account mismatch.");
-      // Contact changes are explicit browser actions, never overwritten by a later OAuth login.
+      // Only a validated LinkedIn callback can refresh identity or email.
+      const changed =
+        this.state.profile &&
+        !this.state.application &&
+        (this.state.profile.email !== profile.email ||
+          this.state.profile.emailVerified !== profile.emailVerified);
       this.write({
-        profile: this.state.profile
-          ? { ...this.state.profile, name: profile.name }
+        profile: this.state.application
+          ? { ...this.state.profile!, name: profile.name }
           : profile,
+        verification: null,
+        ...(changed ? { tokenHash: null, tokenExpires: 0 } : {}),
       });
       await this.index();
       return this.publicState();
@@ -70,6 +77,7 @@ export class AdmissionAgent extends Agent<Env, RecordState> {
       status,
       consent,
       delivery: { status: delivery.status },
+      receipt: { status: this.state.receipt?.status ?? "pending" },
       missingRequirements: [
         ...(!profile?.emailVerified ? ["verifiedEmail"] : []),
         ...(!consent ? ["consent"] : []),
@@ -107,7 +115,7 @@ export class AdmissionAgent extends Agent<Env, RecordState> {
         throw new ApiError(
           409,
           "email_unverified",
-          "Verify your email before issuing an application token.",
+          "LinkedIn must confirm your email. Refresh your LinkedIn sign-in.",
         );
       const token = randomToken(),
         hash = await digest(token),
@@ -133,88 +141,6 @@ export class AdmissionAgent extends Agent<Env, RecordState> {
         "applicant",
       );
       return { revoked: true };
-    });
-  }
-  async changeEmail(email: string) {
-    return this.serial(async () => {
-      if (this.state.application)
-        throw new ApiError(
-          409,
-          "submitted",
-          "Contact details are locked after submission.",
-        );
-      if (!this.state.profile)
-        throw new ApiError(401, "unauthorized", "Sign in first.");
-      if (this.env.EMAIL_ENABLED !== "true")
-        throw new ApiError(
-          503,
-          "email_paused",
-          "Email verification is temporarily paused.",
-        );
-      const code = String(
-        crypto.getRandomValues(new Uint32Array(1))[0] % 100000000,
-      ).padStart(8, "0");
-      this.write(
-        {
-          profile: { ...this.state.profile, email, emailVerified: false },
-          tokenHash: null,
-          tokenExpires: 0,
-          verification: {
-            email,
-            hash: await digest(code),
-            expires: Date.now() + 15 * 60000,
-            attempts: 0,
-          },
-        },
-        "verification_requested",
-        "applicant",
-      );
-      try {
-        await this.env.EMAIL.send({
-          from: {
-            email: "noreply@genaicommunity.ai",
-            name: "GenerativeAI Community",
-          },
-          to: email,
-          subject: "Verify your community application email",
-          text: `Your verification code is ${code}. It expires in 15 minutes.`,
-          html: `<p>Your verification code is <strong>${code}</strong>.</p><p>It expires in 15 minutes.</p>`,
-        });
-      } catch {
-        throw new ApiError(
-          503,
-          "verification_delivery",
-          "Verification email could not be confirmed. Check your inbox before requesting another code.",
-        );
-      }
-      return { sent: true };
-    });
-  }
-  async verify(code: string) {
-    return this.serial(async () => {
-      const v = this.state.verification;
-      if (!v || v.expires < Date.now() || v.attempts >= 5)
-        throw new ApiError(
-          400,
-          "verification_expired",
-          "Request a new verification code.",
-        );
-      this.write({ verification: { ...v, attempts: v.attempts + 1 } });
-      if ((await digest(code)) !== v.hash)
-        throw new ApiError(400, "verification_invalid", "Incorrect code.");
-      this.write(
-        {
-          profile: {
-            ...this.state.profile!,
-            email: v.email,
-            emailVerified: true,
-          },
-          verification: null,
-        },
-        "email_verified",
-        "applicant",
-      );
-      return this.publicState();
     });
   }
   async submit(input: unknown, key: string, tokenHash?: string) {
@@ -258,6 +184,7 @@ export class AdmissionAgent extends Agent<Env, RecordState> {
           "submitted",
           "applicant",
         );
+        await this.schedule(1, "deliverReceipt");
         await this.schedule(30, "ensureWorkflow");
       }
       await this.index();
@@ -368,27 +295,45 @@ export class AdmissionAgent extends Agent<Env, RecordState> {
     });
   }
   async deliver() {
+    return this.dispatchEmail("invite");
+  }
+  async deliverReceipt() {
+    return this.dispatchEmail("receipt");
+  }
+  private async dispatchEmail(kind: "invite" | "receipt") {
     return this.serial(async () => {
-      if (this.state.status !== "approved") return;
-      const previous = this.state.delivery;
+      if (
+        kind === "invite"
+          ? this.state.status !== "approved"
+          : !this.state.application
+      )
+        return;
+      const field = kind === "receipt" ? "receipt" : "delivery";
+      const previous: Delivery = this.state[field] ?? {
+        status: "pending",
+        attempts: 0,
+      };
       if (["accepted", "uncertain"].includes(previous.status)) return;
       if (previous.status === "sending") {
         this.write(
-          { delivery: { ...previous, status: "uncertain" } },
-          "email_uncertain",
+          { [field]: { ...previous, status: "uncertain" } },
+          `${kind}_email_uncertain`,
         );
         await this.index();
         return;
       }
       if (this.env.EMAIL_ENABLED !== "true") {
-        this.write({ delivery: { ...previous, status: "paused" } });
+        this.write({ [field]: { ...previous, status: "paused" } });
         await this.index();
         return;
       }
       const url = this.env.WHATSAPP_INVITE_URL;
-      if (!url || !/^https:\/\/chat\.whatsapp\.com\/[A-Za-z0-9]+$/.test(url)) {
+      if (
+        kind === "invite" &&
+        (!url || !/^https:\/\/chat\.whatsapp\.com\/[A-Za-z0-9]+$/.test(url))
+      ) {
         this.write({
-          delivery: {
+          [field]: {
             ...previous,
             status: "failed",
             error: "invite_not_configured",
@@ -399,34 +344,65 @@ export class AdmissionAgent extends Agent<Env, RecordState> {
       }
       this.write(
         {
-          delivery: {
+          [field]: {
             status: "sending",
             attempts: previous.attempts + 1,
             updatedAt: Date.now(),
           },
         },
-        "email_started",
+        `${kind}_email_started`,
       );
       try {
+        const application = this.state.application;
+        const labels: [string, string][] = application
+          ? [
+              ["Current or most recent role", application.role],
+              ["AI project or use case", application.project],
+              ["Your contribution", application.contribution],
+              ["Reason for joining", application.motivation],
+            ]
+          : [];
+        const receiptText =
+          "We received your GenerativeAI Community application. Here is your submitted copy. This is not an approval or invitation.\n\n" +
+          labels.map(([label, value]) => `${label}\n${value}`).join("\n\n") +
+          `\n\nCheck your status: ${this.env.SITE_URL}/apply`;
+        const receiptHtml =
+          "<p>We received your GenerativeAI Community application. Here is your submitted copy. This is not an approval or invitation.</p>" +
+          labels
+            .map(
+              ([label, value]) =>
+                `<h2>${label}</h2><p>${escapeHtml(value).replaceAll("\n", "<br>")}</p>`,
+            )
+            .join("") +
+          `<p><a href="${escapeHtml(this.env.SITE_URL)}/apply">Check your application status</a></p>`;
         const response = await this.env.EMAIL.send({
           from: {
             email: "noreply@genaicommunity.ai",
             name: "GenerativeAI Community",
           },
           to: this.state.profile!.email,
-          subject: "You’re approved — join the GenerativeAI Community",
-          text: `Your application is approved. Join our WhatsApp community: ${url}\nPlease read our community rules: ${this.env.SITE_URL}/#whatsapp-community-rules`,
-          html: `<p>Your application is approved.</p><p><a href="${escapeHtml(url)}">Join our WhatsApp community</a></p><p>Please read our <a href="${escapeHtml(this.env.SITE_URL)}/#whatsapp-community-rules">community rules</a>.</p>`,
+          subject:
+            kind === "receipt"
+              ? "Your GenerativeAI Community application — submitted copy"
+              : "You’re approved — join the GenerativeAI Community",
+          text:
+            kind === "receipt"
+              ? receiptText
+              : `Your application is approved. Join our WhatsApp community: ${url}\nPlease read our community rules: ${this.env.SITE_URL}/#whatsapp-community-rules`,
+          html:
+            kind === "receipt"
+              ? receiptHtml
+              : `<p>Your application is approved.</p><p><a href="${escapeHtml(url)}">Join our WhatsApp community</a></p><p>Please read our <a href="${escapeHtml(this.env.SITE_URL)}/#whatsapp-community-rules">community rules</a>.</p>`,
         });
         this.write(
           {
-            delivery: {
-              ...this.state.delivery,
+            [field]: {
+              ...this.state[field]!,
               status: "accepted",
               messageId: response.messageId,
             },
           },
-          "email_accepted",
+          `${kind}_email_accepted`,
         );
       } catch (error) {
         const code =
@@ -435,19 +411,19 @@ export class AdmissionAgent extends Agent<Env, RecordState> {
             : "unknown";
         this.write(
           {
-            delivery: {
-              ...this.state.delivery,
+            [field]: {
+              ...this.state[field]!,
               status: emailFailure(code),
               error: code,
             },
           },
-          "email_failed",
+          `${kind}_email_failed`,
         );
-        if (
-          code === "E_RATE_LIMIT_EXCEEDED" &&
-          this.state.delivery.attempts < 3
-        )
-          await this.schedule(60 * this.state.delivery.attempts, "deliver");
+        if (code === "E_RATE_LIMIT_EXCEEDED" && this.state[field]!.attempts < 3)
+          await this.schedule(
+            60 * this.state[field]!.attempts,
+            kind === "receipt" ? "deliverReceipt" : "deliver",
+          );
       }
       await this.index();
     });
@@ -456,9 +432,12 @@ export class AdmissionAgent extends Agent<Env, RecordState> {
     outcome: "accepted" | "not_sent",
     reason: string,
     actor: string,
+    kind: "invite" | "receipt" = "invite",
   ) {
     return this.serial(async () => {
-      if (!["uncertain", "sending"].includes(this.state.delivery.status))
+      const field = kind === "receipt" ? "receipt" : "delivery";
+      const ledger = this.state[field] ?? { status: "pending", attempts: 0 };
+      if (!["uncertain", "sending"].includes(ledger.status))
         throw new ApiError(
           409,
           "delivery_conflict",
@@ -466,30 +445,32 @@ export class AdmissionAgent extends Agent<Env, RecordState> {
         );
       this.write(
         {
-          delivery: {
-            ...this.state.delivery,
+          [field]: {
+            ...ledger,
             status: outcome === "accepted" ? "accepted" : "failed",
             error: outcome === "not_sent" ? "confirmed_not_sent" : undefined,
           },
         },
-        `delivery_reconciled: ${reason}`,
+        `${kind}_delivery_reconciled: ${reason}`,
         actor,
       );
       await this.index();
       return this.publicState();
     });
   }
-  async retryDelivery(actor: string) {
-    if (
-      this.state.delivery.status === "uncertain" ||
-      this.state.delivery.status === "sending"
-    )
+  async retryDelivery(actor: string, kind: "invite" | "receipt" = "invite") {
+    const ledger = this.state[kind === "receipt" ? "receipt" : "delivery"] ?? {
+      status: "pending",
+      attempts: 0,
+    };
+    if (ledger.status === "uncertain" || ledger.status === "sending")
       throw new ApiError(
         409,
         "delivery_uncertain",
         "Check Cloudflare email logs before resolving this delivery.",
       );
-    await this.deliver();
+    if (kind === "receipt") await this.deliverReceipt();
+    else await this.deliver();
     return this.publicState();
   }
 }
@@ -502,6 +483,7 @@ export class AdmissionWorkflow extends AgentWorkflow<
     event: AgentWorkflowEvent<{ accountId: string }>,
     step: AgentWorkflowStep,
   ) {
+    await step.do("receipt", () => this.agent.deliverReceipt());
     await step.do("assess", () => this.agent.assess());
     // Persisted decisions are the source of truth; events accelerate the wait.
     for (let i = 0; i < 90; i++) {

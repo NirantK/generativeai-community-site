@@ -99,7 +99,7 @@ test("token is shown once and removed on revocation", async ({ page }) => {
     }),
   );
   await page.goto("/apply");
-  await page.getByText("Apply using an AI agent", { exact: true }).click();
+  await expect(page.locator("#agent-section")).toHaveAttribute("open", "");
   await page
     .getByRole("button", { name: "Generate application token" })
     .click();
@@ -139,6 +139,20 @@ test("new pages fit the viewport and documentation names Cloudflare sender", asy
 test("administrator can read evidence and record a decision", async ({
   page,
 }) => {
+  await page.route("**/api/admin/bug-reports", (r) =>
+    r.fulfill({
+      json: {
+        reports: [
+          {
+            id: "test-report",
+            name: "Test Builder",
+            created_at: Date.now(),
+            report: "<script>untrusted bug report</script>",
+          },
+        ],
+      },
+    }),
+  );
   const id = "a".repeat(64);
   let decided = false;
   await page.route("**/api/admin/applications", (r) =>
@@ -230,19 +244,28 @@ test("failed and cancelled sign-ins offer a retry", async ({ page }) => {
   }
 });
 
-test("requesting email verification immediately disables submission and token issuance", async ({ page }) => {
-  let verified = true;
-  await page.route("**/api/v1/application", route => route.fulfill({ json: { ...draft, profile: { ...draft.profile, emailVerified: verified } } }));
-  await page.route("**/api/application-email", route => {
-    verified = false;
-    return route.fulfill({ json: { sent: true } });
-  });
+test("agent application is first and open by default with LinkedIn email and no verification form", async ({
+  page,
+}) => {
+  await page.route("**/api/v1/application", (r) => r.fulfill({ json: draft }));
   await page.goto("/apply");
-  await page.getByRole("button", { name: "Change email", exact: true }).click();
-  await page.getByRole("button", { name: "Send verification code", exact: true }).click();
-  await expect(page.getByText("Verify your email before submitting.", { exact: true })).toBeVisible();
-  await expect(page.getByRole("button", { name: "Submit application", exact: true })).toBeDisabled();
-  await page.getByText("Apply using an AI agent", { exact: true }).click();
-  await expect(page.getByRole("button", { name: "Generate application token", exact: true })).toBeDisabled();
-  await expect(page.getByRole("textbox", { name: "8-digit verification code", exact: true })).toBeVisible();
+  await expect(page.locator("#agent-section")).toHaveAttribute("open", "");
+  await expect(
+    page.getByText("LinkedIn email: builder@example.com", { exact: true }),
+  ).toBeVisible();
+  await expect(
+    page.locator("#email-form, #verify-form, #change-email"),
+  ).toHaveCount(0);
+  expect(
+    await page
+      .locator("#agent-section")
+      .evaluate(
+        (el) =>
+          !!(
+            el.compareDocumentPosition(
+              document.getElementById("form-section")!,
+            ) & Node.DOCUMENT_POSITION_FOLLOWING
+          ),
+      ),
+  ).toBe(true);
 });

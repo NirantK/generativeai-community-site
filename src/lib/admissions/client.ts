@@ -3,6 +3,7 @@ type Snapshot = {
   consent: string | null;
   status: string;
   delivery: { status: string };
+  receipt?: { status: string };
   application: Record<string, string> | null;
 };
 const el = <T extends HTMLElement = HTMLElement>(id: string) =>
@@ -27,7 +28,9 @@ async function api<T = Snapshot>(
     body: data ? JSON.stringify(data) : undefined,
   });
   if (!response.headers.get("content-type")?.includes("application/json")) {
-    throw new Error("Applications are temporarily unavailable. Please try again later.");
+    throw new Error(
+      "Applications are temporarily unavailable. Please try again later.",
+    );
   }
   const result = (await response.json()) as T & {
     error?: {
@@ -59,12 +62,10 @@ export function initApplication() {
       el("signed-out").hidden = true;
       el("signed-in").hidden = false;
       el("identity").textContent = `Signed in as ${s.profile.name}`;
-      el<HTMLInputElement>("email").value = s.profile.email;
-      el("email-status").textContent = s.profile.emailVerified
-        ? `Verified: ${s.profile.email}`
-        : "Verify your email before submitting.";
-      el("email-form").hidden = s.profile.emailVerified || !!s.application;
-      el("change-email").hidden = !s.profile.emailVerified || !!s.application;
+      el("email-status").textContent = s.profile.email
+        ? `LinkedIn email: ${s.profile.email}`
+        : "LinkedIn did not provide an email. Add an email to your LinkedIn account and sign in again.";
+      el("refresh-linkedin").hidden = s.profile.emailVerified;
       el("consent-section").hidden = !!s.consent;
       el("form-section").hidden = !!s.application;
       el("status-section").hidden = !s.application;
@@ -88,12 +89,16 @@ export function initApplication() {
           s.status === "approved" ? "You’re approved" : "Application received";
         el("status-copy").textContent =
           copy[s.status] ?? "Check back for an update.";
-        notice("Your application is saved.");
+        notice(
+          s.receipt?.status === "accepted"
+            ? "Your application is saved. A copy has been sent to your LinkedIn email provider."
+            : "Your application is saved. Your email copy is pending.",
+        );
       } else
         notice(
           canSubmit
-            ? "Complete the form, or use an AI agent below."
-            : "Verify your email and save consent to continue.",
+            ? "Apply using an AI agent, or use the form below."
+            : "Save consent to continue. If LinkedIn did not confirm your email, refresh your LinkedIn sign-in.",
         );
     } catch (e) {
       if ((e as { status?: number }).status === 401) {
@@ -141,22 +146,6 @@ export function initApplication() {
       }
     });
   }
-  form("email-form", async (d) => {
-    try {
-      await api("/api/application-email", "POST", { email: d.get("email") });
-    } finally {
-      el("token-value").textContent = "";
-      el("token-output").hidden = true;
-      await refresh();
-    }
-    el("verify-form").hidden = false;
-    notice("Check your inbox for an 8-digit code.");
-  });
-  form("verify-form", async (d) => {
-    await api("/api/application-email/verify", "POST", { code: d.get("code") });
-    el("verify-form").hidden = true;
-    await refresh();
-  });
   form("consent-form", async () => {
     await api("/api/application-consent", "POST", { consent: true });
     await refresh();
@@ -169,10 +158,6 @@ export function initApplication() {
       submissionKey,
     );
     await refresh();
-  });
-  action("change-email", async () => {
-    el("email-form").hidden = false;
-    el("change-email").hidden = true;
   });
   action("issue-token", async () => {
     const result = await api<{ token: string }>(
