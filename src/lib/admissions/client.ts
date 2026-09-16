@@ -2,6 +2,8 @@ type Snapshot = {
   profile: { name: string; email: string; emailVerified: boolean };
   consent: string | null;
   status: string;
+  decisionReason?: string | null;
+  appeal?: { eligible: boolean; status: string };
   delivery: { status: string };
   receipt?: { status: string };
   application: Record<string, string> | null;
@@ -56,6 +58,7 @@ async function api<T = Snapshot>(
 }
 export function initApplication() {
   let submissionKey = crypto.randomUUID();
+  let appealKey = crypto.randomUUID();
   async function refresh() {
     try {
       const s: Snapshot = await api("/api/v1/application");
@@ -63,6 +66,7 @@ export function initApplication() {
       el("signed-in").hidden = false;
       void fetch("/api/admin/access").then(r => { el("admin-link").hidden = !r.ok; }).catch(() => { el("admin-link").hidden = true; });
       void api<{invitation: unknown}>("/api/admin-invitation").then(r => { el("admin-invitation").hidden = !r.invitation; }).catch(() => { el("admin-invitation").hidden = true; });
+      el("appeal-section").hidden = !s.appeal?.eligible;
       el("identity").textContent = `Signed in as ${s.profile.name}`;
       el("email-status").textContent = s.profile.email
         ? `LinkedIn email: ${s.profile.email}`
@@ -88,9 +92,9 @@ export function initApplication() {
           declined: "Your application was not approved this time.",
         };
         el("status-title").textContent =
-          s.status === "approved" ? "You’re approved" : "Application received";
+          s.status === "approved" ? "You’re approved" : s.status === "declined" ? "Application declined" : s.appeal?.status === "pending" ? "Appeal under review" : "Application received";
         el("status-copy").textContent =
-          copy[s.status] ?? "Check back for an update.";
+          s.appeal?.status === "pending" ? "Your appeal is awaiting administrator review." : s.status === "declined" ? `${copy.declined} ${s.decisionReason ?? ""} ${s.appeal?.eligible ? "You can submit evidence for an appeal below or through your agent." : "Appeals are available only for applications originally submitted through an agent."}` : copy[s.status] ?? "Check back for an update.";
         notice(
           s.receipt?.status === "accepted"
             ? "Your application is saved. A copy has been sent to your LinkedIn email provider."
@@ -151,6 +155,13 @@ export function initApplication() {
   form("consent-form", async () => {
     await api("/api/application-consent", "POST", { consent: true });
     await refresh();
+  });
+  form("appeal-form", async d => {
+    const evidence = Object.fromEntries([...d.entries()].filter(([,value]) => String(value).trim()).map(([key,value]) => [key,String(value).trim()]));
+    await api("/api/v1/appeal", "POST", evidence, appealKey);
+    appealKey = crypto.randomUUID();
+    await refresh();
+    notice("Appeal saved for administrator review.");
   });
   form("application-form", async (d) => {
     await api(

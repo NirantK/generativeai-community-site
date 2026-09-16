@@ -7,16 +7,19 @@ import {
   applicationSchema,
   initialRecord,
   qualifies,
+  rejectStudent,
+  assessmentSchema,
   whatsappInvite,
   submissionResult,
   emailFailure,
 } from "../src/domain";
 import { digest, randomToken, csrf } from "../src/security";
 import migration from "../migrations/0001_admissions.sql?raw";
+import appealMigration from "../migrations/0004_appeal_index.sql?raw";
 import adminMigration from "../migrations/0003_administrators.sql?raw";
 import bugMigration from "../migrations/0002_bug_reports.sql?raw";
 const sample = {
-  role: "Student",
+  role: "AI engineer",
 
   project:
     "I built a retrieval augmented AI assistant for a local library catalog.",
@@ -27,7 +30,7 @@ const sample = {
     "I want to share evaluation methods and learn from other builders.",
 };
 beforeAll(async () => {
-  for (const query of (migration + bugMigration + adminMigration)
+  for (const query of (migration + bugMigration + adminMigration + appealMigration)
     .split(";")
     .filter((s) => s.trim()))
     await env.INDEX.prepare(query).run();
@@ -131,7 +134,7 @@ describe("policy and validation", () => {
   it("accepts students without collecting education or organization", () =>
     expect(
       applicationSchema.safeParse({
-        ...sample,
+        ...sample, role: "Student",
       }).success,
     ).toBe(true));
   it("rejects identity injection and removed application fields", () => {
@@ -148,6 +151,7 @@ describe("policy and validation", () => {
   });
   it("requires exact supporting evidence and sends uncertain assessments to review", () => {
     const assessment = {
+      student: {status:"not_student" as const,roleEvidence:sample.role,exceptional:false,exceptionalEvidence:[]},
       relevant: true,
       concrete: true,
       contribution: true,
@@ -402,7 +406,8 @@ describe("submission recovery and approval decisions", () => {
       bindings.AUTO_APPROVALS_ENABLED = "true";
       vi.spyOn(bindings.AI, "run").mockResolvedValue({
         response: JSON.stringify({
-          relevant: true,
+          student: {status:"not_student" as const,roleEvidence:sample.role,exceptional:false,exceptionalEvidence:[]},
+      relevant: true,
           concrete: true,
           contribution: true,
           uncertain: false,
@@ -437,7 +442,8 @@ describe("submission recovery and approval decisions", () => {
       });
       instance["env"].AUTO_APPROVALS_ENABLED = "true";
       const assessment = {
-        relevant: true,
+        student: {status:"not_student" as const,roleEvidence:sample.role,exceptional:false,exceptionalEvidence:[]},
+      relevant: true,
         concrete: true,
         contribution: true,
         uncertain: false,
@@ -569,7 +575,8 @@ it("dispatches a real AgentWorkflow and persists its assessment", async () => {
     instance["env"].EMAIL_ENABLED = "false";
     vi.spyOn(instance["env"].AI, "run").mockResolvedValue({
       response: JSON.stringify({
-        relevant: true,
+        student: {status:"not_student" as const,roleEvidence:sample.role,exceptional:false,exceptionalEvidence:[]},
+      relevant: true,
         concrete: true,
         contribution: true,
         uncertain: false,
@@ -853,7 +860,7 @@ it("qualifies explicit company affiliations with conservative one-year dates", (
   const now=Date.parse("2026-09-16T12:00:00Z");
   for (const company of ["Dashverse","Frameo","Lossfunk","OpenAI","Anthropic","ElevenLabs","Cartesia"] as const) {
     const role=`Engineer at ${company}`;
-    const a={relevant:false,concrete:false,contribution:false,uncertain:false,reasons:"Affiliation",evidence:[sample.project],affiliation:{company,current:true,endedOn:null,evidence:role}};
+    const a={student:{status:"not_student" as const,roleEvidence:role,exceptional:false,exceptionalEvidence:[]},relevant:false,concrete:false,contribution:false,uncertain:false,reasons:"Affiliation",evidence:[sample.project],affiliation:{company,current:true,endedOn:null,evidence:role}};
     expect(qualifies(a,{...sample,role},now)).toBe(true);
     expect(qualifies({...a,uncertain:true},{...sample,role},now)).toBe(false);
     expect(qualifies(a,sample,now)).toBe(false);
@@ -867,4 +874,103 @@ it("normalizes WhatsApp tracking parameters but rejects unrelated invite hosts",
   expect(whatsappInvite("https://chat.whatsapp.com/Example123?s=cl&p=i")).toBe("https://chat.whatsapp.com/Example123");
   expect(whatsappInvite("https://chat.whatsapp.com.evil.example/Example123")).toBeNull();
   expect(whatsappInvite("https://user@chat.whatsapp.com/Example123")).toBeNull();
+});
+
+describe("student policy", () => {
+  const application={...sample,role:"University student"};
+  const assessment={student:{status:"student" as const,roleEvidence:"University student",exceptional:false,exceptionalEvidence:[] as string[]}, relevant:true,concrete:true,contribution:true,uncertain:false,reasons:"Coursework does not demonstrate exceptional original work",evidence:[sample.project]};
+  it("declines ordinary students but permits exceptional work and approved affiliations", () => {
+    expect(rejectStudent(assessment,application)).toBe(true);
+    expect(qualifies(assessment,application)).toBe(false);
+    const exceptional={...assessment,student:{...assessment.student,exceptional:true,exceptionalEvidence:[sample.contribution]}};
+    expect(qualifies(exceptional,application)).toBe(true);
+    expect(rejectStudent(exceptional,application)).toBe(false);
+    expect(qualifies({...exceptional,student:{...exceptional.student,exceptionalEvidence:["invented exceptional achievement"]}},application)).toBe(false);
+    expect(rejectStudent({...assessment,uncertain:true},application)).toBe(false);
+    expect(rejectStudent({...assessment,student:{...assessment.student,roleEvidence:"Invented student classification"}},application)).toBe(false);
+    const role="University student and engineer at Dashverse";
+    const affiliated={...assessment,student:{...assessment.student,roleEvidence:role},affiliation:{company:"Dashverse" as const,current:true,endedOn:null,evidence:role}};
+    expect(qualifies(affiliated,{...application,role})).toBe(true);
+    expect(rejectStudent(affiliated,{...application,role})).toBe(false);
+    expect(assessmentSchema.safeParse({...assessment,student:undefined}).success).toBe(false);
+  });
+  it("records automatic student rejection without dispatching an approval invitation", async () => {
+    const {agent}=await account();
+    await runInDurableObject(agent,async instance=>{
+      instance.setState({...instance.state,application,status:"submitted",submissionChannel:"agent"});
+      instance["env"].AUTO_APPROVALS_ENABLED="true";
+      const run=vi.spyOn(instance["env"].AI,"run").mockResolvedValue({response:assessment} as never);
+      try {
+        await instance.assess();
+        expect(instance.state.status).toBe("declined");
+        expect(instance.state.decision?.actor).toBe("agent");
+        expect(instance.state.delivery.attempts).toBe(0);
+        expect((await instance.publicState()).appeal.eligible).toBe(true);
+      } finally {run.mockRestore();}
+    });
+  });
+});
+
+describe("appeals", () => {
+  const evidence={explanation:"I built and deployed an original tool, and can explain its architecture, evaluation methods, and the code I personally contributed."};
+  async function rejected(channel?: "agent" | "form") {
+    const owner=await account();
+    await owner.agent.consent();
+    const {token}=await owner.agent.token();
+    await runInDurableObject(owner.agent,async instance=>{instance.setState({...instance.state,application:sample,submissionChannel:channel,status:"declined",decision:{actor:"agent",reason:"Insufficient work evidence",at:Date.now()}});});
+    return {...owner,token};
+  }
+  it("rejects form and legacy appeals even after a token is issued",async()=>{
+    for(const channel of ["form",undefined] as const){
+      const {token}=await rejected(channel);
+      expect((await gateway("/api/v1/appeal","POST",{Authorization:`Bearer ${token}`,"Idempotency-Key":"appeal-ineligible"},evidence)).status).toBe(403);
+    }
+  });
+  it("validates evidence, enforces scope/idempotency, and retains the entire resolution",async()=>{
+    const {agent,token,id}=await rejected("agent");
+    const headers={Authorization:`Bearer ${token}`,"Idempotency-Key":"appeal-evidence-1"};
+    expect((await gateway("/api/v1/appeal","POST",headers,{})).status).toBe(422);
+    expect((await gateway("/api/v1/appeal","POST",headers,{proofUrl:"javascript:alert(1)"})).status).toBe(422);
+    expect((await gateway("/api/v1/appeal","POST",headers,{proofUrl:"not-a-url"})).status).toBe(422);
+    expect((await gateway("/api/v1/appeal","POST",headers,{...evidence,accountId:"another-account"})).status).toBe(422);
+    expect((await gateway("/api/v1/appeal","POST",headers,evidence)).status).toBe(202);
+    expect((await gateway("/api/v1/appeal","POST",headers,evidence)).status).toBe(202);
+    expect((await gateway("/api/v1/appeal","POST",headers,{voucher:"A known member can vouch for this project."})).status).toBe(409);
+    expect((await gateway("/api/v1/appeal","POST",{...headers,"Idempotency-Key":"appeal-evidence-2"},evidence)).status).toBe(409);
+    let state=await agent.inspect();
+    expect(state.status).toBe("review");
+    expect(state.appeals).toHaveLength(1);
+    expect(state.appeals?.[0].previousDecision.reason).toBe("Insufficient work evidence");
+    expect(state.appeals?.[0].evidence).toEqual(evidence);
+    expect((await env.INDEX.prepare("SELECT appeal_status FROM applications WHERE id=?").bind(id).first())?.appeal_status).toBe("pending");
+    const previousAdmins=env.ADMIN_EMAILS; env.ADMIN_EMAILS="applicant@example.com";
+    try { expect((await gateway(`/api/admin/applications/${id}/reassess`,"POST",{Cookie:await browser(id),Origin:"https://genaicommunity.ai"},{})).status).toBe(409); }
+    finally { env.ADMIN_EMAILS=previousAdmins; }
+    await agent.decide("approve","Reviewed work and confirmed personal contribution","admin");
+    state=await agent.inspect();
+    expect(state.appeals?.[0].resolution?.action).toBe("approve");
+    expect(state.appeals?.[0].resolution?.actor).toBe("admin");
+    expect((await agent.publicState()).appeal.eligible).toBe(false);
+    expect(state.application).toEqual(sample);
+    await agent.revoke();
+    expect((await gateway("/api/v1/appeal","POST",headers,evidence)).status).toBe(401);
+  });
+  it("permits browser appeals only for agent-origin applications and requires CSRF",async()=>{
+    const {agent,id}=await rejected("agent");
+    const headers={Cookie:await browser(id),"Idempotency-Key":"browser-appeal-1"};
+    expect((await gateway("/api/v1/appeal","POST",headers,evidence)).status).toBe(403);
+    expect((await gateway("/api/v1/appeal","POST",{...headers,Origin:"https://genaicommunity.ai"},evidence)).status).toBe(202);
+    await agent.decide("decline","Evidence remains insufficient after manual review","admin");
+    expect((await gateway("/api/v1/appeal","POST",{...headers,Origin:"https://genaicommunity.ai","Idempotency-Key":"browser-appeal-2"},evidence)).status).toBe(409);
+  });
+  it("records first submission provenance and does not change it on a bearer replay",async()=>{
+    const {agent}=await account();await agent.consent();
+    await agent.submit(sample,"original-browser-application");
+    const {token}=await agent.token();
+    await agent.submit(sample,"replayed-via-agent",await digest(token));
+    expect((await agent.inspect()).submissionChannel).toBe("form");
+    const other=await account();await other.agent.consent();const access=await other.agent.token();
+    await other.agent.submit(sample,"original-agent-application",await digest(access.token));
+    expect((await other.agent.inspect()).submissionChannel).toBe("agent");
+  });
 });

@@ -240,7 +240,7 @@ async function handle(req: Request, env: Env): Promise<Response> {
   }
   if (req.method !== "GET") {
     const apiBearer =
-      ["/api/v1/application", "/api/v1/bug-report"].includes(path) &&
+      ["/api/v1/application", "/api/v1/appeal", "/api/v1/bug-report"].includes(path) &&
       req.headers.has("authorization");
     if (!apiBearer) csrf(req, env.SITE_URL);
   }
@@ -332,6 +332,8 @@ async function handle(req: Request, env: Env): Promise<Response> {
         status,
         assessment,
         assessmentFailure,
+        submissionChannel,
+        appeals,
         policy,
         model,
         decision,
@@ -345,6 +347,8 @@ async function handle(req: Request, env: Env): Promise<Response> {
         status,
         assessment,
         assessmentFailure,
+        submissionChannel,
+        appeals,
         policy,
         model,
         decision,
@@ -389,7 +393,7 @@ async function handle(req: Request, env: Env): Promise<Response> {
     }
     throw new ApiError(405, "method", "Method not allowed.");
   }
-  const browserOnly = !["/api/v1/application", "/api/v1/bug-report"].includes(
+  const browserOnly = !["/api/v1/application", "/api/v1/appeal", "/api/v1/bug-report"].includes(
     path,
   );
   const auth = await authenticated(req, env, browserOnly);
@@ -486,6 +490,11 @@ async function handle(req: Request, env: Env): Promise<Response> {
       { id: saved.id, status: "received" },
       saved.id === id ? 201 : 200,
     );
+  }
+  if (path === "/api/v1/appeal" && req.method === "POST") {
+    const key = req.headers.get("Idempotency-Key");
+    if (!key || !/^[\w-]{8,128}$/.test(key)) throw new ApiError(400, "idempotency_key", "Supply an Idempotency-Key of 8–128 letters, digits, underscores or hyphens.");
+    return json(await auth.agent.appeal(await body(req), key, auth.bearer ? auth.hash : undefined), 202);
   }
   if (path === "/api/v1/application") {
     if (req.method === "GET") return json(await auth.agent.publicState());

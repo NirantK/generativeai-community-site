@@ -37,10 +37,22 @@ Do not print the token, commit it, put it in URLs, or send it to another host.
    do not poll more often than once per minute.
 
 The token expires after 24 hours. It permits one submission and
-status reads and plain-text bug reports; it cannot change my identity, email, or consent.
+status reads, eligible appeals, and plain-text bug reports; it cannot change my identity, email, or consent.
 If those details are incomplete, direct me back to /apply.
 A copy of the submitted application is emailed to my LinkedIn address.
 Approval invitations are sent separately after approval.
+
+If rejected, inspect appeal.eligible in GET /api/v1/application.
+Appeals are available only if the ORIGINAL submission used an agent token.
+Ask me for at least one of: an HTTPS proofUrl showing my work, an explanation
+of a project and my contribution (80–4000 characters), or a voucher naming a
+community member and how they know my work (20–1000 characters).
+Never invent evidence or endorsements. Share a reference's contact details
+only with their permission. Show me the appeal before submitting it.
+POST /api/v1/appeal with that JSON and a new Idempotency-Key.
+Identical retries are safe. Appeals receive human review; references must be
+verified by an administrator. If my token expired, ask me to generate a new
+one in /apply; that does not change the original submission method.
 
 If you encounter a bug, POST /api/v1/bug-report with Content-Type: text/plain,
 the same bearer token, and a fresh Idempotency-Key. Use 1–200 words (at most

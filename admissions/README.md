@@ -26,7 +26,7 @@ configuration. Never commit secrets, include them in CLI arguments, or print the
 Email Sending is enabled for `genaicommunity.ai`. DNS authentication records were
 verified while preserving existing mail services. A Cloudflare email reached the
 owner’s personal Gmail with SPF, DKIM, and DMARC passing. Email dispatch is enabled;
-automatic approvals remain paused pending the final assessment smoke test.
+automatic decisions are enabled with uncertain/model-failure cases routed to review.
 
 Remaining launch inputs and checks:
 
@@ -59,7 +59,7 @@ human decision when necessary, and delivers an invitation. Scheduled delivery al
 handles a decision made after the workflow's review wait has ended.
 
 Application states: `draft → submitted → review/approved → declined/approved`.
-Decline is administrator-only. Email states are separate: `pending`, `paused`,
+Clear student applications lacking exceptional work can be declined by the agent; administrators can also decline. Email states are separate: `pending`, `paused`,
 `sending`, `accepted`, `failed`, `uncertain`. There is no invented `joined` state.
 
 ## Agent API
@@ -140,3 +140,9 @@ An admin enters the colleague's LinkedIn email and sends an invitation through C
 ## Affiliation policy v3
 
 Clear current affiliation with Dashverse, Frameo, or Lossfunk qualifies. Current affiliation, or affiliation ending within the last calendar year, with OpenAI, Anthropic, ElevenLabs, or Cartesia also qualifies. Other companies continue through the AI-project policy; this allowlist is explicit in the versioned policy. Affiliation is applicant-supplied in the role field, not verified employment data from LinkedIn OIDC. The assessment persists the company, quoted role evidence, and end date. Unclear claims, missing dates for previous roles, model failures, and uncertain assessments go to manual review. The operational `AUTO_APPROVALS_ENABLED` switch still controls automatic decisions.
+
+## Student policy and appeals (v4)
+
+Students require exceptional original work with substantial personal contribution, unless an approved company affiliation applies. Ordinary coursework/tutorial completion is insufficient. Clear students without exceptional evidence are declined; ambiguous classifications, malformed evidence, and model failures go to manual review. The existing operational automatic-decision switch pauses both automatic approvals and student declines.
+
+Submission method is recorded by the gateway's authenticated bearer/browser path on the first accepted submission, never trusted from the payload. Only original agent submissions can appeal. Legacy records with no provenance are ineligible by default. An authenticated browser or fresh scoped token can submit an eligible appeal to `POST /api/v1/appeal`. At least one work URL, detailed explanation, or community reference is required. References are unverified claims until reviewed by an administrator; the system does not contact anyone automatically. Appeals are manually decided and preserve prior rejection, all supplied evidence, timestamps, and decision actor/reason. Identical key retries return the same record, changed payloads conflict, and only one appeal may be pending. Reappealing another rejection requires new evidence. Original application content and submission method are immutable.
