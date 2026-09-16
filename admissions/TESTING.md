@@ -5,13 +5,13 @@
 Run `npm run check:admissions && npm run test:admissions`.
 
 The authentication integration test uses the actual gateway, D1 state records,
-RS256 signature verification, nonce and audience checks, Agent identity, and session
+RS256 signature verification, issuer and audience checks, Agent identity, and session
 creation. Only the LinkedIn token/JWKS/userinfo network responses are intercepted.
 It generates its own signing keys and synthetic applicant; it does not reuse a
 personal LinkedIn account, OAuth token, cookie, email address, or real invitation.
 
 Covered authentication cases: valid login, callback replay, wrong audience, wrong
-issuer, wrong nonce, expired ID token, forged signature, mismatched userinfo subject,
+issuer, legacy-request nonce mismatch, expired ID token, forged signature, mismatched userinfo subject,
 cancelled consent, and callback/cookie state mismatch. Application tests separately
 exercise consent, verified email, token scopes, idempotency, review, and delivery.
 
@@ -31,9 +31,12 @@ Record date, environment, build commit, and pass/fail here without tokens, autho
 codes, cookies, email addresses, or LinkedIn subject identifiers. Do not mark this test
 passed based on a community-page link opening or a mocked callback.
 
-Current live OIDC status: **not run**. The LinkedIn app/product and callback registrations
-exist, and the client secret is stored in GitHub. The staging deployment must pass
-before the one-time real account test.
+Current live OIDC status: **first attempt failed; corrections awaiting live verification**.
+The owner's callback reached the staging Worker on 16 September 2026, but the token
+exchange failed. The originally transferred client secret was incorrect and has
+been replaced from the actual LinkedIn credential field. Live provider discovery
+also revealed the current `/oauth` issuer; verification and fixtures now match it.
+No application or invitation was submitted during the failed attempt.
 
 Repeat the live test only when explicitly requested or after a material provider,
 client credential, callback-domain, or authentication integration change; explain why
@@ -42,3 +45,18 @@ it is needed. Routine commits use the synthetic tests above.
 The community footer link was separately tested once in Nirant's signed-in browser on
 16 September 2026 and reached organization 146602087. Website CI tests this navigation
 with a synthetic LinkedIn destination; that is not evidence of OIDC login success.
+
+
+## Provider compatibility
+
+Use the live discovery issuer `https://www.linkedin.com/oauth`, not the older
+issuer in LinkedIn's documentation example. Match LinkedIn's confidential
+server-side authorization-code flow: one-use state bound to an HttpOnly secure
+cookie, client-secret token exchange, signed ID token, exact issuer/audience,
+required expiry/issued-at/subject, and matching userinfo subject. The current
+provider does not advertise nonce/PKCE support; no unsupported nonce is sent.
+Old in-flight requests that did send a nonce still require a matching claim.
+
+References checked 16 September 2026:
+- https://www.linkedin.com/oauth/.well-known/openid-configuration
+- https://github.com/nextauthjs/next-auth/blob/main/packages/core/src/providers/linkedin.ts

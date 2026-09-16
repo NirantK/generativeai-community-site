@@ -111,12 +111,13 @@ async function handle(req: Request, env: Env): Promise<Response> {
       `login:${await digest(req.headers.get("cf-connecting-ip") ?? "unknown")}`,
       20,
     );
-    const state = randomToken(),
-      nonce = randomToken();
+    // LinkedIn's confidential authorization-code flow uses one-use state.
+    // Its discovery metadata/Auth.js provider do not advertise nonce checks.
+    const state = randomToken();
     await env.INDEX.prepare(
       "INSERT INTO oauth_states(hash,nonce,verifier,expires_at) VALUES(?,?,?,?)",
     )
-      .bind(await digest(state), nonce, "", Date.now() + 600000)
+      .bind(await digest(state), "", "", Date.now() + 600000)
       .run();
     const authorize = new URL(
       "https://www.linkedin.com/oauth/v2/authorization",
@@ -127,7 +128,6 @@ async function handle(req: Request, env: Env): Promise<Response> {
       redirect_uri: `${env.SITE_URL}/auth/linkedin/callback`,
       scope: "openid profile email",
       state,
-      nonce,
     }).toString();
     return redirect(authorize.toString(), [
       sessionCookie(oauthName, state, 600),
@@ -180,13 +180,14 @@ async function handle(req: Request, env: Env): Promise<Response> {
       .object({ id_token: z.string(), access_token: z.string() })
       .parse(await tokenResponse.json());
     const { payload } = await jwtVerify(tokens.id_token, jwks, {
-      issuer: "https://www.linkedin.com",
+      issuer: "https://www.linkedin.com/oauth",
       audience: env.LINKEDIN_CLIENT_ID,
       algorithms: ["RS256"],
-      requiredClaims: ["exp", "iat", "sub", "nonce"],
+      requiredClaims: ["exp", "iat", "sub"],
       maxTokenAge: "10m",
     });
-    if (payload.nonce !== saved.nonce || !payload.sub)
+    // Preserve validation for any in-flight requests created by the old flow.
+    if ((saved.nonce && payload.nonce !== saved.nonce) || !payload.sub)
       throw new ApiError(400, "oidc_nonce", "Invalid sign-in response.");
     const infoResponse = await fetch("https://api.linkedin.com/v2/userinfo", {
       headers: { Authorization: `Bearer ${tokens.access_token}` },
@@ -371,6 +372,14 @@ export class AdmissionsGateway extends WorkerEntrypoint<Env> {
     try {
       return await handle(req, this.env);
     } catch (error) {
+      if (
+        new URL(req.url).pathname === "/auth/linkedin/callback" &&
+        req.headers.get("accept")?.includes("text/html")
+      ) {
+        return redirect(`${this.env.SITE_URL}/apply?signin=failed`, [
+          sessionCookie(oauthName, "", 0),
+        ]);
+      }
       if (error instanceof ApiError)
         return json(
           {

@@ -61,3 +61,13 @@ This was a link-navigation smoke test, not an OIDC sign-in test.
 LinkedIn destination. CI never calls LinkedIn or stores personal-account cookies.
 The real signed-in check is test-once by default; repeat it only after the target
 Page/URL changes or when explicitly requested.
+
+## Verified rollout status — 16 September 2026
+
+- GitHub Actions run `35092606550` passed all checks and deployed staging from commit `214a232`.
+- Staging frontend: https://staging.generativeai-community-site.pages.dev
+- Staging Pages Functions successfully reach the private admission Worker; the application page shows the signed-out LinkedIn entry flow.
+- LinkedIn and WhatsApp secrets are stored in GitHub and were deployed to the staging Worker.
+- Replacement deployment token `genaicommunity-github-deploy-v2` authenticated successfully. The original token was removed from Cloudflare after confirmation.
+- The first real OAuth callback failed at token exchange. The incorrect transferred secret was corrected; issuer/provider-flow corrections are covered by regression tests and await live verification.
+- Production publishing, app privacy-policy registration, administrator configuration, and controlled email delivery remain pending.

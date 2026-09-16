@@ -208,3 +208,15 @@ test("HTML gateway failures show a useful message", async ({ page }) => {
   await expect(page.getByRole("status")).toContainText("Applications are temporarily unavailable");
   await expect(page.getByRole("status")).not.toContainText("Unexpected token");
 });
+
+
+test("failed and cancelled sign-ins offer a retry", async ({ page }) => {
+  await page.route("**/api/v1/application", route => route.fulfill({
+    status: 401, json: { error: { message: "Sign in" } },
+  }));
+  for (const [reason, message] of [["failed", "LinkedIn sign-in didn’t finish"], ["cancelled", "LinkedIn sign-in was cancelled"]]) {
+    await page.goto(`/apply?signin=${reason}`);
+    await expect(page.getByRole("status")).toContainText(message);
+    await expect(page.getByRole("link", { name: "Sign in with LinkedIn", exact: true })).toBeVisible();
+  }
+});

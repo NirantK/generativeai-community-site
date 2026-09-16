@@ -99,7 +99,15 @@ export function initApplication() {
       if ((e as { status?: number }).status === 401) {
         el("signed-out").hidden = false;
         el("signed-in").hidden = true;
-        notice("Sign in to start your application.");
+        const signin = new URL(location.href).searchParams.get("signin");
+        notice(
+          signin === "failed"
+            ? "LinkedIn sign-in didn’t finish. Please try again below."
+            : signin === "cancelled"
+              ? "LinkedIn sign-in was cancelled. You can try again when ready."
+              : "Sign in to start your application.",
+          signin === "failed",
+        );
       } else notice((e as Error).message, true);
     }
   }

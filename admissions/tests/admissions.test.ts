@@ -480,10 +480,11 @@ it("validates signed LinkedIn callbacks and repeats failure cases without a pers
     expect(begin.status).toBe(302);
     const location = new URL(begin.headers.get("Location")!);
     const state = location.searchParams.get("state")!;
-    signed = await new SignJWT({ nonce: location.searchParams.get("nonce") })
+    expect(location.searchParams.has("nonce")).toBe(false);
+    signed = await new SignJWT({})
       .setProtectedHeader({ alg: "RS256", kid: "oidc-test" })
       .setSubject("oidc-applicant")
-      .setIssuer("https://www.linkedin.com")
+      .setIssuer("https://www.linkedin.com/oauth")
       .setAudience("test-client")
       .setIssuedAt()
       .setExpirationTime("5m")
@@ -518,7 +519,8 @@ it("validates signed LinkedIn callbacks and repeats failure cases without a pers
     const invalidCases = [
       { name: "wrong audience", audience: "wrong-client" },
       { name: "wrong issuer", issuer: "https://example.com" },
-      { name: "wrong nonce", nonce: "wrong-nonce" },
+      { name: "legacy request nonce mismatch", nonce: "wrong-nonce" },
+      { name: "obsolete issuer", issuer: "https://www.linkedin.com" },
       { name: "expired token", expiry: "-1m" },
       { name: "mismatched profile", subject: "another-account" },
       { name: "forged signature", key: forgedKeys.privateKey },
@@ -527,12 +529,14 @@ it("validates signed LinkedIn callbacks and repeats failure cases without a pers
       const next = await gateway("/auth/linkedin");
       const nextLocation = new URL(next.headers.get("Location")!);
       const nextState = nextLocation.searchParams.get("state")!;
-      signed = await new SignJWT({
-        nonce: scenario.nonce ?? nextLocation.searchParams.get("nonce"),
-      })
+      if (scenario.nonce) {
+        await env.INDEX.prepare("UPDATE oauth_states SET nonce=? WHERE hash=?")
+          .bind("legacy-request-nonce", await digest(nextState)).run();
+      }
+      signed = await new SignJWT(scenario.nonce ? { nonce: scenario.nonce } : {})
         .setProtectedHeader({ alg: "RS256", kid: "oidc-test" })
         .setSubject(scenario.subject ?? "oidc-applicant")
-        .setIssuer(scenario.issuer ?? "https://www.linkedin.com")
+        .setIssuer(scenario.issuer ?? "https://www.linkedin.com/oauth")
         .setAudience(scenario.audience ?? "test-client")
         .setIssuedAt()
         .setExpirationTime(scenario.expiry ?? "5m")
@@ -580,4 +584,17 @@ it("validates signed LinkedIn callbacks and repeats failure cases without a pers
     env.LINKEDIN_CLIENT_ID = "";
     env.LINKEDIN_CLIENT_SECRET = "";
   }
+});
+
+
+it("returns failed browser callbacks to a safe retry page without exposing codes", async () => {
+  const response = await gateway(
+    "/auth/linkedin/callback?state=invalid&code=must-not-be-reflected",
+    "GET", { accept: "text/html", cookie: "__Host-ga-oauth=different" },
+  );
+  expect(response.status).toBe(302);
+  expect(response.headers.get("location")).toBe("https://genaicommunity.ai/apply?signin=failed");
+  expect(response.headers.get("set-cookie")).toContain("__Host-ga-oauth=; ");
+  expect(response.headers.get("set-cookie")).not.toContain("__Host-ga-session=");
+  expect(await response.text()).not.toContain("must-not-be-reflected");
 });
