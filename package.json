@@ -11,21 +11,33 @@
     "preview": "astro preview",
     "astro": "astro",
     "test:e2e": "playwright test",
-    "test:e2e:update": "playwright test --update-snapshots"
+    "test:e2e:update": "playwright test --update-snapshots",
+    "test:admissions": "vitest run --config admissions/vitest.config.ts",
+    "check:admissions": "tsc -p admissions/tsconfig.json",
+    "types:admissions": "wrangler types --config admissions/wrangler.jsonc admissions/worker-configuration.d.ts --strict-vars=false",
+    "build:admissions": "wrangler deploy --dry-run --config admissions/wrangler.jsonc",
+    "dev:admissions": "wrangler dev --config admissions/wrangler.jsonc"
   },
   "dependencies": {
-    "@astrojs/mdx": "^5.0.4",
+    "@astrojs/mdx": "^8.0.1",
     "@astrojs/sitemap": "^3.7.2",
     "@fontsource-variable/geist": "^5.2.8",
     "@fontsource-variable/jetbrains-mono": "^5.2.8",
     "@tailwindcss/vite": "^4.3.0",
-    "astro": "^6.3.1",
-    "tailwindcss": "^4.3.0"
+    "agents": "^0.23.0",
+    "astro": "^7.3.2",
+    "jose": "^6.2.12",
+    "tailwindcss": "^4.3.0",
+    "zod": "^4.4.3"
   },
   "devDependencies": {
     "@axe-core/playwright": "^4.11.3",
+    "@cloudflare/vitest-pool-workers": "^0.22.0",
     "@playwright/test": "^1.60.0",
     "@tailwindcss/typography": "^0.5.19",
-    "wrangler": "^4.90.1"
+    "typescript": "^6.0.3",
+    "vite": "^8.3.0",
+    "vitest": "^4.1.11",
+    "wrangler": "^4.131.2"
   }
 }

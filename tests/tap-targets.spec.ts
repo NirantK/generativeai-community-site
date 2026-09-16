@@ -1,12 +1,12 @@
 import { test, expect } from '@playwright/test';
 
-const pages = ['/', '/people', '/deephackdemos', '/demoday102023', '/privacy-policy', '/terms-and-conditions'];
+const pages = ['/', '/people', '/deephackdemos', '/demoday102023', '/privacy-policy', '/terms-and-conditions', '/events', '/brand', '/apply'];
 
 for (const path of pages) {
   test(`header + nav tap targets ≥ 48px on ${path}`, async ({ page }) => {
     await page.goto(path, { waitUntil: 'networkidle' });
     const small = await page.$$eval(
-      'header a, header button, nav a, nav button, main > section a',
+      'header a, header button, nav a, nav button, footer a, main > section a',
       (els) =>
         els
           .map((el) => {

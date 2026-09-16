@@ -1,0 +1,250 @@
+---
+import BaseLayout from "../layouts/BaseLayout.astro";
+import "../styles/admissions.css";
+const fields = [
+  [
+    "linkedinUrl",
+    "LinkedIn profile URL",
+    "https://www.linkedin.com/in/your-name",
+    "url",
+    300,
+  ],
+  [
+    "role",
+    "Current or most recent role",
+    "Student, engineer, researcher, between roles…",
+    "text",
+    300,
+  ],
+  [
+    "organization",
+    "Organization or independent work",
+    "Your organization, school, or independent practice",
+    "text",
+    300,
+  ],
+  [
+    "education",
+    "Highest or current education",
+    "Course and institution, self-taught, or no formal education",
+    "text",
+    600,
+  ],
+  [
+    "project",
+    "An AI project or use case",
+    "What did you build, research, or apply?",
+    "textarea",
+    4000,
+  ],
+  [
+    "contribution",
+    "Your contribution",
+    "Describe what you personally did.",
+    "textarea",
+    2000,
+  ],
+  [
+    "outcome",
+    "Result or learning",
+    "What happened, and what did you learn?",
+    "textarea",
+    2000,
+  ],
+  [
+    "motivation",
+    "Why would you like to join?",
+    "What would you like to learn or share with the community?",
+    "textarea",
+    2000,
+  ],
+] as const;
+---
+
+<BaseLayout
+  title="Apply to join"
+  description="Join a community of people building, researching, and applying generative AI."
+>
+  <div class="admissions">
+    <p class="eyebrow">Community membership</p>
+    <h1>Bring what you’re building.</h1>
+    <p class="intro">
+      Meet people working with generative AI. Tell us about your work or a
+      project, and we’ll review your application. Students and independent
+      builders are welcome.
+    </p>
+    <p id="message" class="notice" role="status" aria-live="polite">
+      Checking your sign-in…
+    </p>
+    <noscript>
+      <p>Enable JavaScript to sign in and complete your application.</p>
+    </noscript>
+    <section id="signed-out" hidden>
+      <h2>Start with LinkedIn</h2>
+      <p>
+        We use LinkedIn to connect your application to your account. You’ll add
+        any background details LinkedIn doesn’t provide.
+      </p>
+      <div class="actions">
+        <a class="button primary" href="/auth/linkedin">
+          Sign in with LinkedIn
+        </a>
+      </div>
+      <p class="help">
+        After approval, your WhatsApp invitation arrives by email.
+      </p>
+    </section>
+    <div id="signed-in" hidden>
+      <div class="actions">
+        <p id="identity"></p>
+        <button id="logout" type="button">
+          Sign out
+        </button>
+      </div>
+      <section id="email-section">
+        <h2>Your email</h2>
+        <p class="help">
+          We’ll send your verification code and community invitation here.
+        </p>
+        <form id="email-form">
+          <label for="email">Email address</label>
+          <input
+            id="email"
+            name="email"
+            type="email"
+            autocomplete="email"
+            required
+            maxlength="254"
+          />
+          <div class="actions">
+            <button type="submit">Send verification code</button>
+          </div>
+        </form>
+        <form id="verify-form" hidden>
+          <label for="code">8-digit verification code</label>
+          <input
+            id="code"
+            name="code"
+            autocomplete="one-time-code"
+            inputmode="numeric"
+            pattern="[0-9]{8}"
+            maxlength="8"
+            required
+          />
+          <div class="actions">
+            <button type="submit">Verify email</button>
+          </div>
+        </form>
+        <p id="email-status" class="help"></p>
+        <button id="change-email" type="button" hidden>
+          Change email
+        </button>
+      </section>
+      <section id="consent-section">
+        <h2>Before you apply</h2>
+        <form id="consent-form">
+          <label class="check">
+            <input type="checkbox" name="consent" required />
+            <span>
+              I agree to the{" "}
+              <a href="/#whatsapp-community-rules">community rules</a> and the{" "}
+              <a href="/terms-and-conditions">Terms &amp; Conditions</a> and{" "}
+              <a href="/privacy-policy">Privacy Policy</a>. I
+              consent to AI-assisted assessment of my application and email
+              about my application and invitation.
+            </span>
+          </label>
+          <div class="actions">
+            <button type="submit">Save consent</button>
+          </div>
+        </form>
+      </section>
+      <section id="status-section" hidden>
+        <h2 id="status-title">Application status</h2>
+        <p id="status-copy"></p>
+        <button id="refresh" type="button">
+          Refresh status
+        </button>
+      </section>
+      <section id="form-section">
+        <h2>A little about your work</h2>
+        <p class="help">
+          All fields are required. “Independent,” “between roles,” and “no
+          formal education” are valid answers where appropriate.
+        </p>
+        <form id="application-form">
+          {fields.map(([name, label, placeholder, type, max]) => (
+            <label for={name}>
+              {label}
+              {type === "textarea" ? (
+                <textarea
+                  id={name}
+                  name={name}
+                  placeholder={placeholder}
+                  maxlength={max}
+                  required
+                ></textarea>
+              ) : (
+                <input
+                  id={name}
+                  name={name}
+                  type={type}
+                  placeholder={placeholder}
+                  maxlength={max}
+                  required
+                />
+              )}
+            </label>
+          ))}
+          <div class="actions">
+            <button class="primary" type="submit">
+              Submit application
+            </button>
+          </div>
+          <p class="help">
+            Applications are final once submitted. Clear matches are approved
+            automatically; other applications receive a human review.
+          </p>
+        </form>
+      </section>
+      <details id="agent-section">
+        <summary>Apply using an AI agent</summary>
+        <p>
+          Use Codex or another agent to prepare and submit your application.
+          First verify your email and save consent above.
+        </p>
+        <p class="help">
+          The token lasts 24 hours and allows one application submission plus
+          status checks. Replacing it immediately revokes the old token. It
+          cannot change your account or email.
+        </p>
+        <div class="actions">
+          <button id="issue-token" type="button">
+            Generate application token
+          </button>
+          <button id="revoke-token" type="button">
+            Revoke token
+          </button>
+        </div>
+        <div id="token-output" hidden>
+          <p class="notice">
+            Copy this token now. It is shown only once. Share it only with the
+            agent you want to submit your application.
+          </p>
+          <pre id="token-value"></pre>
+          <button id="copy-token" type="button">
+            Copy token
+          </button>
+        </div>
+        <p>
+          <a href="/api-instructions">Read agent instructions</a> ·{" "}
+          <a href="/openapi.json">OpenAPI specification</a>
+        </p>
+      </details>
+    </div>
+  </div>
+</BaseLayout>
+<script>
+  import { initApplication } from "../lib/admissions/client";
+  initApplication();
+</script>

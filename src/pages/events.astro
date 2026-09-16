@@ -1,0 +1,18 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+const events = [
+  { title: 'Demo Day — October 2023', date: 'October 2023', href: '/demoday102023', description: 'Project presentations, demos, and the community event recap.' },
+  { title: 'Deep Hack: Generative AI demos', date: 'April 2023', href: '/deephackdemos', description: 'Explore the projects and demos from the Generative AI hackathon.' },
+];
+---
+<BaseLayout title="Events" description="Community demo days, hackathons, and event archives.">
+  <h1 class="text-headline-lg-mobile md:text-display-lg font-bold tracking-tight">Events</h1>
+  <p class="mt-stack-sm text-on-surface-variant max-w-prose">Demo days, hackathons, and the work people shared along the way.</p>
+  <ul class="mt-stack-lg divide-y divide-outline-variant border-y border-outline-variant">
+    {events.map(event => <li class="py-stack-md">
+      <p class="font-mono text-label-caps text-on-surface-variant">{event.date}</p>
+      <h2 class="mt-stack-sm text-2xl font-bold"><a class="text-primary underline underline-offset-4 inline-flex items-center min-h-tap" href={event.href}>{event.title}</a></h2>
+      <p class="mt-stack-sm text-on-surface-variant">{event.description}</p>
+    </li>)}
+  </ul>
+</BaseLayout>

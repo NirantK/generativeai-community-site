@@ -10,6 +10,10 @@ Existing Pages project: `generativeai-community-site`.
 Every pull request builds the website and runs accessibility, mobile layout,
 font and navigation checks. Merging to `main` repeats those checks and publishes
 the exact tested artifact to the existing Cloudflare Pages project automatically.
+Same-repository pull requests also deploy isolated staging at
+`https://staging.generativeai-community-site.pages.dev` after checks pass.
+The preview service binding points to the staging admission Worker and database.
+
 There are no workstation uploads or dashboard drag-and-drop deployments.
 A failed build or test prevents the deploy job. Production deployments are serialized.
 The existing domain and Pages project stay in place.
@@ -21,13 +25,16 @@ The workflow is `.github/workflows/ci.yml`.
 ## One-time credential setup
 
 Set `CLOUDFLARE_API_TOKEN` as a GitHub repository secret or in the `production`
-environment. It needs Account / Cloudflare Pages / Edit for the Scaled Focus account.
+environment. It needs Pages Write, Workers Scripts Write, and D1 Write for the
+Scaled Focus account. The latter permissions deploy the private admissions Worker
+and apply its migrations. Store `LINKEDIN_CLIENT_SECRET` as a repository secret
+for both environments.
 Do not put the token in source, logs, issues, or command arguments. From an authenticated
 terminal, `gh secret set CLOUDFLARE_API_TOKEN --repo NirantK/generativeai-community-site`
 prompts for the value securely. The account ID is public configuration.
 
-The credential has not been provisioned merely by adding this workflow. Check the
-GitHub run and the live URL before marking a deployment complete.
+The Pages token was stored by the owner on 16 September 2026. Check the GitHub run
+and live URLs before marking a deployment complete.
 
 The September 2026 People page updates were reconciled with the published HTML before
 being committed so a source build preserves the existing content.

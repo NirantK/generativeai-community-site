@@ -1,10 +1,9 @@
 ---
-const whatsappUrl = 'https://nas.io/the-generativeai-group';
+const whatsappUrl = '/apply';
 const navItems = [
   { label: 'HOME', href: '/' },
   { label: 'PEOPLE', href: '/people/' },
-  { label: 'DEMOS', href: '/deephackdemos/' },
-  { label: 'EVENTS', href: '/demoday102023/' },
+  { label: 'EVENTS', href: '/events' },
 ];
 const path = Astro.url.pathname.replace(/\/$/, '') || '/';
 ---
@@ -15,7 +14,8 @@ const path = Astro.url.pathname.replace(/\/$/, '') || '/';
       class="font-mono text-label-caps uppercase text-on-surface min-h-tap inline-flex items-center"
       aria-label="GenerativeAI Community — back to home"
     >
-      GENERATIVEAI_COMMUNITY
+      <img src="/brand/logo.svg" alt="" width="28" height="28" class="mr-2 shrink-0" />
+      <span class="hidden sm:inline">GENERATIVEAI_COMMUNITY</span><span class="sm:hidden">GENAI</span>
     </a>
     <nav class="hidden md:flex items-center gap-1" aria-label="Primary">
       {navItems.map((it) => {
@@ -40,7 +40,7 @@ const path = Astro.url.pathname.replace(/\/$/, '') || '/';
       rel="noopener"
       class="font-mono text-label-caps uppercase border border-outline-variant px-3 min-h-tap inline-flex items-center text-on-surface hover:border-primary hover:text-primary transition-colors"
     >
-      JOIN_WHATSAPP
+      Apply to Join
     </a>
   </div>
 </header>

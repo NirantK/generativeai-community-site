@@ -27,3 +27,9 @@ pnpm-debug.log*
 test-results/
 playwright-report/
 .lighthouseci/
+
+# Cloudflare local secrets and state
+.dev.vars
+.dev.vars.*
+!.dev.vars.example
+.wrangler/
