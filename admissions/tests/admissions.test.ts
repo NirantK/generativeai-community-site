@@ -435,7 +435,7 @@ it("dispatches a real AgentWorkflow and persists its assessment", async () => {
   expect((await agent.inspect()).assessment?.relevant).toBe(true);
 });
 
-it("validates a signed LinkedIn callback, creates a session, and rejects replay and wrong audience", async () => {
+it("validates signed LinkedIn callbacks and repeats failure cases without a personal account", async () => {
   const { generateKeyPair, exportJWK, SignJWT } = await import("jose");
   const keys = await generateKeyPair("RS256");
   const jwk = {
@@ -512,25 +512,66 @@ it("validates a signed LinkedIn callback, creates a session, and rejects replay 
         )
       ).status,
     ).toBe(400);
-    const next = await gateway("/auth/linkedin");
-    const nextLocation = new URL(next.headers.get("Location")!);
-    const nextState = nextLocation.searchParams.get("state")!;
-    signed = await new SignJWT({
-      nonce: nextLocation.searchParams.get("nonce"),
-    })
-      .setProtectedHeader({ alg: "RS256", kid: "oidc-test" })
-      .setSubject("oidc-applicant")
-      .setIssuer("https://www.linkedin.com")
-      .setAudience("wrong-client")
-      .setIssuedAt()
-      .setExpirationTime("5m")
-      .sign(keys.privateKey);
+    // Exercise the real JWT/state/session implementation. Only provider network
+    // responses are synthetic; no production test-login endpoint is introduced.
+    const forgedKeys = await generateKeyPair("RS256");
+    const invalidCases = [
+      { name: "wrong audience", audience: "wrong-client" },
+      { name: "wrong issuer", issuer: "https://example.com" },
+      { name: "wrong nonce", nonce: "wrong-nonce" },
+      { name: "expired token", expiry: "-1m" },
+      { name: "mismatched profile", subject: "another-account" },
+      { name: "forged signature", key: forgedKeys.privateKey },
+    ];
+    for (const scenario of invalidCases) {
+      const next = await gateway("/auth/linkedin");
+      const nextLocation = new URL(next.headers.get("Location")!);
+      const nextState = nextLocation.searchParams.get("state")!;
+      signed = await new SignJWT({
+        nonce: scenario.nonce ?? nextLocation.searchParams.get("nonce"),
+      })
+        .setProtectedHeader({ alg: "RS256", kid: "oidc-test" })
+        .setSubject(scenario.subject ?? "oidc-applicant")
+        .setIssuer(scenario.issuer ?? "https://www.linkedin.com")
+        .setAudience(scenario.audience ?? "test-client")
+        .setIssuedAt()
+        .setExpirationTime(scenario.expiry ?? "5m")
+        .sign(scenario.key ?? keys.privateKey);
+      const failed = await gateway(
+        `/auth/linkedin/callback?state=${nextState}&code=test-code`,
+        "GET",
+        { cookie: `__Host-ga-oauth=${nextState}` },
+      );
+      expect(failed.status, scenario.name).toBe(400);
+      expect(
+        failed.headers.get("set-cookie") ?? "",
+        scenario.name,
+      ).not.toContain("__Host-ga-session=");
+    }
+    const cancelled = await gateway("/auth/linkedin");
+    const cancelledState = new URL(
+      cancelled.headers.get("Location")!,
+    ).searchParams.get("state")!;
+    const cancelledResponse = await gateway(
+      `/auth/linkedin/callback?state=${cancelledState}&error=access_denied`,
+      "GET",
+      { cookie: `__Host-ga-oauth=${cancelledState}` },
+    );
+    expect(cancelledResponse.status).toBe(302);
+    expect(cancelledResponse.headers.get("Location")).toBe(
+      "https://genaicommunity.ai/apply?signin=cancelled",
+    );
+    expect(cancelledResponse.headers.get("set-cookie")).not.toContain(
+      "__Host-ga-session=",
+    );
     expect(
       (
         await gateway(
-          `/auth/linkedin/callback?state=${nextState}&code=test-code`,
+          "/auth/linkedin/callback?state=invalid&code=test-code",
           "GET",
-          { cookie: `__Host-ga-oauth=${nextState}` },
+          {
+            cookie: "__Host-ga-oauth=another-state",
+          },
         )
       ).status,
     ).toBe(400);
