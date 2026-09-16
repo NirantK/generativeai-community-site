@@ -19,6 +19,7 @@ import appealMigration from "../migrations/0004_appeal_index.sql?raw";
 import adminMigration from "../migrations/0003_administrators.sql?raw";
 import bugMigration from "../migrations/0002_bug_reports.sql?raw";
 const sample = {
+  whatsapp: "+14155552671",
   role: "AI engineer",
 
   project:
@@ -457,6 +458,7 @@ describe("submission recovery and approval decisions", () => {
       await instance.reassess("admin");
       expect(instance.state.status).toBe("approved");
       expect(instance.state.assessment).toEqual(assessment);
+      expect(JSON.stringify(run.mock.calls[0][1])).not.toContain(sample.whatsapp);
       expect(run.mock.calls[0][1]).toHaveProperty(
         "response_format.type",
         "json_schema",
@@ -514,6 +516,8 @@ describe("submission recovery and approval decisions", () => {
       expect(email.to).toBe("applicant@example.com");
       expect(email.text).toContain(sample.project);
       expect(email.text).toContain(sample.contribution);
+      expect(email.text).toContain(sample.whatsapp);
+      expect(email.html).toContain(sample.whatsapp);
       expect(email.html).toContain("&lt;script&gt;");
       expect(email.html).not.toContain("<script>");
       expect(email.text).not.toContain("chat.whatsapp.com");
@@ -972,5 +976,21 @@ describe("appeals", () => {
     const other=await account();await other.agent.consent();const access=await other.agent.token();
     await other.agent.submit(sample,"original-agent-application",await digest(access.token));
     expect((await other.agent.inspect()).submissionChannel).toBe("agent");
+  });
+});
+
+it("requires a country-coded WhatsApp number and normalizes formatting", () => {
+  expect(applicationSchema.parse({...sample,whatsapp:"+1 (415) 555-2671"}).whatsapp).toBe("+14155552671");
+  for(const whatsapp of [undefined,"", "4155552671", "+0123456789", "+123", "+1234567890123456", "+1415abc2671"]) expect(applicationSchema.safeParse({...sample,whatsapp}).success).toBe(false);
+});
+
+it("preserves identical legacy retries without allowing a new application to omit WhatsApp", async () => {
+  const {agent}=await account(); await agent.consent();
+  const {whatsapp, ...legacy}=sample;
+  await runInDurableObject(agent, async instance => {
+    instance.setState({...instance.state,application:legacy as typeof sample,payloadHash:await digest(JSON.stringify(legacy)),status:"review"});
+    const result=await instance.submit(legacy,"legacy-retry-1");
+    expect(result.application).toEqual(legacy);
+    expect(instance.state.application?.whatsapp).toBeUndefined();
   });
 });

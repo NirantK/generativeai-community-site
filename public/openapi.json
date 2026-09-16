@@ -2,7 +2,7 @@
   "openapi": "3.1.0",
   "info": {
     "title": "GenerativeAI Community application API",
-    "version": "1.1.0",
+    "version": "1.2.0",
     "description": "Generate a 24-hour application token after LinkedIn sign-in and browser consent at /apply. One application per LinkedIn account. Tokens are not OAuth access tokens. Never expose tokens in logs or URLs."
   },
   "servers": [
@@ -453,6 +453,7 @@
         "type": "object",
         "additionalProperties": false,
         "required": [
+          "whatsapp",
           "role",
           "project",
           "contribution",
@@ -478,6 +479,12 @@
             "type": "string",
             "minLength": 20,
             "maxLength": 2000
+          },
+          "whatsapp": {
+            "type": "string",
+            "minLength": 9,
+            "maxLength": 32,
+            "description": "Required WhatsApp number with +country code. Spaces, parentheses and hyphens are normalized; the stored result is 8\u201315 digits after +, with no leading zero. Example: +14155552671. Self-reported, not verified by WhatsApp."
           }
         }
       },

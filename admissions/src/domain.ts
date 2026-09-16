@@ -4,6 +4,7 @@ export const CONSENT = "admissions-v1";
 export const TOKEN_TTL = 24 * 60 * 60 * 1000;
 export const applicationSchema = z
   .object({
+    whatsapp: z.string().trim().max(32).transform(value => value.replace(/[\s()-]/g, "")).pipe(z.string().regex(/^\+[1-9]\d{7,14}$/, "Enter your WhatsApp number with country code, for example +14155552671.")),
     role: z.string().trim().min(2).max(300),
     project: z.string().trim().min(40).max(4000),
     contribution: z.string().trim().min(20).max(2000),
