@@ -78,3 +78,25 @@ verified-email label and enabled controls observed in this test were corrected,
 with a regression check passing on all five browser/device profiles.
 
 No application or invitation has been submitted in this smoke test yet.
+
+## LinkedIn-only email and agent-first update
+
+Build `0cb78a7` deployed successfully to the official staging domain. The separate
+email-code and email-edit endpoints/forms were removed at the owner's request.
+Draft contact details now refresh only from a validated LinkedIn callback. The
+agent option is expanded before the alternative form.
+
+The earlier Cloudflare test email was located in the correct connected personal
+Gmail account through Composio. Gmail Authentication-Results confirm SPF, DKIM
+for genaicommunity.ai, and DMARC all pass. No verification code was used after the
+owner removed the code step.
+
+Local validation: 27 backend tests and 45 application-page browser checks passed.
+CI also passed the full browser suite and deployed the additive bug-report schema.
+Submission receipts have an independent durable delivery ledger; automated tests
+cover one send under concurrency, escaping, and uncertain outcomes without blind
+resends. Agent bug reports cover plain-text input, 200-word/8,000-byte limits,
+idempotent retries/conflicts, and revoked tokens.
+
+Live application submission, receipt delivery, and bug reporting remain pending
+one provider sign-in to clear the draft's old email-code test state.

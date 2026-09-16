@@ -285,7 +285,7 @@
             "description": "Browser session/origin/consent required; bearer tokens are forbidden"
           },
           "409": {
-            "description": "Verify email first"
+            "description": "LinkedIn did not confirm an email; refresh LinkedIn sign-in."
           }
         }
       },
@@ -501,6 +501,22 @@
           },
           "tokenActive": {
             "type": "boolean"
+          },
+          "receipt": {
+            "type": "object",
+            "properties": {
+              "status": {
+                "enum": [
+                  "pending",
+                  "paused",
+                  "sending",
+                  "accepted",
+                  "failed",
+                  "uncertain"
+                ]
+              }
+            },
+            "description": "Delivery state of the submitted application copy, separate from the approval invitation."
           }
         }
       },

@@ -24,9 +24,9 @@ Store `LINKEDIN_CLIENT_SECRET` in GitHub Actions secrets. The client ID is publi
 configuration. Never commit secrets, include them in CLI arguments, or print them.
 
 Email Sending is enabled for `genaicommunity.ai`. DNS authentication records were
-verified while preserving existing mail services. Inbox Authentication-Results and
-real invitation delivery still require a controlled test. Both email dispatch and
-automatic approvals remain paused until those launch checks complete.
+verified while preserving existing mail services. A Cloudflare email reached the
+owner’s personal Gmail with SPF, DKIM, and DMARC passing. Email dispatch is enabled;
+automatic approvals remain paused pending the final assessment smoke test.
 
 Remaining launch inputs and checks:
 
@@ -68,7 +68,7 @@ See `public/openapi.json` and `/api-instructions`. Token generation requires bro
 LinkedIn sign-in, current consent, and verified email. Tokens contain 256 random bits,
 expire in 24 hours, are shown once and stored only as SHA-256 hashes. Replacement,
 revocation and email changes invalidate old tokens. Contact changes are locked after
-submission. A token is scoped to one account, one submission, and status reads.
+submission. A token is scoped to one account, one submission, status reads, and bug reports.
 
 Submission requires JSON and an `Idempotency-Key` (8–128 word/hyphen characters).
 Both browser and bearer paths call the same Agent method. Identical normalized
@@ -83,7 +83,7 @@ browser; an agent cannot grant consent.
   New assessments go to review. Existing approvals are not retroactively revoked.
 - Pause outbound email: set `EMAIL_ENABLED=false` and redeploy. This also pauses
   submission copies and invitations. Approved applications stay approved.
-- After resuming, use the admin Retry button on paused/confirmed-failed invitations.
+- After resuming, use the admin Retry button on paused/confirmed-failed submission copies or invitations.
 - Inspect uncertain delivery in Cloudflare Email Service logs. Record `accepted`
   or `not_sent` plus supporting evidence in the admin reconciliation form. Only
   confirmed non-sends can then be retried. Never manually retry an ambiguous send.
