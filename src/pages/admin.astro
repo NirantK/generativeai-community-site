@@ -1,0 +1,326 @@
+---
+import BaseLayout from "../layouts/BaseLayout.astro";
+import "../styles/admissions.css";
+---
+
+<BaseLayout title="Application review">
+  <div class="admissions">
+    <p class="eyebrow">Community administration</p>
+    <h1>Application review</h1>
+    <p>
+      Review an applicant’s work and the assessment evidence before deciding.
+    </p>
+    <p id="admin-message" class="notice" role="status">
+      Loading applications…
+    </p>
+    <div class="actions">
+      <button id="reload">Refresh applications</button>
+      <a href="/apply">Your account</a>
+    </div>
+    <section id="applications"></section>
+    <section aria-labelledby="administrators-title">
+      <h2 id="administrators-title">Administrators</h2>
+      <p>Invite someone using their LinkedIn email. They can review applications, make decisions, and invite other administrators after accepting.</p>
+      <form id="invite-admin">
+        <label for="admin-email">New administrator email</label>
+        <input id="admin-email" type="email" required maxlength="254" />
+        <button type="submit">Send administrator invitation</button>
+      </form>
+      <div id="administrators"></div>
+    </section>
+    <section aria-labelledby="bug-reports-title">
+      <h2 id="bug-reports-title">Agent bug reports</h2>
+      <div id="bug-reports"></div>
+    </section>
+    <section id="review" hidden>
+      <h2>Review application</h2>
+      <div id="record"></div>
+      <details>
+        <summary>Decision and delivery history</summary>
+        <pre id="audit-record"></pre>
+      </details>
+      <button id="reassess" type="button" hidden>Retry AI assessment</button>
+      <form id="decision">
+        <label for="reason">Decision reason</label>
+        <p class="help">Optional for approval; required to decline.</p>
+        <textarea
+          id="reason"
+          minlength="5"
+          maxlength="1500"
+        ></textarea>
+        <div class="actions">
+          <button class="primary" name="action" value="approve">
+            Approve
+          </button>
+          <button name="action" value="decline">
+            Decline
+          </button>
+        </div>
+      </form>
+      <label for="email-kind">Email to inspect or retry</label>
+      <select id="email-kind"><option value="invite">Approval invitation</option><option value="receipt">Submitted application copy</option></select>
+      <form id="reconcile" hidden>
+        <label for="reconcile-outcome">Cloudflare email log result</label>
+        <select id="reconcile-outcome" name="outcome">
+          <option value="accepted">Provider accepted this message</option>
+          <option value="not_sent">Confirmed not sent</option>
+        </select>
+        <label for="reconcile-reason">Evidence from the email logs</label>
+        <textarea
+          id="reconcile-reason"
+          name="reason"
+          required
+          minlength="10"
+          maxlength="1500"
+        ></textarea>
+        <div class="actions">
+          <button>Record reconciliation</button>
+        </div>
+      </form>
+      <div class="actions">
+        <button id="retry">Retry confirmed failed or paused email</button>
+      </div>
+      <p class="help">
+        For uncertain delivery, inspect Cloudflare email logs first. The
+        application will not blindly resend a possibly accepted message.
+      </p>
+    </section>
+  </div>
+</BaseLayout>
+<script>
+  import type { RecordState } from "../../admissions/src/domain";
+  const get = (id: string) => document.getElementById(id)!;
+  let selected = "";
+  async function api<T>(path: string, data?: unknown): Promise<T> {
+    const r = await fetch(path, {
+      method: data ? "POST" : "GET",
+      headers: data ? { "Content-Type": "application/json" } : {},
+      body: data ? JSON.stringify(data) : undefined,
+    });
+    const result = (await r.json()) as T & { error?: { message?: string } };
+    if (!r.ok)
+      throw new Error(result.error?.message ?? "Could not load applications.");
+    return result;
+  }
+  function message(text: string) {
+    get("admin-message").textContent = text;
+  }
+  let currentRecord: RecordState | null = null;
+  function emailControls() {
+    if (!currentRecord) return;
+    const kind = (get("email-kind") as HTMLSelectElement).value;
+    const ledger = kind === "receipt" ? currentRecord.receipt : currentRecord.delivery;
+    get("retry").hidden = kind === "invite" ? currentRecord.status !== "approved" : !currentRecord.application;
+    get("reconcile").hidden = !["uncertain", "sending"].includes(ledger?.status ?? "pending");
+  }
+  get("email-kind").onchange = emailControls;
+  async function inspect(id: string) {
+    selected = id;
+    try {
+      const record = await api<RecordState>(`/api/admin/applications/${id}`);
+      currentRecord = record;
+      const container = get("record");
+      container.replaceChildren();
+      const application = record.application;
+      const fields: [string, string][] = [
+        [
+          "Applicant",
+          `${record.profile?.name ?? ""} · ${record.profile?.email ?? ""}`,
+        ],
+        ["Role", application?.role ?? ""],
+        ["AI project or use case", application?.project ?? ""],
+        ["Personal contribution", application?.contribution ?? ""],
+        ["Reason for joining", application?.motivation ?? ""],
+        [
+          "Assessment",
+          record.assessment?.reasons ??
+            "A human review is required; no reliable automated assessment is available.",
+        ],
+        ["Supporting evidence", record.assessment?.evidence.join("\n\n") ?? ""],
+      ];
+      for (const [label, value] of fields) {
+        const heading = document.createElement("h3");
+        heading.textContent = label;
+        heading.className = "mt-6 font-semibold";
+        const paragraph = document.createElement("p");
+        paragraph.textContent = value;
+        paragraph.style.whiteSpace = "pre-wrap";
+        paragraph.style.overflowWrap = "anywhere";
+        container.appendChild(heading);
+        container.appendChild(paragraph);
+      }
+      get("audit-record").textContent = JSON.stringify(
+        {
+          policy: record.policy,
+          model: record.model,
+          assessmentFailure: record.assessmentFailure,
+          decision: record.decision,
+          delivery: record.delivery,
+          receipt: record.receipt,
+          history: record.history,
+        },
+        null,
+        2,
+      );
+      get("review").hidden = false;
+      get("decision").hidden = record.status !== "review";
+      get("reassess").hidden = record.status !== "review" || !!record.decision;
+      emailControls();
+      get("review").scrollIntoView({ block: "start" });
+    } catch (e) {
+      message((e as Error).message);
+    }
+  }
+  async function load() {
+    try {
+      const result = await api<{
+        applications: {
+          id: string;
+          name: string;
+          status: string;
+          delivery: string;
+        }[];
+      }>("/api/admin/applications");
+      get("applications").replaceChildren();
+      for (const a of result.applications) {
+        const item = document.createElement("article");
+        item.className = "review-item";
+        const title = document.createElement("h2");
+        title.textContent = a.name;
+        const status = document.createElement("p");
+        status.textContent = `${a.status} · Email: ${a.delivery}`;
+        const button = document.createElement("button");
+        button.textContent = "Review application";
+        button.onclick = () => void inspect(a.id);
+        item.appendChild(title);
+        item.appendChild(status);
+        item.appendChild(button);
+        if (a.status === "review") {
+          const approve = document.createElement("button");
+          approve.textContent = "Approve now";
+          approve.className = "primary";
+          approve.onclick = async () => {
+            approve.disabled = true;
+            try {
+              await api(`/api/admin/applications/${a.id}/decision`, { action: "approve" });
+              await load();
+              if (selected === a.id) await inspect(a.id);
+              message("Application approved. Invitation queued for email delivery.");
+            } catch (e) { message((e as Error).message); approve.disabled = false; }
+          };
+          item.appendChild(approve);
+        }
+        get("applications").appendChild(item);
+      }
+      const bugs = await api<{ reports: { id: string; name: string; report: string; created_at: number }[] }>("/api/admin/bug-reports");
+      get("bug-reports").replaceChildren();
+      for (const bug of bugs.reports) {
+        const article = document.createElement("article");
+        article.className = "review-item";
+        const title = document.createElement("h3");
+        title.textContent = `${bug.name ?? "Applicant"} · ${new Date(bug.created_at).toLocaleString()}`;
+        const content = document.createElement("p");
+        content.textContent = bug.report;
+        content.style.whiteSpace = "pre-wrap";
+        content.style.overflowWrap = "anywhere";
+        article.append(title, content);
+        get("bug-reports").append(article);
+      }
+      if (!bugs.reports.length) get("bug-reports").textContent = "No bug reports yet.";
+      message(
+        result.applications.length
+          ? `${result.applications.length} recent applications`
+          : "No submitted applications yet.",
+      );
+    } catch (e) {
+      message((e as Error).message);
+    }
+  }
+  async function loadAdministrators() {
+    try {
+      const { invitations } = await api<{invitations: {id:string;email:string;accepted_at:number|null;revoked_at:number|null;expires_at:number;delivery:string}[]}>("/api/admin/invitations");
+      get("administrators").replaceChildren();
+      for (const invitation of invitations) {
+        const row = document.createElement("p");
+        const status = invitation.revoked_at ? "Revoked" : invitation.accepted_at ? "Active administrator" : invitation.expires_at < Date.now() ? "Expired" : "Awaiting acceptance";
+        row.textContent = `${invitation.email} — ${status} · Email: ${invitation.delivery} `;
+        if (!invitation.revoked_at) {
+          const revoke = document.createElement("button"); revoke.textContent = "Revoke access";
+          revoke.onclick = async () => {
+            revoke.disabled = true;
+            try {
+              const response = await fetch(`/api/admin/invitations/${invitation.id}`, {method:"DELETE"});
+              if (!response.ok) throw new Error("Could not revoke access. You cannot revoke your own access.");
+              await loadAdministrators();
+            } catch(e) { message((e as Error).message); revoke.disabled = false; }
+          };
+          row.append(revoke);
+        }
+        get("administrators").append(row);
+      }
+    } catch(e) { message((e as Error).message); }
+  }
+  get("invite-admin").addEventListener("submit", async e => {
+    e.preventDefault();
+    const button = (e.currentTarget as HTMLFormElement).querySelector("button")!;
+    button.disabled = true;
+    try {
+      const result = await api<{delivery:string}>("/api/admin/invitations", {email:(get("admin-email") as HTMLInputElement).value});
+      await loadAdministrators();
+      message(result.delivery === "accepted" ? "Administrator invitation accepted by the email provider." : "Invitation saved; email outcome needs reconciliation in Cloudflare logs. Do not resend blindly.");
+    } catch(e) { message((e as Error).message); }
+    finally { button.disabled = false; }
+  });
+  void loadAdministrators();
+  get("reload").onclick = () => void load();
+  get("decision").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const submitter = (e as SubmitEvent).submitter as HTMLButtonElement;
+    submitter.disabled = true;
+    try {
+      await api(`/api/admin/applications/${selected}/decision`, {
+        action: submitter.value,
+        reason: (get("reason") as HTMLTextAreaElement).value.trim() || undefined,
+      });
+      await load();
+      await inspect(selected);
+      message("Decision recorded.");
+    } catch (e) {
+      message((e as Error).message);
+    } finally {
+      submitter.disabled = false;
+    }
+  });
+  get("reassess").onclick = async () => {
+    const button=get("reassess") as HTMLButtonElement;
+    button.disabled=true;
+    try { await api(`/api/admin/applications/${selected}/reassess`, {}); await inspect(selected); }
+    catch(e) { message((e as Error).message); }
+    finally { button.disabled=false; }
+  };
+  get("retry").onclick = async () => {
+    try {
+      await api(`/api/admin/applications/${selected}/retry`, {kind:(get("email-kind") as HTMLSelectElement).value});
+      await inspect(selected);
+    } catch (e) {
+      message((e as Error).message);
+    }
+  };
+  get("reconcile").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    try {
+      await api(`/api/admin/applications/${selected}/reconcile`, {
+        kind: (get("email-kind") as HTMLSelectElement).value,
+        outcome: new FormData(get("reconcile") as HTMLFormElement).get(
+          "outcome",
+        ),
+        reason: new FormData(get("reconcile") as HTMLFormElement).get("reason"),
+      });
+      await inspect(selected);
+      message("Email outcome reconciled.");
+    } catch (e) {
+      message((e as Error).message);
+    }
+  });
+  void load();
+</script>

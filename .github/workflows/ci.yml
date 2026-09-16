@@ -3,9 +3,22 @@ on:
   push:
     branches: [main]
   pull_request:
+  workflow_dispatch:
 permissions:
   contents: read
+concurrency:
+  group: community-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
 jobs:
+  configuration:
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate deployment credential
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: python3 scripts/prepare-cloudflare-token.py
   test:
     runs-on: ubuntu-latest
     steps:
@@ -18,10 +31,22 @@ jobs:
         run: npm ci
       - name: Install Playwright browsers
         run: npx playwright install --with-deps chromium webkit
+      - name: Admissions backend checks
+        run: |
+          npm run check:admissions
+          npm run test:admissions
+          npm run build:admissions
       - name: Build
         run: npm run build
+      - name: Build Pages Functions
+        run: npx --no-install wrangler pages functions build functions --outdir=/tmp/community-functions
       - name: Playwright tests
         run: npm run test:e2e
+      - uses: actions/upload-artifact@v4
+        with:
+          name: community-site-${{ github.sha }}
+          path: dist/
+          retention-days: 7
       - uses: actions/upload-artifact@v4
         if: failure()
         with:
@@ -30,3 +55,87 @@ jobs:
             playwright-report/
             test-results/
           retention-days: 7
+  deploy:
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    needs: [test, configuration]
+    runs-on: ubuntu-latest
+    environment:
+      name: production
+      url: https://genaicommunity.ai
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+      - run: npm ci
+      - uses: actions/download-artifact@v4
+        with:
+          name: community-site-${{ github.sha }}
+          path: dist/
+      - name: Validate deployment credential
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: python3 scripts/prepare-cloudflare-token.py
+      - name: Deploy admissions Worker and schema
+        env:
+          CLOUDFLARE_ACCOUNT_ID: 076c525b59739562570401e48fc0651c
+          LINKEDIN_CLIENT_SECRET: ${{ secrets.LINKEDIN_CLIENT_SECRET }}
+          ADMIN_EMAILS: ${{ secrets.ADMIN_EMAILS }}
+          WHATSAPP_INVITE_URL: ${{ secrets.WHATSAPP_INVITE_URL }}
+        run: |
+          node scripts/check-production-config.mjs
+          python3 scripts/write-worker-secrets.py "$RUNNER_TEMP/admissions-secrets.json"
+          npx --no-install wrangler d1 migrations apply genai_admissions --config admissions/wrangler.jsonc --env "" --remote
+          npx --no-install wrangler deploy --config admissions/wrangler.jsonc --env ""
+          npx --no-install wrangler secret bulk "$RUNNER_TEMP/admissions-secrets.json" --config admissions/wrangler.jsonc --env ""
+          rm "$RUNNER_TEMP/admissions-secrets.json"
+      - name: Deploy tested commit to Cloudflare Pages
+        env:
+          CLOUDFLARE_ACCOUNT_ID: 076c525b59739562570401e48fc0651c
+          WRANGLER_SEND_METRICS: 'false'
+        run: |
+          if [ -z "$CLOUDFLARE_API_TOKEN" ]; then
+            echo '::error::Set the CLOUDFLARE_API_TOKEN repository or production-environment secret with Cloudflare Pages Edit permission.'
+            exit 1
+          fi
+          npx --no-install wrangler pages deploy dist --project-name=generativeai-community-site --branch=main --commit-hash="$GITHUB_SHA" --commit-dirty=false
+  staging:
+    if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
+    needs: [test, configuration]
+    runs-on: ubuntu-latest
+    environment:
+      name: staging
+      url: https://staging.genaicommunity.ai
+    concurrency:
+      group: community-staging
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+      - run: npm ci
+      - uses: actions/download-artifact@v4
+        with:
+          name: community-site-${{ github.sha }}
+          path: dist/
+      - name: Validate deployment credential
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: python3 scripts/prepare-cloudflare-token.py
+      - name: Deploy isolated staging application
+        env:
+          CLOUDFLARE_ACCOUNT_ID: 076c525b59739562570401e48fc0651c
+          LINKEDIN_CLIENT_SECRET: ${{ secrets.LINKEDIN_CLIENT_SECRET }}
+          ADMIN_EMAILS: ${{ secrets.ADMIN_EMAILS }}
+          WHATSAPP_INVITE_URL: ${{ secrets.WHATSAPP_INVITE_URL }}
+          WRANGLER_SEND_METRICS: 'false'
+        run: |
+          python3 scripts/write-worker-secrets.py "$RUNNER_TEMP/admissions-secrets.json"
+          npx --no-install wrangler d1 migrations apply genai_admissions_staging --config admissions/wrangler.jsonc --env staging --remote
+          npx --no-install wrangler deploy --config admissions/wrangler.jsonc --env staging
+          npx --no-install wrangler secret bulk "$RUNNER_TEMP/admissions-secrets.json" --config admissions/wrangler.jsonc --env staging
+          rm "$RUNNER_TEMP/admissions-secrets.json"
+          npx --no-install wrangler pages deploy dist --project-name=generativeai-community-site --branch=staging --commit-hash="$GITHUB_SHA" --commit-dirty=false

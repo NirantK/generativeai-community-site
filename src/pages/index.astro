@@ -9,6 +9,7 @@ if (!entry) throw new Error('community/index content not found');
 const { Content } = await render(entry);
 ---
 <BaseLayout title={entry.data.title} description={entry.data.description} sourcePath="src/content/community/index.md">
+  <img src="/brand/banner.webp" width="2171" height="724" alt="GenerativeAI Community — Build. Research. Apply." fetchpriority="high" class="w-full h-auto border border-outline-variant" />
   <section class="mt-stack-md">
     <span class="font-mono text-label-caps uppercase text-on-surface-variant">// GENERATIVEAI_COMMUNITY</span>
     <h1 class="mt-stack-sm text-headline-lg-mobile md:text-display-lg font-sans font-bold tracking-tight">
@@ -19,11 +20,11 @@ const { Content } = await render(entry);
     )}
     <div class="mt-stack-md flex flex-wrap gap-stack-sm items-center">
       <a
-        href="https://nas.io/the-generativeai-group"
+        href="/apply"
         rel="noopener"
         class="inline-flex items-center justify-center min-h-tap px-gutter font-mono text-label-caps uppercase bg-on-surface text-surface hover:opacity-90 transition-opacity"
       >
-        JOIN_WHATSAPP
+        Apply to Join
       </a>
       <CopyMarkdown markdown={entry.body ?? ''} filename="index.md" />
     </div>

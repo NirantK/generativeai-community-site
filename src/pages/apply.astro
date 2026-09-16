@@ -1,0 +1,193 @@
+---
+import BaseLayout from "../layouts/BaseLayout.astro";
+import "../styles/admissions.css";
+const fields = [
+  [
+    "role",
+    "Current or most recent role",
+    "Student, engineer, researcher, between roles…",
+    "text",
+    300,
+  ],
+  [
+    "project",
+    "An AI project or use case",
+    "What did you build, research, or apply?",
+    "textarea",
+    4000,
+  ],
+  [
+    "contribution",
+    "Your contribution",
+    "Describe what you personally did.",
+    "textarea",
+    2000,
+  ],
+  [
+    "motivation",
+    "Why would you like to join?",
+    "What would you like to learn or share with the community?",
+    "textarea",
+    2000,
+  ],
+] as const;
+---
+
+<BaseLayout
+  title="Apply to join"
+  description="Join a community of people building, researching, and applying generative AI."
+>
+  <div class="admissions">
+    <h1>Bring what you’re building.</h1>
+    <p class="intro">
+      Meet people working with generative AI. Tell us about your work or a
+      project, and we’ll review your application. Students and independent
+      builders are welcome.
+    </p>
+    <p id="message" class="notice" role="status" aria-live="polite">
+      Checking your sign-in…
+    </p>
+    <noscript>
+      <p>Enable JavaScript to sign in and complete your application.</p>
+    </noscript>
+    <section id="signed-out" hidden>
+      <h2>Start with LinkedIn</h2>
+      <p>
+        We use LinkedIn to connect your application to your account. You’ll add
+        any background details LinkedIn doesn’t provide.
+      </p>
+      <div class="actions">
+        <a class="button primary" href="/auth/linkedin">
+          Sign in with LinkedIn
+        </a>
+      </div>
+      <p class="help">
+        After approval, your WhatsApp invitation arrives by email.
+      </p>
+    </section>
+    <div id="signed-in" hidden>
+      <div class="actions">
+        <p id="identity"></p>
+        <a id="admin-link" href="/admin" hidden>Review applications</a>
+        <div id="admin-invitation" hidden><p>You’re invited to administer the community. Administrators can read applications, make admission decisions, and invite other administrators.</p><button id="accept-admin" type="button">Accept administrator invitation</button></div>
+        <button id="logout" type="button">
+          Sign out
+        </button>
+      </div>
+      <section id="email-section">
+        <h2>Your email</h2>
+        <p class="help">
+          Your LinkedIn email receives a copy of your application and, after approval, your invitation.
+        </p>
+        <p id="email-status" class="help"></p>
+        <a id="refresh-linkedin" href="/auth/linkedin" hidden>Refresh LinkedIn sign-in</a>
+      </section>
+      <section id="consent-section">
+        <h2>Before you apply</h2>
+        <form id="consent-form">
+          <label class="check">
+            <input type="checkbox" name="consent" required />
+            <span>
+              I agree to the{" "}
+              <a href="/#whatsapp-community-rules">community rules</a> and the{" "}
+              <a href="/terms-and-conditions">Terms &amp; Conditions</a> and{" "}
+              <a href="/privacy-policy">Privacy Policy</a>. I
+              consent to AI-assisted assessment of my application and email
+              about my application and invitation.
+            </span>
+          </label>
+          <div class="actions">
+            <button type="submit">Save consent</button>
+          </div>
+        </form>
+      </section>
+      <section id="status-section" hidden>
+        <h2 id="status-title">Application status</h2>
+        <p id="status-copy"></p>
+        <button id="refresh" type="button">
+          Refresh status
+        </button>
+      </section>
+      <details id="agent-section" open>
+        <summary>Apply using an AI agent</summary>
+        <p>
+          Use Codex or another agent to prepare and submit your application.
+          Save consent above, then generate a token for your agent.
+        </p>
+        <p class="help">
+          The token lasts 24 hours and allows one application submission plus
+          status checks and bug reports of up to 200 words. Replacing it immediately revokes the old token. It
+          cannot change your account or email.
+        </p>
+        <div class="actions">
+          <button id="issue-token" type="button">
+            Generate application token
+          </button>
+          <button id="revoke-token" type="button">
+            Revoke token
+          </button>
+        </div>
+        <div id="token-output" hidden>
+          <p class="notice">
+            Copy this token now. It is shown only once. Share it only with the
+            agent you want to submit your application.
+          </p>
+          <pre id="token-value"></pre>
+          <button id="copy-token" type="button">
+            Copy token
+          </button>
+        </div>
+        <p>
+          <a href="/api-instructions">Read agent instructions</a> ·{" "}
+          <a href="/openapi.json">OpenAPI specification</a>
+        </p>
+      </details>
+      <section id="form-section">
+        <h2>Or apply with the form</h2>
+        <p class="help">
+          All fields are required. Students, independent builders, and people
+          between roles are welcome.
+        </p>
+        <form id="application-form">
+          {fields.map(([name, label, placeholder, type, max]) => (
+            <label for={name}>
+              {label}
+              {type === "textarea" ? (
+                <textarea
+                  id={name}
+                  name={name}
+                  placeholder={placeholder}
+                  maxlength={max}
+                  required
+                ></textarea>
+              ) : (
+                <input
+                  id={name}
+                  name={name}
+                  type={type}
+                  placeholder={placeholder}
+                  maxlength={max}
+                  required
+                />
+              )}
+            </label>
+          ))}
+          <div class="actions">
+            <button class="primary" type="submit">
+              Submit application
+            </button>
+          </div>
+          <p class="help">
+            Applications are final once submitted. Clear matches are approved
+            automatically; other applications receive a human review.
+          </p>
+        </form>
+      </section>
+
+    </div>
+  </div>
+</BaseLayout>
+<script>
+  import { initApplication } from "../lib/admissions/client";
+  initApplication();
+</script>

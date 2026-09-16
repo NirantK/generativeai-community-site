@@ -1,0 +1,62 @@
+---
+import BaseLayout from "../layouts/BaseLayout.astro";
+---
+
+<BaseLayout title="Privacy Policy" description="How GenerativeAI Community handles website, membership application, and community information.">
+  <article class="prose-precision">
+    <h1 class="text-display-lg font-bold">Privacy Policy</h1>
+    <p><strong>Last updated: 16 September 2026</strong></p>
+    <p>This policy explains how GenerativeAI Community handles personal information when you visit genaicommunity.ai, apply for membership, or contact our team. Some features described here, including LinkedIn applications and AI assessment, are being introduced. Those sections apply when you use the relevant feature.</p>
+
+    <h2>Information you share with us</h2>
+    <p>You can browse public community resources without creating an account. When you apply or use an interactive service, we collect the information needed to provide it:</p>
+    <ul>
+      <li><strong>LinkedIn sign-in:</strong> your LinkedIn account identifier, name, profile photo where available, email address, and whether LinkedIn reports the email as verified. LinkedIn asks you to authorize the requested access.</li>
+      <li><strong>Bug reports:</strong> optional plain-text reports submitted by your agent, associated with your application for administrator review. Do not include credentials or sensitive personal information.</li>
+      <li><strong>Membership applications:</strong> your contact email, current or recent role, AI project or use case, your contribution, and reason for joining. Your role and project information are supplied by you; basic LinkedIn sign-in does not provide them.</li>
+      <li><strong>Application administration:</strong> consent records, submission and status timestamps, assessment evidence, decision reasons, administrator actions, and email acceptance or failure records.</li>
+      <li><strong>Support and other services:</strong> information you send when contacting us. If you submit a job listing, we collect the listing and contact details you provide; published listing fields are visible to visitors. Where payment is offered, the payment provider processes payment details and we receive transaction records.</li>
+    </ul>
+    <p>Please avoid including confidential employer information, unnecessary sensitive information, or personal information about other people in an application.</p>
+
+    <h2>Technical information and cookies</h2>
+    <p>Our hosting and security providers process connection information, such as IP addresses and request metadata, to deliver the website and protect it from abuse. The application uses a hashed IP address for login rate limits. Necessary cookies support sign-in, sessions, and security checks. Blocking these cookies may prevent sign-in.</p>
+    <p>The membership application does not need advertising cookies. Following a link to another platform may expose you to that platform’s cookies and tracking practices.</p>
+
+    <h2>How we use information</h2>
+    <ul>
+      <li>Authenticate applicants using LinkedIn-provided identity and email, and prevent duplicate or abusive applications.</li>
+      <li>Assess membership applications and support administrator review.</li>
+      <li>Send submitted application copies, application updates, and approved membership invitations.</li>
+      <li>Operate community services, respond to requests, and investigate technical or security problems.</li>
+      <li>Meet applicable legal obligations and handle disputes.</li>
+    </ul>
+    <p>We request consent before an application is submitted or agent access is issued. Membership consent is not consent to unrelated marketing. Our basis for processing depends on the service and applicable law, including your consent, providing a service you request, and legal obligations.</p>
+
+    <h2>AI-assisted membership assessment</h2>
+    <p>When enabled, an AI assessment hosted on Cloudflare reviews the application you submit for evidence of building, researching, or practically using AI. Student projects can qualify. Clear matches can be approved automatically; unclear applications and failed assessments go to a community administrator. The initial admission policy does not automatically reject applicants.</p>
+    <p>We retain relevant evidence and reasons with the application decision. An administrator can approve or decline an application with a reason. You can contact us to request a human review or correct inaccurate information. Self-reported background is not independently verified through LinkedIn sign-in.</p>
+
+    <h2>Applying through Codex or another agent</h2>
+    <p>After signing in and giving consent in your browser, you can choose to generate a token for an HTTP-capable agent. Anyone you give that token to can read your application information, submit your application once, and check its status until the token expires or is revoked. Tokens expire after 24 hours; generating a replacement invalidates the previous token. We store the token’s hash, not the token itself.</p>
+    <p>We do not share your LinkedIn password or OAuth tokens with your agent. Information you give your chosen agent is also governed by that provider’s policies. Revoking our application token does not delete copies already held by that provider.</p>
+
+    <h2>Who receives information</h2>
+    <p>Authorized community administrators access applications to operate admissions and respond to requests. Cloudflare provides hosting, application storage, AI assessment, and transactional email services. LinkedIn provides sign-in. These services process information needed for their respective functions.</p>
+    <p>If approved, we email a WhatsApp invitation from <strong>noreply@genaicommunity.ai</strong>. Joining is your choice. WhatsApp and other members may see your phone number, profile information, and messages according to the group type and your settings. WhatsApp’s own terms and privacy policy apply. Email acceptance does not mean that you have joined the community.</p>
+    <p>Our existing community rules warn that group messages may be made public or used to train a bot, and that other members may download chat history. Do not treat group conversations as confidential. This community-message notice is separate from the application assessment described above.</p>
+    <p>External registration, event, job-application, or payment links lead to services with their own privacy policies. We do not sell membership application information or provide it to third parties for their own marketing. We may disclose information where required by law or necessary to address fraud, security incidents, or legal claims.</p>
+
+    <h2>Retention and security</h2>
+    <p>We keep application and decision records for as long as needed to administer your application or membership, resolve support requests, and meet legal or security obligations. We do not currently apply a fixed automatic deletion period to all application records. You can request deletion using the contact below; limited records may need to remain for a valid legal or security reason.</p>
+    <p>Expiring sessions, application tokens, and login-state records have time limits and are cleaned up separately. We use HTTPS, access restrictions, limited-scope tokens, and hashed session and application-token storage. No online service can guarantee absolute security. Our providers may process data outside your country; their service locations and applicable legal requirements govern that processing.</p>
+
+    <h2>Your choices and requests</h2>
+    <p>Contact us to request access, correction, deletion, a usable copy of your information, withdrawal of consent, or human review of an application decision. Depending on applicable law, you may also have rights to object to or restrict processing. We may need to verify your identity before acting. Removing required application information can prevent us from processing the application. Withdrawal does not undo processing already carried out lawfully.</p>
+    <p>If you believe a child has submitted information without appropriate authorization, contact us so we can review and address it. Please do not submit information on a child’s behalf through the membership application.</p>
+
+    <h2>Updates and contact</h2>
+    <p>We will update this page when our practices change and revise the date above. Material changes to application consent will be presented in the relevant application flow where appropriate.</p>
+    <p>For privacy questions and requests, contact <strong>Nirant Kasliwal, community administrator</strong>, at <a href="mailto:nirant@scaledfocus.com">nirant@scaledfocus.com</a>. Our noreply sender is outbound-only; please use this contact address for replies and privacy requests.</p>
+  </article>
+</BaseLayout>

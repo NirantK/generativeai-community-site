@@ -1,0 +1,542 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "GenerativeAI Community application API",
+    "version": "1.0.0",
+    "description": "Generate a 24-hour application token after LinkedIn sign-in and browser consent at /apply. One application per LinkedIn account. Tokens are not OAuth access tokens. Never expose tokens in logs or URLs."
+  },
+  "servers": [
+    {
+      "url": "/",
+      "description": "Use the same origin that issued the token (genaicommunity.ai or staging.genaicommunity.ai)."
+    }
+  ],
+  "security": [
+    {
+      "applicationToken": []
+    }
+  ],
+  "paths": {
+    "/api/v1/application": {
+      "get": {
+        "operationId": "getApplication",
+        "summary": "Read profile, requirements, and application status",
+        "responses": {
+          "200": {
+            "description": "Application state; invite URL is never returned",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApplicationState"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request or missing idempotency key",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, expired, or revoked credentials",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Browser action required or forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Account incomplete or submission conflicts",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Request too large",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "JSON required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Invalid application fields",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limited; honor Retry-After",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service temporarily unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "submitApplication",
+        "summary": "Submit once; identical content retries return saved state",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 8,
+              "maxLength": 128,
+              "pattern": "^[\\w-]+$"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Application"
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Application state; invite URL is never returned",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApplicationState"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request or missing idempotency key",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, expired, or revoked credentials",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Browser action required or forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Account incomplete or submission conflicts",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Request too large",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "JSON required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Invalid application fields",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limited; honor Retry-After",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service temporarily unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/application-token": {
+      "post": {
+        "operationId": "issueApplicationToken",
+        "summary": "Browser only: issue or replace a 24-hour token",
+        "security": [
+          {
+            "browserSession": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "Origin",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "const": "https://genaicommunity.ai"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Token returned once as {token, expiresAt}; expiresAt is epoch milliseconds"
+          },
+          "401": {
+            "description": "Sign in with LinkedIn"
+          },
+          "403": {
+            "description": "Browser session/origin/consent required; bearer tokens are forbidden"
+          },
+          "409": {
+            "description": "LinkedIn did not confirm an email; refresh LinkedIn sign-in."
+          }
+        }
+      },
+      "delete": {
+        "operationId": "revokeApplicationToken",
+        "summary": "Browser only: revoke agent access",
+        "security": [
+          {
+            "browserSession": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "Origin",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "const": "https://genaicommunity.ai"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "{revoked: true}"
+          },
+          "401": {
+            "description": "Sign in with LinkedIn"
+          },
+          "403": {
+            "description": "Browser session/origin/consent required; bearer tokens are forbidden"
+          },
+          "409": {
+            "description": "Verify email first"
+          }
+        }
+      }
+    },
+    "/api/v1/bug-report": {
+      "post": {
+        "operationId": "reportApplicationBug",
+        "summary": "Report a bug in 1\u2013200 words of UTF-8 plain text",
+        "description": "At most 8,000 bytes. Scoped to the authenticated applicant. Do not include credentials or private email content. Same key/body retries reuse the saved report; a different body conflicts. At most five new reports per minute.",
+        "parameters": [
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[\\w-]{8,128}$"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "text/plain": {
+              "schema": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 8000
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Report saved"
+          },
+          "200": {
+            "description": "Identical retry returned the original report"
+          },
+          "400": {
+            "description": "Missing or invalid idempotency key"
+          },
+          "401": {
+            "description": "Unauthorized or expired/revoked token"
+          },
+          "409": {
+            "description": "Idempotency conflict"
+          },
+          "413": {
+            "description": "Report exceeds 8,000 bytes"
+          },
+          "415": {
+            "description": "Use text/plain"
+          },
+          "422": {
+            "description": "Report must contain 1\u2013200 words of valid UTF-8"
+          },
+          "429": {
+            "description": "Rate limited"
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "applicationToken": {
+        "type": "http",
+        "scheme": "bearer"
+      },
+      "browserSession": {
+        "type": "apiKey",
+        "in": "cookie",
+        "name": "__Host-ga-session",
+        "description": "Established only by LinkedIn browser sign-in."
+      }
+    },
+    "schemas": {
+      "Application": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "role",
+          "project",
+          "contribution",
+          "motivation"
+        ],
+        "properties": {
+          "role": {
+            "type": "string",
+            "minLength": 2,
+            "maxLength": 300
+          },
+          "project": {
+            "type": "string",
+            "minLength": 40,
+            "maxLength": 4000
+          },
+          "contribution": {
+            "type": "string",
+            "minLength": 20,
+            "maxLength": 2000
+          },
+          "motivation": {
+            "type": "string",
+            "minLength": 20,
+            "maxLength": 2000
+          }
+        }
+      },
+      "ApplicationState": {
+        "type": "object",
+        "properties": {
+          "profile": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "sub": {
+                "type": "string"
+              },
+              "name": {
+                "type": "string"
+              },
+              "email": {
+                "type": "string"
+              },
+              "emailVerified": {
+                "type": "boolean"
+              }
+            }
+          },
+          "application": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Application"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "status": {
+            "enum": [
+              "draft",
+              "submitted",
+              "review",
+              "approved",
+              "declined"
+            ]
+          },
+          "consent": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "delivery": {
+            "type": "object",
+            "properties": {
+              "status": {
+                "enum": [
+                  "pending",
+                  "paused",
+                  "sending",
+                  "accepted",
+                  "failed",
+                  "uncertain"
+                ]
+              }
+            }
+          },
+          "missingRequirements": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "tokenActive": {
+            "type": "boolean"
+          },
+          "receipt": {
+            "type": "object",
+            "properties": {
+              "status": {
+                "enum": [
+                  "pending",
+                  "paused",
+                  "sending",
+                  "accepted",
+                  "failed",
+                  "uncertain"
+                ]
+              }
+            },
+            "description": "Delivery state of the submitted application copy, separate from the approval invitation."
+          }
+        }
+      },
+      "Error": {
+        "type": "object",
+        "properties": {
+          "error": {
+            "type": "object",
+            "properties": {
+              "code": {
+                "type": "string"
+              },
+              "message": {
+                "type": "string"
+              },
+              "details": {}
+            }
+          }
+        }
+      }
+    }
+  }
+}
