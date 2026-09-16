@@ -61,6 +61,8 @@ export function initApplication() {
       const s: Snapshot = await api("/api/v1/application");
       el("signed-out").hidden = true;
       el("signed-in").hidden = false;
+      void fetch("/api/admin/access").then(r => { el("admin-link").hidden = !r.ok; }).catch(() => { el("admin-link").hidden = true; });
+      void api<{invitation: unknown}>("/api/admin-invitation").then(r => { el("admin-invitation").hidden = !r.invitation; }).catch(() => { el("admin-invitation").hidden = true; });
       el("identity").textContent = `Signed in as ${s.profile.name}`;
       el("email-status").textContent = s.profile.email
         ? `LinkedIn email: ${s.profile.email}`
@@ -177,6 +179,10 @@ export function initApplication() {
   action("copy-token", async () => {
     await navigator.clipboard.writeText(el("token-value").textContent ?? "");
     notice("Token copied.");
+  });
+  action("accept-admin", async () => {
+    await api("/api/admin-invitation", "POST");
+    location.href = "/admin/";
   });
   action("logout", async () => {
     await api("/auth/logout", "POST");

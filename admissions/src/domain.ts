@@ -1,5 +1,5 @@
 import { z } from "zod";
-export const POLICY = "practitioners-v2";
+export const POLICY = "practitioners-affiliations-v3";
 export const CONSENT = "admissions-v1";
 export const TOKEN_TTL = 24 * 60 * 60 * 1000;
 export const applicationSchema = z
@@ -13,6 +13,12 @@ export const applicationSchema = z
 export type Application = z.infer<typeof applicationSchema>;
 export const assessmentSchema = z
   .object({
+    affiliation: z.object({
+      company: z.enum(["Dashverse", "Frameo", "Lossfunk", "OpenAI", "Anthropic", "ElevenLabs", "Cartesia"]),
+      current: z.boolean(),
+      endedOn: z.string().nullable(),
+      evidence: z.string().min(2).max(300),
+    }).strict().nullable().optional(),
     relevant: z.boolean(),
     concrete: z.boolean(),
     contribution: z.boolean(),
@@ -82,9 +88,19 @@ export function initialRecord(): RecordState {
     history: [],
   };
 }
-export function qualifies(a: Assessment, application: Application): boolean {
+export function qualifies(a: Assessment, application: Application, now = Date.now()): boolean {
+  const affiliation = a.affiliation;
+  if (affiliation && !a.uncertain && application.role.includes(affiliation.evidence)) {
+    const named = new RegExp(`\\b${affiliation.company}\\b`, "i").test(affiliation.evidence);
+    const globalCompany = ["OpenAI", "Anthropic", "ElevenLabs", "Cartesia"].includes(affiliation.company);
+    const cutoff = new Date(now); cutoff.setUTCFullYear(cutoff.getUTCFullYear() - 1);
+    const ended = affiliation.endedOn && /^\d{4}-\d{2}-\d{2}$/.test(affiliation.endedOn) ? Date.parse(affiliation.endedOn + "T00:00:00Z") : NaN;
+    const validDate = Number.isFinite(ended) && new Date(ended).toISOString().slice(0,10) === affiliation.endedOn;
+    if (named && (affiliation.current || (globalCompany && validDate && ended >= cutoff.getTime() && ended <= now))) return true;
+  }
   const text = [application.project, application.contribution].join("\n");
   return (
+    a.evidence.length > 0 &&
     a.relevant &&
     a.concrete &&
     a.contribution &&
@@ -113,4 +129,12 @@ export function emailFailure(code: string): "failed" | "uncertain" {
   ].includes(code)
     ? "failed"
     : "uncertain";
+}
+
+export function whatsappInvite(value: string | undefined): string | null {
+  try {
+    const url = new URL(value ?? "");
+    if (url.protocol !== "https:" || url.host !== "chat.whatsapp.com" || url.username || url.password || !/^\/[A-Za-z0-9]+$/.test(url.pathname)) return null;
+    return `${url.origin}${url.pathname}`;
+  } catch { return null; }
 }

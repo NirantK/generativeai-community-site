@@ -100,3 +100,9 @@ idempotent retries/conflicts, and revoked tokens.
 
 Live application submission, receipt delivery, and bug reporting remain pending
 one provider sign-in to clear the draft's old email-code test state.
+
+## September 16 authenticated staging checks
+
+On `staging.genaicommunity.ai`: LinkedIn session, shortened agent submission, identical retries, conflicting submissions, forbidden bearer operations, plain-text bug report creation/retry/word limit, and token revocation were checked. The test application remains in manual review. Exactly one submitted-copy email was observed in the applicant's personal Gmail inbox, with SPF, DKIM, and DMARC passing. No approval invitation was sent.
+
+New administrator invitation tests cover authorization, CSRF, duplicate-send prevention, matching-email acceptance, expiry, bearer exclusion, and revocation of access through an existing session. Page-gate tests verify unauthorized users never receive the dashboard. Policy tests cover all seven named companies, exact role evidence, uncertainty, invalid/future dates, and the one-year boundary. These invitation email tests mock the provider; no new administrator was actually invited.

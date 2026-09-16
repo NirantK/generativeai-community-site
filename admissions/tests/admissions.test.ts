@@ -7,11 +7,13 @@ import {
   applicationSchema,
   initialRecord,
   qualifies,
+  whatsappInvite,
   submissionResult,
   emailFailure,
 } from "../src/domain";
 import { digest, randomToken, csrf } from "../src/security";
 import migration from "../migrations/0001_admissions.sql?raw";
+import adminMigration from "../migrations/0003_administrators.sql?raw";
 import bugMigration from "../migrations/0002_bug_reports.sql?raw";
 const sample = {
   role: "Student",
@@ -25,7 +27,7 @@ const sample = {
     "I want to share evaluation methods and learn from other builders.",
 };
 beforeAll(async () => {
-  for (const query of (migration + bugMigration)
+  for (const query of (migration + bugMigration + adminMigration)
     .split(";")
     .filter((s) => s.trim()))
     await env.INDEX.prepare(query).run();
@@ -797,4 +799,72 @@ describe("agent bug reports", () => {
       (await send("Revoked token report", "revoked-token-report")).status,
     ).toBe(401);
   });
+});
+
+describe("administrator invitations", () => {
+  it("restricts creation, requires matching email acceptance, and revokes existing sessions", async () => {
+    const owner = await account(true, crypto.randomUUID(), "owner@example.com");
+    const recipient = await account(true, crypto.randomUUID(), "invited@example.com");
+    const stranger = await account();
+    const previous = env.ADMIN_EMAILS, emailEnabled = env.EMAIL_ENABLED;
+    env.ADMIN_EMAILS = "owner@example.com"; env.EMAIL_ENABLED = "true";
+    const send = vi.spyOn(env.EMAIL, "send").mockResolvedValue({messageId:"test-admin-invite"} as never).mockClear();
+    const headers = {Cookie: await browser(owner.id), Origin:"https://genaicommunity.ai"};
+    const recipientHeaders = {Cookie:await browser(recipient.id), Origin:headers.Origin};
+    try {
+      expect((await gateway("/api/admin/invitations", "POST", {Cookie: await browser(stranger.id), Origin:headers.Origin}, {email:"invited@example.com"})).status).toBe(403);
+      expect((await gateway("/api/admin/invitations", "POST", {Cookie:headers.Cookie}, {email:"invited@example.com"})).status).toBe(403);
+      const created = await gateway("/api/admin/invitations", "POST", headers, {email:"INVITED@example.com"});
+      expect(created.status).toBe(201);
+      const invite = await created.json() as {id:string;delivery:string};
+      expect(invite.delivery).toBe("accepted");
+      expect(send).toHaveBeenCalledTimes(1);
+      expect((await gateway("/api/admin/invitations", "POST", headers, {email:"invited@example.com"})).status).toBe(409);
+      expect(send).toHaveBeenCalledTimes(1);
+      expect((await gateway("/api/admin/access", "GET", recipientHeaders)).status).toBe(403);
+      expect((await gateway("/api/admin-invitation", "POST", {Cookie: await browser(stranger.id), Origin:headers.Origin})).status).toBe(409);
+      expect((await gateway("/api/admin-invitation", "POST", recipientHeaders)).status).toBe(200);
+      expect((await gateway("/api/admin/access", "GET", recipientHeaders)).status).toBe(200);
+      expect((await gateway(`/api/admin/invitations/${invite.id}`, "DELETE", headers)).status).toBe(200);
+      expect((await gateway("/api/admin/access", "GET", recipientHeaders)).status).toBe(403);
+    } finally { env.ADMIN_EMAILS=previous; env.EMAIL_ENABLED=emailEnabled; send.mockRestore(); }
+  });
+  it("refuses expired invitations and bearer acceptance", async () => {
+    const recipient = await account(true, crypto.randomUUID(), "expired@example.com");
+    await env.INDEX.prepare("INSERT INTO administrator_invites(id,email,invited_by,created_at,expires_at) VALUES(?,?,?,?,?)").bind(crypto.randomUUID(), "expired@example.com", "test", 1, 2).run();
+    expect((await gateway("/api/admin-invitation", "POST", {Cookie:await browser(recipient.id), Origin:"https://genaicommunity.ai"})).status).toBe(409);
+    await recipient.agent.consent(); const {token}=await recipient.agent.token();
+    expect((await gateway("/api/admin-invitation", "POST", {Authorization:`Bearer ${token}`, Origin:"https://genaicommunity.ai"})).status).toBe(403);
+  });
+  it("approves immediately with an audit reason but requires a decline reason", async () => {
+    const owner=await account(); const previous=env.ADMIN_EMAILS; env.ADMIN_EMAILS="applicant@example.com";
+    const headers={Cookie:await browser(owner.id), Origin:"https://genaicommunity.ai"};
+    await runInDurableObject(owner.agent, async instance => { instance.setState({...instance.state, application:sample, status:"review"}); });
+    try {
+      expect((await gateway(`/api/admin/applications/${owner.id}/decision`, "POST", headers, {action:"decline"})).status).toBe(422);
+      expect((await gateway(`/api/admin/applications/${owner.id}/decision`, "POST", headers, {action:"approve"})).status).toBe(200);
+      expect((await owner.agent.inspect()).decision?.reason).toBe("Approved by administrator.");
+      expect((await gateway(`/api/admin/applications/${owner.id}/decision`, "POST", headers, {action:"approve"})).status).toBe(409);
+    } finally {env.ADMIN_EMAILS=previous;}
+  });
+});
+
+it("qualifies explicit company affiliations with conservative one-year dates", () => {
+  const now=Date.parse("2026-09-16T00:00:00Z");
+  for (const company of ["Dashverse","Frameo","Lossfunk","OpenAI","Anthropic","ElevenLabs","Cartesia"] as const) {
+    const role=`Engineer at ${company}`;
+    const a={relevant:false,concrete:false,contribution:false,uncertain:false,reasons:"Affiliation",evidence:[sample.project],affiliation:{company,current:true,endedOn:null,evidence:role}};
+    expect(qualifies(a,{...sample,role},now)).toBe(true);
+    expect(qualifies({...a,uncertain:true},{...sample,role},now)).toBe(false);
+    expect(qualifies(a,sample,now)).toBe(false);
+    const globalCompany=["OpenAI","Anthropic","ElevenLabs","Cartesia"].includes(company);
+    expect(qualifies({...a,affiliation:{...a.affiliation,current:false,endedOn:"2025-09-16"}},{...sample,role},now)).toBe(globalCompany);
+    for (const endedOn of ["2025-09-15","2027-01-01","2026-02-30",null]) expect(qualifies({...a,affiliation:{...a.affiliation,current:false,endedOn}},{...sample,role},now)).toBe(false);
+  }
+});
+
+it("normalizes WhatsApp tracking parameters but rejects unrelated invite hosts", () => {
+  expect(whatsappInvite("https://chat.whatsapp.com/Example123?s=cl&p=i")).toBe("https://chat.whatsapp.com/Example123");
+  expect(whatsappInvite("https://chat.whatsapp.com.evil.example/Example123")).toBeNull();
+  expect(whatsappInvite("https://user@chat.whatsapp.com/Example123")).toBeNull();
 });

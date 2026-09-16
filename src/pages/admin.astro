@@ -18,6 +18,16 @@ import "../styles/admissions.css";
       <a href="/apply">Your account</a>
     </div>
     <section id="applications"></section>
+    <section aria-labelledby="administrators-title">
+      <h2 id="administrators-title">Administrators</h2>
+      <p>Invite someone using their LinkedIn email. They can review applications, make decisions, and invite other administrators after accepting.</p>
+      <form id="invite-admin">
+        <label for="admin-email">New administrator email</label>
+        <input id="admin-email" type="email" required maxlength="254" />
+        <button type="submit">Send administrator invitation</button>
+      </form>
+      <div id="administrators"></div>
+    </section>
     <section aria-labelledby="bug-reports-title">
       <h2 id="bug-reports-title">Agent bug reports</h2>
       <div id="bug-reports"></div>
@@ -32,9 +42,9 @@ import "../styles/admissions.css";
       <button id="reassess" type="button" hidden>Retry AI assessment</button>
       <form id="decision">
         <label for="reason">Decision reason</label>
+        <p class="help">Optional for approval; required to decline.</p>
         <textarea
           id="reason"
-          required
           minlength="5"
           maxlength="1500"
         ></textarea>
@@ -185,6 +195,21 @@ import "../styles/admissions.css";
         item.appendChild(title);
         item.appendChild(status);
         item.appendChild(button);
+        if (a.status === "review") {
+          const approve = document.createElement("button");
+          approve.textContent = "Approve now";
+          approve.className = "primary";
+          approve.onclick = async () => {
+            approve.disabled = true;
+            try {
+              await api(`/api/admin/applications/${a.id}/decision`, { action: "approve" });
+              await load();
+              if (selected === a.id) await inspect(a.id);
+              message("Application approved. Invitation queued for email delivery.");
+            } catch (e) { message((e as Error).message); approve.disabled = false; }
+          };
+          item.appendChild(approve);
+        }
         get("applications").appendChild(item);
       }
       const bugs = await api<{ reports: { id: string; name: string; report: string; created_at: number }[] }>("/api/admin/bug-reports");
@@ -211,6 +236,42 @@ import "../styles/admissions.css";
       message((e as Error).message);
     }
   }
+  async function loadAdministrators() {
+    try {
+      const { invitations } = await api<{invitations: {id:string;email:string;accepted_at:number|null;revoked_at:number|null;expires_at:number;delivery:string}[]}>("/api/admin/invitations");
+      get("administrators").replaceChildren();
+      for (const invitation of invitations) {
+        const row = document.createElement("p");
+        const status = invitation.revoked_at ? "Revoked" : invitation.accepted_at ? "Active administrator" : invitation.expires_at < Date.now() ? "Expired" : "Awaiting acceptance";
+        row.textContent = `${invitation.email} — ${status} · Email: ${invitation.delivery} `;
+        if (!invitation.revoked_at) {
+          const revoke = document.createElement("button"); revoke.textContent = "Revoke access";
+          revoke.onclick = async () => {
+            revoke.disabled = true;
+            try {
+              const response = await fetch(`/api/admin/invitations/${invitation.id}`, {method:"DELETE"});
+              if (!response.ok) throw new Error("Could not revoke access. You cannot revoke your own access.");
+              await loadAdministrators();
+            } catch(e) { message((e as Error).message); revoke.disabled = false; }
+          };
+          row.append(revoke);
+        }
+        get("administrators").append(row);
+      }
+    } catch(e) { message((e as Error).message); }
+  }
+  get("invite-admin").addEventListener("submit", async e => {
+    e.preventDefault();
+    const button = (e.currentTarget as HTMLFormElement).querySelector("button")!;
+    button.disabled = true;
+    try {
+      const result = await api<{delivery:string}>("/api/admin/invitations", {email:(get("admin-email") as HTMLInputElement).value});
+      await loadAdministrators();
+      message(result.delivery === "accepted" ? "Administrator invitation accepted by the email provider." : "Invitation saved; email outcome needs reconciliation in Cloudflare logs. Do not resend blindly.");
+    } catch(e) { message((e as Error).message); }
+    finally { button.disabled = false; }
+  });
+  void loadAdministrators();
   get("reload").onclick = () => void load();
   get("decision").addEventListener("submit", async (e) => {
     e.preventDefault();
@@ -219,8 +280,9 @@ import "../styles/admissions.css";
     try {
       await api(`/api/admin/applications/${selected}/decision`, {
         action: submitter.value,
-        reason: (get("reason") as HTMLTextAreaElement).value,
+        reason: (get("reason") as HTMLTextAreaElement).value.trim() || undefined,
       });
+      await load();
       await inspect(selected);
       message("Decision recorded.");
     } catch (e) {

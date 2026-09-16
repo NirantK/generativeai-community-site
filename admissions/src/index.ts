@@ -80,12 +80,11 @@ async function admin(req: Request, env: Env) {
     .split(",")
     .map((s) => s.trim().toLowerCase())
     .filter(Boolean);
-  if (
-    !state.profile?.emailVerified ||
-    !administrators.includes(state.profile.email.trim().toLowerCase())
-  )
+  const email = state.profile?.email.trim().toLowerCase();
+  const invited = email ? await env.INDEX.prepare("SELECT id FROM administrator_invites WHERE email=? AND accepted_at IS NOT NULL AND revoked_at IS NULL").bind(email).first() : null;
+  if (!state.profile?.emailVerified || (!administrators.includes(email!) && !invited))
     throw new ApiError(403, "forbidden", "Administrator access required.");
-  return { ...auth, sub: state.profile.sub };
+  return { ...auth, sub: state.profile.sub, email: email! };
 }
 function redirect(url: string, cookies: string[] = []) {
   const headers = new Headers({
@@ -253,8 +252,60 @@ async function handle(req: Request, env: Env): Promise<Response> {
       "Set-Cookie": sessionCookie(sessionName, "", 0),
     });
   }
+  if (path === "/api/admin-invitation") {
+    const auth = await authenticated(req, env, true);
+    const state = await auth.agent.publicState();
+    if (!state.profile?.emailVerified) throw new ApiError(403, "verified_email_required", "A confirmed LinkedIn email is required.");
+    const email = state.profile.email.trim().toLowerCase();
+    if (req.method === "GET") {
+      const invitation = await env.INDEX.prepare("SELECT id,expires_at FROM administrator_invites WHERE email=? AND accepted_at IS NULL AND revoked_at IS NULL AND expires_at>?").bind(email, Date.now()).first();
+      return json({ invitation });
+    }
+    if (req.method === "POST") {
+      const accepted = await env.INDEX.prepare("UPDATE administrator_invites SET accepted_at=? WHERE email=? AND accepted_at IS NULL AND revoked_at IS NULL AND expires_at>? RETURNING id").bind(Date.now(), email, Date.now()).first();
+      if (!accepted) throw new ApiError(409, "invitation_unavailable", "This invitation expired, was revoked, or was already accepted.");
+      return json({ administrator: true });
+    }
+    throw new ApiError(405, "method_not_allowed", "Method not allowed.");
+  }
   if (path.startsWith("/api/admin/")) {
     const auth = await admin(req, env);
+    if (path === "/api/admin/access" && req.method === "GET") return json({ administrator: true });
+    if (path === "/api/admin/invitations" && req.method === "GET") {
+      const rows = await env.INDEX.prepare("SELECT id,email,created_at,expires_at,accepted_at,revoked_at,delivery FROM administrator_invites ORDER BY created_at DESC LIMIT 100").all();
+      return json({ invitations: rows.results });
+    }
+    if (path === "/api/admin/invitations" && req.method === "POST") {
+      const { email: rawEmail } = z.object({ email: z.string().trim().email().max(254) }).strict().parse(await body(req));
+      const email = rawEmail.toLowerCase();
+      if ((env.ADMIN_EMAILS ?? "").split(",").some(e => e.trim().toLowerCase() === email)) throw new ApiError(409, "existing_administrator", "This email is already a configured administrator.");
+      if (env.EMAIL_ENABLED !== "true") throw new ApiError(503, "email_paused", "Email dispatch is paused.");
+      await limit(env, `admin-invites:${auth.id}`, 5);
+      const id = crypto.randomUUID();
+      const now = Date.now();
+      await env.INDEX.prepare("UPDATE administrator_invites SET revoked_at=?,revoked_by=? WHERE email=? AND accepted_at IS NULL AND expires_at<=? AND revoked_at IS NULL").bind(now, auth.sub, email, now).run();
+      const inserted = await env.INDEX.prepare("INSERT INTO administrator_invites(id,email,invited_by,created_at,expires_at,delivery) VALUES(?,?,?,?,?,'sending') ON CONFLICT DO NOTHING RETURNING id").bind(id, email, auth.sub, now, now + 7*24*60*60*1000).first();
+      if (!inserted) throw new ApiError(409, "existing_invitation", "An invitation or administrator record already exists for this email.");
+      // Persist before dispatch. Unknown outcomes are never automatically resent.
+      try {
+        const response = await env.EMAIL.send({
+          from: { email: "noreply@genaicommunity.ai", name: "GenerativeAI Community" }, to: email,
+          subject: "Invitation to administer GenerativeAI Community",
+          text: `You have been invited to administer GenerativeAI Community. Administrators can read applications, approve or decline applicants, and invite other administrators. Sign in with LinkedIn using this email and accept the invitation at ${env.SITE_URL}/apply/. This invitation expires in seven days. If unexpected, ignore this email.`,
+          html: `<p>You have been invited to administer GenerativeAI Community.</p><p>Administrators can read applications, approve or decline applicants, and invite other administrators.</p><p><a href="${env.SITE_URL}/apply/">Sign in with LinkedIn using this email and accept the invitation</a>.</p><p>This invitation expires in seven days. If unexpected, ignore this email.</p>`,
+        });
+        await env.INDEX.prepare("UPDATE administrator_invites SET delivery='accepted',message_id=? WHERE id=?").bind(response.messageId ?? null, id).run();
+      } catch {
+        await env.INDEX.prepare("UPDATE administrator_invites SET delivery='uncertain' WHERE id=?").bind(id).run();
+      }
+      return json(await env.INDEX.prepare("SELECT id,email,delivery,expires_at FROM administrator_invites WHERE id=?").bind(id).first(), 201);
+    }
+    const revoke = path.match(/^\/api\/admin\/invitations\/([a-f0-9-]{36})$/);
+    if (revoke && req.method === "DELETE") {
+      const result = await env.INDEX.prepare("UPDATE administrator_invites SET revoked_at=?,revoked_by=? WHERE id=? AND email<>? AND revoked_at IS NULL RETURNING id").bind(Date.now(), auth.sub, revoke[1], auth.email).first();
+      if (!result) throw new ApiError(409, "revocation_conflict", "Invitation unavailable or belongs to your own account.");
+      return json({ revoked: true });
+    }
     if (path === "/api/admin/bug-reports" && req.method === "GET") {
       const rows = await env.INDEX.prepare(
         "SELECT b.id,b.account_id,b.report,b.created_at,a.name FROM bug_reports b LEFT JOIN applications a ON a.id=b.account_id ORDER BY b.created_at DESC LIMIT 100",
@@ -305,13 +356,10 @@ async function handle(req: Request, env: Env): Promise<Response> {
     if (req.method === "POST" && match[2] === "reassess")
       return json(await target.reassess(auth.sub));
     if (req.method === "POST" && match[2] === "decision") {
-      const data = z
-        .object({
-          action: z.enum(["approve", "decline"]),
-          reason: z.string().trim().min(5).max(1500),
-        })
-        .strict()
-        .parse(await body(req));
+      const data = z.discriminatedUnion("action", [
+        z.object({ action: z.literal("approve"), reason: z.string().trim().min(5).max(1500).default("Approved by administrator.") }).strict(),
+        z.object({ action: z.literal("decline"), reason: z.string().trim().min(5).max(1500) }).strict(),
+      ]).parse(await body(req));
       return json(await target.decide(data.action, data.reason, auth.sub));
     }
     if (req.method === "POST" && match[2] === "reconcile") {

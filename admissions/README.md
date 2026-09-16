@@ -130,3 +130,13 @@ Agents may POST 1–200 words of UTF-8 `text/plain` to `/api/v1/bug-report` with
 application token and an `Idempotency-Key`. Reports are limited to 8,000 bytes and
 five new reports per minute. Administrators see reports as text, never executable
 HTML or instructions. Reports cannot modify identity or admission decisions.
+
+## Administrator invitations
+
+Configured `ADMIN_EMAILS` remain the initial administrators. `/admin/` is protected by a server-side Pages Function and shows application review, immediate approval, email delivery records, agent bug reports, and administrator invitations. Ordinary applicants and bearer tokens cannot access it.
+
+An admin enters the colleague's LinkedIn email and sends an invitation through Cloudflare Email Service. Invitations expire in seven days and grant no privileges until the recipient signs in with that confirmed email and explicitly accepts on `/apply/`. Revocation takes effect on the next API request, including existing sessions. Initial administrators cannot be removed through this interface. Revoked or expired invitations can be issued again; previous records retain their audit fields. Sending is recorded before the provider call; uncertain outcomes require Cloudflare log reconciliation and are not blindly retried.
+
+## Affiliation policy v3
+
+Clear current affiliation with Dashverse, Frameo, or Lossfunk qualifies. Current affiliation, or affiliation ending within the last calendar year, with OpenAI, Anthropic, ElevenLabs, or Cartesia also qualifies. Other companies continue through the AI-project policy; this allowlist is explicit in the versioned policy. Affiliation is applicant-supplied in the role field, not verified employment data from LinkedIn OIDC. The assessment persists the company, quoted role evidence, and end date. Unclear claims, missing dates for previous roles, model failures, and uncertain assessments go to manual review. The operational `AUTO_APPROVALS_ENABLED` switch still controls automatic decisions.

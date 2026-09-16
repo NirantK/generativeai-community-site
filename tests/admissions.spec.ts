@@ -139,6 +139,7 @@ test("new pages fit the viewport and documentation names Cloudflare sender", asy
 test("administrator can read evidence and record a decision", async ({
   page,
 }) => {
+  await page.route("**/api/admin/invitations", r => r.fulfill({json:{invitations:[]}}));
   await page.route("**/api/admin/bug-reports", (r) =>
     r.fulfill({
       json: {
@@ -268,4 +269,23 @@ test("agent application is first and open by default with LinkedIn email and no 
           ),
       ),
   ).toBe(true);
+});
+
+test("administrator invites a colleague by email and sees the pending invitation", async ({ page }) => {
+  let invited=false;
+  await page.route("**/api/admin/applications", r => r.fulfill({json:{applications:[]}}));
+  await page.route("**/api/admin/bug-reports", r => r.fulfill({json:{reports:[]}}));
+  await page.route("**/api/admin/invitations", r => {
+    if(r.request().method()==="POST") {
+      expect(r.request().postDataJSON()).toEqual({email:"colleague@example.com"});
+      invited=true;
+      return r.fulfill({status:201,json:{delivery:"accepted"}});
+    }
+    return r.fulfill({json:{invitations:invited?[{id:"test",email:"colleague@example.com",expires_at:Date.now()+86400000,accepted_at:null,revoked_at:null,delivery:"accepted"}]:[]}});
+  });
+  await page.goto("/admin/");
+  await page.getByLabel("New administrator email").fill("colleague@example.com");
+  await page.getByRole("button",{name:"Send administrator invitation"}).click();
+  await expect(page.getByRole("status")).toHaveText("Administrator invitation accepted by the email provider.");
+  await expect(page.getByText(/colleague@example.com — Awaiting acceptance/)).toBeVisible();
 });
