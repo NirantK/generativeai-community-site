@@ -289,3 +289,40 @@ test("administrator invites a colleague by email and sees the pending invitation
   await expect(page.getByRole("status")).toHaveText("Administrator invitation accepted by the email provider.");
   await expect(page.getByText(/colleague@example.com — Awaiting acceptance/)).toBeVisible();
 });
+
+test("agent applicants can appeal with evidence and see human-review status", async ({page}) => {
+  let appealed=false;
+  await page.route("**/api/v1/application",r=>r.fulfill({json:{...draft,application:{role:"Student"},status:appealed?"review":"declined",decisionReason:"Exceptional work evidence was not supplied.",appeal:{eligible:!appealed,status:appealed?"pending":"none"}}}));
+  await page.route("**/api/v1/appeal",r=>{
+    expect(r.request().headers()["idempotency-key"]).toBeTruthy();
+    expect(r.request().postDataJSON()).toEqual({proofUrl:"https://example.com/my-project"});
+    appealed=true;return r.fulfill({status:202,json:{status:"review"}});
+  });
+  await page.goto("/apply");
+  await expect(page.getByRole("heading",{name:"Appeal your rejection"})).toBeVisible();
+  await page.getByLabel("Link to your work (HTTPS)").fill("https://example.com/my-project");
+  await page.getByRole("button",{name:"Submit appeal for admin review"}).click();
+  await expect(page.getByText("Your appeal is awaiting administrator review.")).toBeVisible();
+  await expect(page.getByRole("heading",{name:"Appeal your rejection"})).toBeHidden();
+});
+
+test("form applicants cannot see the appeal form after rejection", async ({page}) => {
+  await page.route("**/api/v1/application",r=>r.fulfill({json:{...draft,application:{role:"Student"},status:"declined",appeal:{eligible:false,status:"none"}}}));
+  await page.goto("/apply");
+  await expect(page.getByText(/Appeals are available only for applications originally submitted through an agent/)).toBeVisible();
+  await expect(page.getByRole("button",{name:"Submit appeal for admin review"})).toBeHidden();
+});
+
+test("admin review displays appeal evidence, reference status, and original rejection",async({page})=>{
+  const id="b".repeat(64);
+  await page.route("**/api/admin/invitations",r=>r.fulfill({json:{invitations:[]}}));
+  await page.route("**/api/admin/bug-reports",r=>r.fulfill({json:{reports:[]}}));
+  await page.route("**/api/admin/applications",r=>r.fulfill({json:{applications:[{id,name:"Appealing student",status:"review",appeal_status:"pending",delivery:"pending"}]}}));
+  await page.route(`**/api/admin/applications/${id}`,r=>r.fulfill({json:{profile:draft.profile,application:{role:"Student"},status:"review",submissionChannel:"agent",delivery:{status:"pending"},history:[],appeals:[{submittedAt:Date.now(),previousDecision:{reason:"Original student rejection"},resolution:null,evidence:{explanation:"Original project details for a human reviewer",voucher:"<script>untrusted reference claim</script>"}}]}}));
+  await page.goto("/admin");
+  await expect(page.getByText(/APPEAL AWAITING REVIEW/)).toBeVisible();
+  await page.getByRole("button",{name:"Review application",exact:true}).click();
+  await expect(page.getByRole("heading",{name:"Appeal 1 — Awaiting decision"})).toBeVisible();
+  await expect(page.getByText(/Community reference \(unverified\): <script>untrusted reference claim<\/script>/)).toBeVisible();
+  await expect(page.getByRole("button",{name:"Retry AI assessment"})).toBeHidden();
+});

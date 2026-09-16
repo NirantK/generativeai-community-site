@@ -127,6 +127,7 @@ import "../styles/admissions.css";
           "Applicant",
           `${record.profile?.name ?? ""} · ${record.profile?.email ?? ""}`,
         ],
+        ["Submission method", record.submissionChannel ?? "Unknown (legacy application)"],
         ["Role", application?.role ?? ""],
         ["AI project or use case", application?.project ?? ""],
         ["Personal contribution", application?.contribution ?? ""],
@@ -149,11 +150,23 @@ import "../styles/admissions.css";
         container.appendChild(heading);
         container.appendChild(paragraph);
       }
+      for (const [index, appeal] of (record.appeals ?? []).entries()) {
+        const heading = document.createElement("h3");
+        heading.textContent = `Appeal ${index + 1} — ${appeal.resolution ? appeal.resolution.action : "Awaiting decision"}`;
+        const evidence = document.createElement("p");
+        evidence.style.whiteSpace = "pre-wrap";
+        evidence.style.overflowWrap = "anywhere";
+        evidence.textContent = `Submitted: ${new Date(appeal.submittedAt).toLocaleString()}\nOriginal rejection: ${appeal.previousDecision.reason}\nWork link: ${appeal.evidence.proofUrl ?? "Not supplied"}\nProject explanation: ${appeal.evidence.explanation ?? "Not supplied"}\nCommunity reference (unverified): ${appeal.evidence.voucher ?? "Not supplied"}\n${appeal.resolution ? "Appeal decision: " + appeal.resolution.reason : "Verify the evidence or reference before deciding."}`;
+        container.append(heading, evidence);
+      }
       get("audit-record").textContent = JSON.stringify(
         {
+          submissionChannel: record.submissionChannel,
+          appeals: record.appeals,
           policy: record.policy,
           model: record.model,
           assessmentFailure: record.assessmentFailure,
+          assessment: record.assessment,
           decision: record.decision,
           delivery: record.delivery,
           receipt: record.receipt,
@@ -164,7 +177,7 @@ import "../styles/admissions.css";
       );
       get("review").hidden = false;
       get("decision").hidden = record.status !== "review";
-      get("reassess").hidden = record.status !== "review" || !!record.decision;
+      get("reassess").hidden = record.status !== "review" || !!record.decision || !!record.appeals?.some(a => !a.resolution);
       emailControls();
       get("review").scrollIntoView({ block: "start" });
     } catch (e) {
@@ -179,6 +192,7 @@ import "../styles/admissions.css";
           name: string;
           status: string;
           delivery: string;
+          appeal_status?: string;
         }[];
       }>("/api/admin/applications");
       get("applications").replaceChildren();
@@ -188,7 +202,7 @@ import "../styles/admissions.css";
         const title = document.createElement("h2");
         title.textContent = a.name;
         const status = document.createElement("p");
-        status.textContent = `${a.status} · Email: ${a.delivery}`;
+        status.textContent = `${a.status}${a.appeal_status === "pending" ? " · APPEAL AWAITING REVIEW" : ""} · Email: ${a.delivery}`;
         const button = document.createElement("button");
         button.textContent = "Review application";
         button.onclick = () => void inspect(a.id);

@@ -101,12 +101,26 @@ const fields = [
           </div>
         </form>
       </section>
+      <p class="help">Students need exceptional original work to qualify, unless an approved company affiliation applies. Rejections can be appealed only when the original application was submitted using an agent.</p>
       <section id="status-section" hidden>
         <h2 id="status-title">Application status</h2>
         <p id="status-copy"></p>
         <button id="refresh" type="button">
           Refresh status
         </button>
+      </section>
+      <section id="appeal-section" hidden>
+        <h2>Appeal your rejection</h2>
+        <p>Appeals are available because your original application was submitted using an agent. Provide at least one item below. An administrator will review it. A named reference is not treated as verified endorsement.</p>
+        <form id="appeal-form">
+          <label for="appeal-proof">Link to your work (HTTPS)</label>
+          <input id="appeal-proof" name="proofUrl" type="url" maxlength="2000" />
+          <label for="appeal-explanation">Explain a project and your contribution</label>
+          <textarea id="appeal-explanation" name="explanation" minlength="80" maxlength="4000"></textarea>
+          <label for="appeal-voucher">Community member who can vouch for you</label>
+          <textarea id="appeal-voucher" name="voucher" minlength="20" maxlength="1000" placeholder="Name and how they know your work. Share contact details only with their permission."></textarea>
+          <button type="submit">Submit appeal for admin review</button>
+        </form>
       </section>
       <details id="agent-section" open>
         <summary>Apply using an AI agent</summary>
@@ -116,7 +130,7 @@ const fields = [
         </p>
         <p class="help">
           The token lasts 24 hours and allows one application submission plus
-          status checks and bug reports of up to 200 words. Replacing it immediately revokes the old token. It
+          status checks, eligible appeals, and bug reports of up to 200 words. Replacing it immediately revokes the old token. It
           cannot change your account or email.
         </p>
         <div class="actions">

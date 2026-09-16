@@ -2,7 +2,7 @@
   "openapi": "3.1.0",
   "info": {
     "title": "GenerativeAI Community application API",
-    "version": "1.0.0",
+    "version": "1.1.0",
     "description": "Generate a 24-hour application token after LinkedIn sign-in and browser consent at /apply. One application per LinkedIn account. Tokens are not OAuth access tokens. Never expose tokens in logs or URLs."
   },
   "servers": [
@@ -382,6 +382,57 @@
           }
         }
       }
+    },
+    "/api/v1/appeal": {
+      "post": {
+        "operationId": "appealApplication",
+        "summary": "Appeal a rejection of an originally agent-submitted application",
+        "description": "Provide at least one evidence field. Human review only. The original submission method is immutable. Reusing an idempotency key with different evidence conflicts. A pending appeal cannot be replaced. After another rejection, new evidence is required. Renew expired tokens through the authenticated browser.",
+        "parameters": [
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AppealEvidence"
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Appeal saved or identical retry; returns ApplicationState"
+          },
+          "400": {
+            "description": "Missing or invalid idempotency key"
+          },
+          "401": {
+            "description": "Missing, expired, or revoked credentials"
+          },
+          "403": {
+            "description": "Original application was not submitted using an agent"
+          },
+          "409": {
+            "description": "Not declined, pending appeal, unchanged evidence after rejection, or key conflict"
+          },
+          "422": {
+            "description": "Invalid or missing evidence"
+          },
+          "429": {
+            "description": "Rate limited"
+          }
+        }
+      }
     }
   },
   "components": {
@@ -517,6 +568,44 @@
               }
             },
             "description": "Delivery state of the submitted application copy, separate from the approval invitation."
+          },
+          "submissionChannel": {
+            "enum": [
+              "agent",
+              "form",
+              "unknown"
+            ]
+          },
+          "decisionReason": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "appeal": {
+            "type": "object",
+            "properties": {
+              "eligible": {
+                "type": "boolean"
+              },
+              "status": {
+                "enum": [
+                  "none",
+                  "pending",
+                  "resolved"
+                ]
+              },
+              "requirements": {
+                "type": "string"
+              },
+              "history": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "description": "Evidence, prior rejection, submission timestamp, and admin resolution. No bearer credentials."
+                }
+              }
+            }
           }
         }
       },
@@ -534,6 +623,29 @@
               },
               "details": {}
             }
+          }
+        }
+      },
+      "AppealEvidence": {
+        "type": "object",
+        "additionalProperties": false,
+        "minProperties": 1,
+        "properties": {
+          "proofUrl": {
+            "type": "string",
+            "format": "uri",
+            "pattern": "^https://",
+            "maxLength": 2000
+          },
+          "explanation": {
+            "type": "string",
+            "minLength": 80,
+            "maxLength": 4000
+          },
+          "voucher": {
+            "type": "string",
+            "minLength": 20,
+            "maxLength": 1000
           }
         }
       }
