@@ -15,5 +15,5 @@ export default defineConfig({
   vite: {
     plugins: [tailwindcss()],
   },
-  integrations: [mdx(), sitemap()],
+  integrations: [mdx(), sitemap({filter: (page) => !/\/(admin|past-chats)(\/|$)/.test(new URL(page).pathname)})],
 });

@@ -2,6 +2,7 @@ import { WorkerEntrypoint } from "cloudflare:workers";
 import { getAgentByName } from "agents";
 import { createRemoteJWKSet, jwtVerify, errors } from "jose";
 import { z } from "zod";
+import { archiveRead, archiveAdmin } from "./chats";
 import {
   ApiError,
   body,
@@ -270,6 +271,7 @@ async function handle(req: Request, env: Env): Promise<Response> {
   }
   if (path.startsWith("/api/admin/")) {
     const auth = await admin(req, env);
+    if (path.startsWith("/api/admin/chats/")) return archiveAdmin(req, env, path.slice("/api/admin/chats".length), auth.sub);
     if (path === "/api/admin/access" && req.method === "GET") return json({ administrator: true });
     if (path === "/api/admin/invitations" && req.method === "GET") {
       const rows = await env.INDEX.prepare("SELECT id,email,created_at,expires_at,accepted_at,revoked_at,delivery FROM administrator_invites ORDER BY created_at DESC LIMIT 100").all();
@@ -392,6 +394,12 @@ async function handle(req: Request, env: Env): Promise<Response> {
       return json(await target.retryDelivery(auth.sub, data.kind));
     }
     throw new ApiError(405, "method", "Method not allowed.");
+  }
+  if(path.startsWith("/api/v1/chats/")) {
+    const member = await authenticated(req,env);
+    const state = await member.agent.publicState();
+    if(state.status !== "approved") throw new ApiError(403,"membership_required","Past Chats is available to approved members only.");
+    return archiveRead(req,env,path.slice("/api/v1/chats".length));
   }
   const browserOnly = !["/api/v1/application", "/api/v1/appeal", "/api/v1/bug-report"].includes(
     path,

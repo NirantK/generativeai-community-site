@@ -10,3 +10,11 @@ it("serves the administrator page only after a successful server-side authorizat
     if(status!==200) expect(await response.text()).not.toContain("private dashboard");
   }
 });
+
+import {onRequest as memberPage} from "../../functions/past-chats/[[path]]";
+it("gates the Past Chats page without serving its shell to pending applicants",async()=>{
+  const next=vi.fn(async()=>new Response("member archive"));
+  const response=await memberPage({request:new Request("https://genaicommunity.ai/past-chats"),env:{ADMISSIONS:{fetch:async(request)=>{expect(new URL(request.url).pathname).toBe("/api/v1/chats/access");return new Response(null,{status:403});}}},next});
+  expect(response.status).toBe(403);expect(next).not.toHaveBeenCalled();
+  expect(response.headers.get("Cache-Control")).toContain("no-store");
+});

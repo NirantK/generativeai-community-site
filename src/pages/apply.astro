@@ -69,6 +69,7 @@ const fields = [
     <div id="signed-in" hidden>
       <div class="actions">
         <p id="identity"></p>
+        <a id="past-chats-link" href="/past-chats" hidden>Past Chats</a>
         <a id="admin-link" href="/admin" hidden>Review applications</a>
         <div id="admin-invitation" hidden><p>You’re invited to administer the community. Administrators can read applications, make admission decisions, and invite other administrators.</p><button id="accept-admin" type="button">Accept administrator invitation</button></div>
         <button id="logout" type="button">
@@ -131,7 +132,7 @@ const fields = [
         </p>
         <p class="help">
           The token lasts 24 hours and allows one application submission plus
-          status checks, eligible appeals, and bug reports of up to 200 words. Replacing it immediately revokes the old token. It
+          status checks, eligible appeals, approved-member chat search, and bug reports of up to 200 words. Replacing it immediately revokes the old token. It
           cannot change your account or email.
         </p>
         <div class="actions">

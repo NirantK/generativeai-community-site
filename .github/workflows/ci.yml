@@ -31,6 +31,8 @@ jobs:
         run: npm ci
       - name: Install Playwright browsers
         run: npx playwright install --with-deps chromium webkit
+      - name: Chat import tests
+        run: python3 -m unittest discover -s scripts/tests
       - name: Admissions backend checks
         run: |
           npm run check:admissions

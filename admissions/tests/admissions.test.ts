@@ -14,6 +14,7 @@ import {
   emailFailure,
 } from "../src/domain";
 import { digest, randomToken, csrf } from "../src/security";
+import archiveMigration from "../migrations/0005_chat_archive.sql?raw";
 import migration from "../migrations/0001_admissions.sql?raw";
 import appealMigration from "../migrations/0004_appeal_index.sql?raw";
 import adminMigration from "../migrations/0003_administrators.sql?raw";
@@ -31,7 +32,7 @@ const sample = {
     "I want to share evaluation methods and learn from other builders.",
 };
 beforeAll(async () => {
-  for (const query of (migration + bugMigration + adminMigration + appealMigration)
+  for (const query of (migration + bugMigration + adminMigration + appealMigration + archiveMigration)
     .split(";")
     .filter((s) => s.trim()))
     await env.INDEX.prepare(query).run();
@@ -992,5 +993,90 @@ it("preserves identical legacy retries without allowing a new application to omi
     const result=await instance.submit(legacy,"legacy-retry-1");
     expect(result.application).toEqual(legacy);
     expect(instance.state.application?.whatsapp).toBeUndefined();
+  });
+});
+
+describe("member chat archive",()=>{
+  async function member(status:"approved"|"review"|"declined"|"draft"="approved") {
+    const owner=await account();await owner.agent.consent();const {token}=await owner.agent.token();
+    await runInDurableObject(owner.agent,async instance=>{instance.setState({...instance.state,status});});
+    return {...owner,headers:{Authorization:`Bearer ${token}`}};
+  }
+  async function group(published=true) {
+    const id=await digest(crypto.randomUUID());
+    await env.INDEX.prepare("INSERT INTO chat_groups(id,title,source_ref,published,imported_at,coverage_note) VALUES(?,?,?,?,?,?)").bind(id,"Example community group","private-source-"+id,published?1:0,Date.now(),"Available synced history").run();
+    return id;
+  }
+  async function message(groupId:string,text:string,at=Date.parse("2026-01-01")) {
+    const id=await digest(crypto.randomUUID());
+    await env.INDEX.prepare("INSERT INTO chat_messages(id,group_id,source_id,posted_at,author,body) VALUES(?,?,?,?,?,?)").bind(id,groupId,"source-"+id,at,"Example member",text).run();
+    await env.INDEX.prepare("INSERT INTO chat_search(rowid,body,author) SELECT rowid,body,author FROM chat_messages WHERE id=?").bind(id).run();
+    return id;
+  }
+  it("allows approved browser/token reads and denies other states and revoked tokens",async()=>{
+    expect((await gateway("/api/v1/chats/groups")).status).toBe(401);
+    for(const status of ["draft","review","declined"] as const) {
+      const owner=await member(status);
+      expect((await gateway("/api/v1/chats/groups","GET",owner.headers)).status).toBe(403);
+    }
+    const owner=await member();
+    expect((await gateway("/api/v1/chats/groups","GET",owner.headers)).status).toBe(200);
+    expect((await gateway("/api/v1/chats/groups","GET",{Cookie:await browser(owner.id)})).status).toBe(200);
+    expect((await gateway("/api/admin/chats/groups","GET",owner.headers)).status).toBe(403);
+    await runInDurableObject(owner.agent,async instance=>{instance.setState({...instance.state,status:"declined"});});
+    expect((await gateway("/api/v1/chats/groups","GET",owner.headers)).status).toBe(403);
+    await owner.agent.revoke();
+    expect((await gateway("/api/v1/chats/groups","GET",owner.headers)).status).toBe(401);
+  });
+  it("searches full text with group/date filters and stable pagination",async()=>{
+    const owner=await member(), id=await group();
+    const first=await message(id,"Retrieval evaluation uses a measured baseline.",Date.parse("2026-01-01"));
+    const second=await message(id,"Retrieval evaluation needs realistic questions.",Date.parse("2026-01-02"));
+    await message(id,"Voice agents use streaming audio.",Date.parse("2026-01-03"));
+    const path=`/api/v1/chats/search?q=retrieval%20evaluation&group=${id}&limit=1`;
+    const result=await (await gateway(path,"GET",owner.headers)).json() as any;
+    expect(result.messages.map((m:any)=>m.id)).toEqual([second]);
+    expect(result.nextCursor).toBeTruthy();
+    const next=await (await gateway(path+"&cursor="+encodeURIComponent(result.nextCursor),"GET",owner.headers)).json() as any;
+    expect(next.messages.map((m:any)=>m.id)).toEqual([first]);
+    expect(next.nextCursor).toBeNull();
+    const dated=await (await gateway(`/api/v1/chats/search?group=${id}&from=2026-01-02&to=2026-01-02`,"GET",owner.headers)).json() as any;
+    expect(dated.messages.map((m:any)=>m.id)).toEqual([second]);
+    expect((await gateway(path+"&from=2026-01-02&cursor="+encodeURIComponent(result.nextCursor),"GET",owner.headers)).status).toBe(400);
+    expect((await gateway("/api/v1/chats/search?cursor=broken","GET",owner.headers)).status).toBe(400);
+    expect((await gateway("/api/v1/chats/search?q=%22%27","GET",owner.headers)).status).toBe(422);
+    expect((await gateway("/api/v1/chats/search?from=2026-02-30","GET",owner.headers)).status).toBe(422);
+  });
+  it("never exposes unpublished groups and keeps context inside the selected group",async()=>{
+    const owner=await member(), visible=await group(), privateGroup=await group(false);
+    const first=await message(visible,"Visible earlier context",1000);
+    const selected=await message(visible,"Visible selected message",2000);
+    const hidden=await message(privateGroup,"Private moderator message",1500);
+    const context=await (await gateway(`/api/v1/chats/messages/${selected}`,"GET",owner.headers)).json() as any;
+    expect(context.before.map((m:any)=>m.id)).toEqual([first]);
+    expect(JSON.stringify(context)).not.toContain(hidden);
+    expect((await gateway(`/api/v1/chats/messages/${hidden}`,"GET",owner.headers)).status).toBe(404);
+    const groups=await (await gateway("/api/v1/chats/groups","GET",owner.headers)).json() as any;
+    expect(groups.groups.some((g:any)=>g.id===privateGroup)).toBe(false);
+    expect(JSON.stringify(groups)).not.toContain("private-source-");
+  });
+  it("unpublishes groups and hides messages through browser-only, CSRF-protected admin actions",async()=>{
+    const owner=await member(), id=await group(), msg=await message(id,"Redactable archive text");
+    const prior=env.ADMIN_EMAILS;env.ADMIN_EMAILS="applicant@example.com";
+    const browserHeaders={Cookie:await browser(owner.id),Origin:"https://genaicommunity.ai"};
+    try {
+      expect((await gateway(`/api/admin/chats/messages/${msg}`,"DELETE",owner.headers)).status).toBe(403);
+      expect((await gateway(`/api/admin/chats/messages/${msg}`,"DELETE",{Cookie:browserHeaders.Cookie})).status).toBe(403);
+      expect((await gateway(`/api/admin/chats/messages/${msg}`,"DELETE",browserHeaders)).status).toBe(200);
+      expect((await gateway(`/api/v1/chats/messages/${msg}`,"GET",owner.headers)).status).toBe(404);
+      const found=await (await gateway(`/api/v1/chats/search?group=${id}&q=redactable`,"GET",owner.headers)).json() as any;
+      expect(found.messages).toHaveLength(0);
+      const other=await message(id,"Another visible message");
+      expect((await gateway(`/api/admin/chats/groups/${id}`,"POST",browserHeaders,{published:false})).status).toBe(200);
+      expect((await gateway(`/api/v1/chats/messages/${other}`,"GET",owner.headers)).status).toBe(404);
+      expect((await gateway(`/api/admin/chats/messages/${other}`,"GET",browserHeaders)).status).toBe(200);
+      const audit=await env.INDEX.prepare("SELECT action FROM chat_archive_actions WHERE target IN (?,?)").bind(msg,id).all();
+      expect(audit.results).toHaveLength(2);
+    } finally {env.ADMIN_EMAILS=prior;}
   });
 });
