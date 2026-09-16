@@ -64,9 +64,12 @@ jobs:
         with:
           name: community-site-${{ github.sha }}
           path: dist/
-      - name: Deploy admissions Worker and schema
+      - name: Validate deployment credential
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: python3 scripts/prepare-cloudflare-token.py
+      - name: Deploy admissions Worker and schema
+        env:
           CLOUDFLARE_ACCOUNT_ID: 076c525b59739562570401e48fc0651c
           LINKEDIN_CLIENT_SECRET: ${{ secrets.LINKEDIN_CLIENT_SECRET }}
         run: |
@@ -78,7 +81,6 @@ jobs:
           rm "$RUNNER_TEMP/admissions-secrets.json"
       - name: Deploy tested commit to Cloudflare Pages
         env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: 076c525b59739562570401e48fc0651c
           WRANGLER_SEND_METRICS: 'false'
         run: |
@@ -108,9 +110,12 @@ jobs:
         with:
           name: community-site-${{ github.sha }}
           path: dist/
-      - name: Deploy isolated staging application
+      - name: Validate deployment credential
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: python3 scripts/prepare-cloudflare-token.py
+      - name: Deploy isolated staging application
+        env:
           CLOUDFLARE_ACCOUNT_ID: 076c525b59739562570401e48fc0651c
           LINKEDIN_CLIENT_SECRET: ${{ secrets.LINKEDIN_CLIENT_SECRET }}
           WRANGLER_SEND_METRICS: 'false'
