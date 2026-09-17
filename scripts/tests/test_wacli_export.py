@@ -19,5 +19,10 @@ class ExportTests(unittest.TestCase):
         messages,_=exporter.normalize([self.row(Revoked=True,MediaType='image')])
         self.assertTrue(messages[0]['is_deleted'])
         self.assertEqual(messages[0]['type'],'OTHER')
+
+    def test_phone_numbers_are_replaced_before_export(self):
+        messages,_=exporter.normalize([self.row(Text='Call +91 12345 67890', SenderName='+91 12345 67890')])
+        self.assertEqual(messages[0]['text'], 'Call amber bear noon')
+        self.assertEqual(messages[0]['sender_name'], 'amber bear noon')
     def test_other_group_fails_closed(self):
         with self.assertRaises(ValueError): exporter.normalize([self.row(ChatJID='other@g.us')])
