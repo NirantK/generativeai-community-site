@@ -13,8 +13,8 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from chat_privacy import redact_text
 
-CLI = '/opt/homebrew/bin/wacli'
-STORE = '/Users/nirantk/.wacli-codex'
+CLI = os.environ.get('WACLI_BIN', '/opt/homebrew/bin/wacli')
+STORE = os.environ.get('WACLI_STORE', '/Users/nirantk/.wacli-codex')
 SOURCE = '120363049558306142@g.us'
 TITLE = 'The GenerativeAI Group'
 # The published legacy archive ends here. Its IDs differ from WhatsApp IDs.

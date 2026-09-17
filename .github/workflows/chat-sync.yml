@@ -1,0 +1,46 @@
+name: Cloudflare chat sync
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['chat-sync/**', '.github/workflows/chat-sync.yml']
+  pull_request:
+    paths: ['chat-sync/**', '.github/workflows/chat-sync.yml']
+permissions:
+  contents: read
+concurrency:
+  group: cloudflare-chat-sync-deploy
+  cancel-in-progress: false
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - run: npx tsc -p chat-sync/tsconfig.json
+      - name: Build native Linux wacli image
+        run: docker build -f chat-sync/Dockerfile -t genai-chat-sync .
+  deploy:
+    if: github.ref == 'refs/heads/main'
+    needs: build
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - name: Load deployment credential
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: python3 scripts/prepare-cloudflare-token.py
+      - name: Deploy private scheduled sync
+        env:
+          CLOUDFLARE_ACCOUNT_ID: 076c525b59739562570401e48fc0651c
+        run: npx --no-install wrangler deploy --config chat-sync/wrangler.jsonc
