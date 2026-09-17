@@ -18,9 +18,10 @@ class Handler(BaseHTTPRequestHandler):
   try:
    if self.path=='/selftest':
     tests=subprocess.run(['python3','-m','unittest','discover','-s','/app/scripts/tests'],capture_output=True,timeout=60)
+    privacy=subprocess.run(['python3','-m','unittest','discover','-s','/app','-p','test_checkpoint.py'],capture_output=True,timeout=60)
     binary=subprocess.run(['/usr/local/bin/wacli','--help'],capture_output=True,timeout=10)
-    if tests.returncode or binary.returncode:raise RuntimeError('selftest failed')
-    return self.reply(200,{'passed':True,'tests':9,'wacli':True})
+    if tests.returncode or privacy.returncode or binary.returncode:raise RuntimeError('selftest failed')
+    return self.reply(200,{'passed':True,'tests':11,'wacli':True})
    if self.path=='/restore':
     size=int(self.headers.get('Content-Length','0'))
     if size<=0 or size>30_000_000:raise ValueError('checkpoint size')
