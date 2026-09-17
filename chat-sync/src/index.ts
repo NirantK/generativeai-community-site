@@ -26,7 +26,7 @@ export class WhatsAppContainer extends Container<Env> {
    const r=await this.containerFetch('http://container/selftest',{method:'POST'});
    if(!r.ok)throw new Error('container-selftest-failed');
    return await r.json<{passed:boolean;tests:number;wacli:boolean}>();
-  }finally{await this.stop();}
+  }finally{try{await this.stop();}catch{/* Preserve the startup failure when no container exists. */}}
  }
  async run(owner:string) {
   if((await this.ctx.storage.get<{owner:string}>('lease'))?.owner!==owner)throw new Error('lease-required');
