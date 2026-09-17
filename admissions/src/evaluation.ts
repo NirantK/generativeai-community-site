@@ -8,6 +8,14 @@ export class AssessmentEvaluationWorkflow extends WorkflowEntrypoint<Env, { repe
  async run(event: WorkflowEvent<{ repeats?: number }>, step: WorkflowStep) {
   if(this.env.SITE_URL !== 'https://staging.genaicommunity.ai') throw new Error('Evaluation is staging-only');
   const repeats=Math.min(3,Math.max(1,event.payload.repeats || 2));
+  const contractChecks=await step.do('response-contract',async()=>{
+   const valid={student:{status:'not_student',roleEvidence:'Engineer',exceptional:false,exceptionalEvidence:[]},affiliation:null,relevant:true,concrete:true,contribution:true,uncertain:false,reasons:'Concrete contribution',evidence:['I built an AI assistant.']};
+   const completion=(content:unknown,finish_reason='stop')=>({choices:[{finish_reason,message:{content}}]});
+   const invalid=[completion(JSON.stringify(valid),'length'),completion(null),completion('{}'),completion('{invalid'),{choices:[]},{choices:[{finish_reason:'stop',message:{content:JSON.stringify(valid),refusal:'refused'}}]}];
+   let rejected=0;for(const output of invalid){try{parseAssessment(output);}catch{rejected++;}}
+   const compatible=JSON.stringify(parseAssessment(completion(JSON.stringify(valid))))===JSON.stringify(parseAssessment({response:valid}));
+   return {invalidCases:invalid.length,rejected,compatible,pass:rejected===invalid.length&&compatible};
+  });
   const results=[];
   for(let round=1;round<=repeats;round++) for(const fixture of cases) {
    const result=await step.do(`${round}-${fixture.name}`,{retries:{limit:0,delay:'1 second'},timeout:'90 seconds'},async()=>{
@@ -22,6 +30,6 @@ export class AssessmentEvaluationWorkflow extends WorkflowEntrypoint<Env, { repe
    });
    results.push(result);
   }
-  return {model:this.env.AI_MODEL,total:results.length,failures:results.filter(r=>!r.pass).length,results};
+  return {model:this.env.AI_MODEL,total:results.length,failures:results.filter(r=>!r.pass).length+(contractChecks.pass?0:1),contractChecks,results};
  }
 }

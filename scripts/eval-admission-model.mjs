@@ -2,7 +2,7 @@
 import { readFile } from 'node:fs/promises';
 import { build } from 'esbuild';
 import { execFileSync } from 'node:child_process';
-const model = process.argv[2] || '@cf/zai-org/glm-4.7-flash';
+const model = process.argv[2] || '@cf/moonshotai/kimi-k2.6';
 const repeats = Number(process.env.EVAL_REPEATS || 2);
 const bundle = await build({stdin:{contents:'export {assessmentRequest,parseAssessment} from "./admissions/src/assessment"; export {qualifies,rejectStudent} from "./admissions/src/domain";',resolveDir:process.cwd()},bundle:true,write:false,format:'esm',platform:'node'});
 const {assessmentRequest,parseAssessment,qualifies,rejectStudent} = await import('data:text/javascript;base64,'+Buffer.from(bundle.outputFiles[0].text).toString('base64'));

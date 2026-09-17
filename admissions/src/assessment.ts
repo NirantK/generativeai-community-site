@@ -12,7 +12,7 @@ export function assessmentRequest(application: Application, today = new Date().t
     ],
     max_completion_tokens: 2048,
     temperature: 0,
-    chat_template_kwargs: { enable_thinking: false },
+    chat_template_kwargs: { thinking: false },
     response_format: { type: "json_schema", json_schema: { name: "admission_assessment", schema: z.toJSONSchema(assessmentSchema) } },
   };
 }

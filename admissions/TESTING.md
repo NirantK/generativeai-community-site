@@ -118,7 +118,7 @@ Policy v4 defaults clear student applications to decline unless exceptional orig
 
 ## Live model qualification on Cloudflare
 
-The assessor uses `@cf/zai-org/glm-4.7-flash`. Model changes must pass real inference, not just mocked unit tests.
+The assessor uses `@cf/moonshotai/kimi-k2.6`. Model changes must pass real inference, not just mocked unit tests.
 
 1. Deploy the PR to staging through GitHub Actions.
 2. Trigger `genaicommunity-assessment-evaluation-staging` with Wrangler workflows trigger and `--params '{"repeats":2}'`.
