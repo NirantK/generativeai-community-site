@@ -32,12 +32,14 @@ export class WhatsAppContainer extends Container<Env> {
   if((await this.ctx.storage.get<{owner:string}>('lease'))?.owner!==owner)throw new Error('lease-required');
   let restored=false;
   try {
+   if(await this.env.STATE.head('session/recovery-required'))throw new Error('session-recovery-required');
    const snapshot=await this.env.STATE.get('session/latest.tar.gz');
    if(!snapshot || snapshot.size>30_000_000)throw new Error('session-checkpoint-required');
    await this.startAndWaitForPorts();
    const restore=await this.containerFetch('http://container/restore',{method:'POST',headers:{'Content-Length':String(snapshot.size)},body:snapshot.body});
    if(!restore.ok)throw new Error('session-restore-failed');
    restored=true;
+   await this.env.STATE.put('session/recovery-required',String(Date.now()));
    const response=await this.containerFetch('http://container/sync',{method:'POST'});
    if(!response.ok)throw new Error('wacli-sync-failed');
    const size=Number(response.headers.get('Content-Length'));
@@ -56,6 +58,7 @@ export class WhatsAppContainer extends Container<Env> {
      const checkpoint=await this.containerFetch('http://container/checkpoint',{method:'POST'});
      if(!checkpoint.ok)throw new Error('checkpoint-failed');
      await this.env.STATE.put('session/latest.tar.gz',checkpoint.body);
+     await this.env.STATE.delete('session/recovery-required');
     }
    } finally {await this.stop();}
   }
@@ -82,6 +85,7 @@ export class ChatSyncWorkflow extends WorkflowEntrypoint<Env,{force?:boolean;pre
    const pending=await this.env.STATE.head('pending/export.json');
    if(!pending)await step.do('sync-wacli',{retries:{limit:0,delay:'1 second'},timeout:'20 minutes'},()=>this.env.WACLI.getByName('generativeai').run(owner));
    return await step.do('import-and-verify',{retries:{limit:2,delay:'30 seconds'},timeout:'10 minutes'},async()=>{
+    if(await this.env.STATE.head('session/recovery-required'))throw new Error('session-recovery-required');
     const object=await this.env.STATE.get('pending/export.json');
     if(!object || object.size>20_000_000)throw new Error('missing-export');
     const data=await object.json<Export>();
