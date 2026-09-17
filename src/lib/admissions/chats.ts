@@ -9,10 +9,11 @@ export function initChatArchive() {
     const response=await fetch(base+path,{method,headers:data?{"Content-Type":"application/json"}:{},body:data?JSON.stringify(data):undefined});
     if(!response.headers.get("content-type")?.includes("application/json")) throw new Error("Archive temporarily unavailable. Please try again.");
     const result=await response.json();
-    if(!response.ok) throw new Error(result.error?.message ?? "Could not load the archive.");
+    if(!response.ok) throw Object.assign(new Error(result.error?.message ?? "Could not load the archive."),{status:response.status});
     return result;
   }
   function status(message:string) {el("chat-status").textContent=message;}
+  function accessState(message:string) {el("chat-access-state").textContent=message;}
   function article(message:Chat, context=false) {
     const item=document.createElement("article");item.className="review-item";
     const meta=document.createElement("p");meta.className="chat-meta";
@@ -51,7 +52,7 @@ export function initChatArchive() {
       el("chat-results").append(...result.messages.map(m=>article(m)));
       cursor=result.nextCursor;el("chat-more").hidden=!cursor;
       status(el("chat-results").children.length ? `${el("chat-results").children.length} messages shown${cursor ? ". More results are available." : "."}` : "No messages found. Try different words or filters.");
-    } catch(error) {if(current===generation){el("chat-results").replaceChildren();el("chat-context").hidden=true;el("chat-more").hidden=true;status((error as Error).message);}}
+    } catch(error) {if(current===generation){el("chat-results").replaceChildren();el("chat-context").hidden=true;el("chat-more").hidden=true;const e=error as Error & {status?:number};status(e.status===401||e.status===403?"Approved access is required. Start at Apply to join, sign in with LinkedIn, and return here after approval.":e.message);}}
     finally {if(current===generation)(el("chat-more") as HTMLButtonElement).disabled=false;}
   }
   el("chat-search").addEventListener("submit",event=>{event.preventDefault();query=new URLSearchParams();for(const [key,value] of new FormData(el("chat-search") as HTMLFormElement)){if(String(value).trim())query.set(key,String(value).trim());}cursor=null;el("chat-context").hidden=true;void search();});
@@ -68,8 +69,9 @@ export function initChatArchive() {
           row.append(toggle);el("chat-moderation").append(row);
         }
       }
+      accessState("Approved member access");
       if(!groups.length){status("No chat history has been published yet.");return;}
       await search();
-    }catch(error){status((error as Error).message);}
+    }catch(error){const e=error as Error & {status?:number};accessState(e.status===401||e.status===403?"Approval required":"Temporarily unavailable");status(e.status===401||e.status===403?"Past Chats is for approved members. Start at Apply to join, sign in with LinkedIn, and return after approval.":e.message);}
   })();
 }
