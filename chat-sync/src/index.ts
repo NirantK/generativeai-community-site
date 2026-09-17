@@ -26,7 +26,7 @@ export class WhatsAppContainer extends Container<Env> {
    const r=await this.containerFetch('http://container/selftest',{method:'POST'});
    if(!r.ok)throw new Error('container-selftest-failed');
    return await r.json<{passed:boolean;tests:number;wacli:boolean}>();
-  }finally{await this.stop();}
+  }finally{try{await this.stop();}catch{/* Preserve the startup failure when no container exists. */}}
  }
  async run(owner:string) {
   if((await this.ctx.storage.get<{owner:string}>('lease'))?.owner!==owner)throw new Error('lease-required');
@@ -74,7 +74,7 @@ async function metrics(db:D1Database){
 export class ChatSyncWorkflow extends WorkflowEntrypoint<Env,{force?:boolean;preflight?:boolean}> {
  async run(event:WorkflowEvent<{force?:boolean;preflight?:boolean}>,step:WorkflowStep){
   if(event.payload.preflight)return step.do('cloud-container-preflight',()=>this.env.WACLI.getByName('preflight').preflight());
-  if(this.env.SYNC_ENABLED!=='true')return {status:'paused'};
+  if(this.env.SYNC_ENABLED!=='true' && !event.payload.force)return {status:'paused'};
   const last=await this.env.STATE.get('last-success.json');
   const previous=last?await last.json<{at:number;digest:string}>():null;
   if(!event.payload.force && previous && Math.floor((Date.now()+19_800_000)/DAY)-Math.floor((previous.at+19_800_000)/DAY)<3)return {status:'not-due'};

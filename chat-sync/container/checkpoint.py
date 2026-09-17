@@ -1,7 +1,8 @@
 """Private checkpoint: session credential plus only the authorized, redacted cache."""
 import io,sqlite3,tarfile,tempfile,os,sys
 from pathlib import Path
-sys.path.insert(0,str(Path(__file__).resolve().parents[2]/'scripts'))
+if len(Path(__file__).resolve().parents)>2:
+ sys.path.insert(0,str(Path(__file__).resolve().parents[2]/'scripts'))
 sys.path.insert(0,'/app/scripts')
 from chat_privacy import redact_text
 SOURCE='120363049558306142@g.us'
