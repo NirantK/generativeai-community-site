@@ -4,6 +4,7 @@ import { AgentWorkflow } from "agents/workflows";
 import type { AgentWorkflowEvent, AgentWorkflowStep } from "agents/workflows";
 import {
   applicationSchema,
+  linkedinProfileSchema,
   assessmentSchema,
   CONSENT,
   POLICY,
@@ -40,8 +41,10 @@ export class AdmissionAgent extends Agent<Env, RecordState> {
   async index() {
     const p = this.state.profile;
     if (!p) return;
+    const link = linkedinProfileSchema.safeParse(this.state.application?.linkedinUrl);
+    const submittedAt = this.state.submittedAt ?? this.state.history.find(event => event.event === "submitted")?.at ?? null;
     await this.env.INDEX.prepare(
-      "INSERT INTO applications(id,name,status,delivery,updated_at,appeal_status) VALUES(?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET name=excluded.name,status=excluded.status,delivery=excluded.delivery,updated_at=excluded.updated_at,appeal_status=excluded.appeal_status",
+      "INSERT INTO applications(id,name,status,delivery,updated_at,appeal_status,approved_at,submitted_at,linkedin_url,details_version) VALUES(?,?,?,?,?,?,?,?,?,1) ON CONFLICT(id) DO UPDATE SET name=excluded.name,status=excluded.status,delivery=excluded.delivery,updated_at=excluded.updated_at,appeal_status=excluded.appeal_status,approved_at=excluded.approved_at,submitted_at=excluded.submitted_at,linkedin_url=excluded.linkedin_url,details_version=1",
     )
       .bind(
         p.id,
@@ -50,6 +53,9 @@ export class AdmissionAgent extends Agent<Env, RecordState> {
         this.state.delivery.status,
         Date.now(),
         this.state.appeals?.some(a => !a.resolution) ? "pending" : this.state.appeals?.length ? "resolved" : "none",
+        this.state.status === "approved" ? this.state.decision?.at ?? null : null,
+        submittedAt,
+        link.success ? link.data : null,
       )
       .run();
   }
@@ -170,9 +176,9 @@ export class AdmissionAgent extends Agent<Env, RecordState> {
           "incomplete_account",
           "Consent and a verified email are required.",
         );
-      // Preserve accepted retries from before WhatsApp contact was required.
-      if (this.state.application && !this.state.application.whatsapp) {
-        const legacy = applicationSchema.omit({ whatsapp: true }).safeParse(input);
+      // Preserve exact accepted retries from before contact fields were required.
+      if (this.state.application && (!this.state.application.whatsapp || !this.state.application.linkedinUrl)) {
+        const legacy = applicationSchema.omit({ ...(!this.state.application.whatsapp ? { whatsapp: true as const } : {}), ...(!this.state.application.linkedinUrl ? { linkedinUrl: true as const } : {}) }).safeParse(input);
         if (legacy.success) {
           if (await digest(JSON.stringify(legacy.data)) !== this.state.payloadHash)
             throw new ApiError(409, "application_conflict", "An application has already been submitted with different content.");
@@ -200,6 +206,7 @@ export class AdmissionAgent extends Agent<Env, RecordState> {
         this.write(
           {
             application: parsed.data,
+            submittedAt: Date.now(),
             payloadHash: hash,
             idempotencyKey: key,
             status: "submitted",
@@ -436,6 +443,7 @@ export class AdmissionAgent extends Agent<Env, RecordState> {
         const labels: [string, string][] = application
           ? [
               ["WhatsApp phone number", application.whatsapp ?? "Not provided"],
+              ["LinkedIn profile (applicant supplied)", application.linkedinUrl ?? "Not provided"],
               ["Current or most recent role", application.role],
               ["AI project or use case", application.project],
               ["Your contribution", application.contribution],

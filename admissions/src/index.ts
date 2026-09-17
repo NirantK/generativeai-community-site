@@ -315,12 +315,18 @@ async function handle(req: Request, env: Env): Promise<Response> {
       return json({ reports: rows.results });
     }
     if (path === "/api/admin/applications" && req.method === "GET") {
+      const filter = new URL(req.url).searchParams.get("status") ?? "all";
+      if (!["all", "approved", "review", "submitted", "declined"].includes(filter)) throw new ApiError(422, "status_filter", "Choose a valid application status.");
+      // Restore legacy listing metadata from authoritative Agent records, once.
+      const legacy = await env.INDEX.prepare("SELECT id FROM applications WHERE status<>'draft' AND details_version=0 LIMIT 100").all<{id:string}>();
+      for (let offset=0; offset<legacy.results.length; offset+=5) {
+        await Promise.all(legacy.results.slice(offset,offset+5).map(async row => (await actor(env,row.id)).index()));
+      }
       const rows = await env.INDEX.prepare(
-        "SELECT * FROM applications WHERE status<>? ORDER BY updated_at DESC LIMIT 100",
-      )
-        .bind("draft")
-        .all();
-      return json({ applications: rows.results });
+        `SELECT * FROM applications WHERE status<>'draft' ${filter === "all" ? "" : "AND status=?"} ORDER BY COALESCE(approved_at,submitted_at,0) DESC,id DESC LIMIT 100`,
+      ).bind(...(filter === "all" ? [] : [filter])).all();
+      const remaining = await env.INDEX.prepare("SELECT COUNT(*) AS total FROM applications WHERE status<>'draft' AND details_version=0").first<{total:number}>();
+      return json({ applications: rows.results, indexingRemaining: remaining?.total ?? 0 });
     }
     const match = path.match(
       /^\/api\/admin\/applications\/([a-f0-9]{64})(?:\/(decision|retry|reconcile|reassess))?$/,

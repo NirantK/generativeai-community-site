@@ -14,12 +14,14 @@ import {
   emailFailure,
 } from "../src/domain";
 import { digest, randomToken, csrf } from "../src/security";
+import listingMigration from "../migrations/0006_admin_listing.sql?raw";
 import archiveMigration from "../migrations/0005_chat_archive.sql?raw";
 import migration from "../migrations/0001_admissions.sql?raw";
 import appealMigration from "../migrations/0004_appeal_index.sql?raw";
 import adminMigration from "../migrations/0003_administrators.sql?raw";
 import bugMigration from "../migrations/0002_bug_reports.sql?raw";
 const sample = {
+  linkedinUrl: "https://www.linkedin.com/in/test-builder/",
   whatsapp: "+14155552671",
   role: "AI engineer",
 
@@ -32,7 +34,7 @@ const sample = {
     "I want to share evaluation methods and learn from other builders.",
 };
 beforeAll(async () => {
-  for (const query of (migration + bugMigration + adminMigration + appealMigration + archiveMigration)
+  for (const query of (migration + bugMigration + adminMigration + appealMigration + archiveMigration + listingMigration)
     .split(";")
     .filter((s) => s.trim()))
     await env.INDEX.prepare(query).run();
@@ -1078,5 +1080,43 @@ describe("member chat archive",()=>{
       const audit=await env.INDEX.prepare("SELECT action FROM chat_archive_actions WHERE target IN (?,?)").bind(msg,id).all();
       expect(audit.results).toHaveLength(2);
     } finally {env.ADMIN_EMAILS=prior;}
+  });
+});
+
+describe("LinkedIn links and administrator grid metadata",()=>{
+  it("requires a real LinkedIn profile URL and normalizes tracking parameters",()=>{
+    expect(applicationSchema.parse({...sample,linkedinUrl:"https://in.linkedin.com/in/test-builder?trk=profile"}).linkedinUrl).toBe("https://www.linkedin.com/in/test-builder/");
+    for(const linkedinUrl of [undefined,"javascript:alert(1)","https://linkedin.com.evil.test/in/name/","https://www.linkedin.com/company/example/","https://user@www.linkedin.com/in/name/","https://www.linkedin.com/in/a%2Fb/"]) {
+      expect(applicationSchema.safeParse({...sample,linkedinUrl}).success).toBe(false);
+    }
+  });
+  it("preserves accepted application retries that predate profile-link collection",async()=>{
+    const owner=await account();await owner.agent.consent();
+    const {linkedinUrl,...legacy}=sample;const hash=await digest(JSON.stringify(legacy));
+    await runInDurableObject(owner.agent,async instance=>{instance.setState({...instance.state,application:legacy as any,payloadHash:hash,idempotencyKey:"legacy-link-test",status:"review"});});
+    expect((await owner.agent.submit(legacy,"legacy-link-test")).status).toBe("review");
+    expect((await gateway("/api/v1/application","POST",{Cookie:await browser(owner.id),Origin:"https://genaicommunity.ai","Idempotency-Key":"legacy-link-test"},sample)).status).toBe(409);
+  });
+  it("sorts approvals by decision date, restores old metadata, and filters other states",async()=>{
+    const older=await account(),newer=await account(),pending=await account();
+    for(const [owner,at,status] of [[older,1000,"approved"],[newer,2000,"approved"],[pending,3000,"review"]] as const) {
+      await runInDurableObject(owner.agent,async instance=>{instance.setState({...instance.state,application:sample,status,submittedAt:500,decision:status==="approved"?{actor:"admin",reason:"Approved",at}:null});});
+      await owner.agent.index();
+    }
+    await env.INDEX.prepare("UPDATE applications SET approved_at=NULL,linkedin_url=NULL,details_version=0,updated_at=999999 WHERE id=?").bind(older.id).run();
+    const previous=env.ADMIN_EMAILS;env.ADMIN_EMAILS="applicant@example.com";
+    try {
+      const headers={Cookie:await browser(older.id)};
+      const result=await (await gateway("/api/admin/applications?status=approved","GET",headers)).json() as any;
+      expect(result.applications.filter((row:any)=>[newer.id,older.id].includes(row.id)).map((row:any)=>row.id)).toEqual([newer.id,older.id]);
+      expect(result.applications.every((row:any)=>row.status==="approved")).toBe(true);
+      expect(result.applications.find((row:any)=>row.id===older.id).approved_at).toBe(1000);
+      expect(result.applications.find((row:any)=>row.id===older.id).linkedin_url).toBe(sample.linkedinUrl);
+
+      const review=await (await gateway("/api/admin/applications?status=review","GET",headers)).json() as any;
+      expect(review.applications.map((row:any)=>row.id)).toContain(pending.id);
+      expect(review.applications.every((row:any)=>row.status==="review")).toBe(true);
+      expect((await gateway("/api/admin/applications?status=invalid","GET",headers)).status).toBe(422);
+    } finally {env.ADMIN_EMAILS=previous;}
   });
 });
