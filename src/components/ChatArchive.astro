@@ -2,23 +2,42 @@
 import "../styles/admissions.css";
 const { administrator = false } = Astro.props;
 ---
-<div class="admissions" id="chat-archive" data-administrator={administrator ? "true" : "false"}>
-  <p class="eyebrow">{administrator ? "Community administration" : "Members only"}</p>
-  <h1>Past Chats</h1>
-  <p class="intro">Search conversations from the community’s WhatsApp groups.</p>
-  <p class="help">This contains available synced text history, which may be incomplete. Attachments and phone metadata are omitted, and phone numbers in message text are replaced with stable privacy aliases. Historical messages may be outdated.</p>
-  <div class="actions"><a href="/apply">Your account</a>{administrator && <a href="/admin">Application dashboard</a>}</div>
-  <form id="chat-search">
-    <label for="chat-query">Search messages</label><input id="chat-query" name="q" type="search" maxlength="200" placeholder="Try retrieval, voice agents, or evaluation" />
-    <label for="chat-group">Group</label><select id="chat-group" name="group"><option value="">All groups</option></select>
-    <div class="date-filters"><label for="chat-from">From<input id="chat-from" name="from" type="date" /></label><label for="chat-to">To<input id="chat-to" name="to" type="date" /></label></div>
-    <div class="actions"><button class="primary" type="submit">Search chats</button></div>
-  </form>
-  <p id="chat-status" role="status">Loading archive…</p>
+<div class="admissions chat-archive" id="chat-archive" data-administrator={administrator ? "true" : "false"}>
+  <header class="chat-hero">
+    <p class="eyebrow">{administrator ? "Community administration" : "Members-only archive"}</p>
+    <h1>Past Chats</h1>
+    <p class="intro">Search the conversations that shaped the community’s work with generative AI.</p>
+    <p class="help">Available synced text history may be incomplete. Attachments and phone metadata are omitted, and phone numbers in message text are replaced with stable privacy aliases.</p>
+    <div class="actions">
+      <a class="button primary" href="/apply">Apply to join</a>
+      <a href="/api-instructions">Agent API instructions</a>
+      {administrator && <a href="/admin">Application dashboard</a>}
+    </div>
+  </header>
+  <section class="chat-orientation" aria-labelledby="chat-orientation-title">
+    <h2 id="chat-orientation-title">How access works</h2>
+    <div class="chat-orientation-grid">
+      <div><span class="chat-step">01</span><h3>Apply with LinkedIn</h3><p>Start at <a href="/apply">Apply to join</a>. Sign in with LinkedIn, accept the terms, and share your work.</p></div>
+      <div><span class="chat-step">02</span><h3>Wait for approval</h3><p>Approved members get access here. Your browser session or 24-hour agent token must belong to that approved account.</p></div>
+      <div><span class="chat-step">03</span><h3>Search with context</h3><p>Search by words, group, or date. Open any result to read five messages on either side.</p></div>
+    </div>
+  </section>
+  <section class="chat-search-section" aria-labelledby="chat-search-title">
+    <div class="chat-section-heading"><div><h2 id="chat-search-title">Search the archive</h2><p class="help">Search all words in your query. Results are private to approved members.</p></div><span class="chat-access-state" id="chat-access-state">Checking access…</span></div>
+    <form id="chat-search">
+      <label for="chat-query">Search messages</label><input id="chat-query" name="q" type="search" maxlength="200" placeholder="Try retrieval, voice agents, or evaluation" />
+      <div class="chat-filter-grid"><label for="chat-group">Group<select id="chat-group" name="group"><option value="">All groups</option></select></label><label for="chat-from">From<input id="chat-from" name="from" type="date" /></label><label for="chat-to">To<input id="chat-to" name="to" type="date" /></label></div>
+      <div class="actions"><button class="primary" type="submit">Search chats</button></div>
+    </form>
+    <p id="chat-status" role="status">Loading archive…</p>
+  </section>
   {administrator && <section><h2>Archive visibility</h2><p>Unpublished groups and hidden messages are unavailable to members and their agents.</p><div id="chat-moderation"></div></section>}
   <div id="chat-results"></div>
   <div class="actions"><button id="chat-more" type="button" hidden>Load more messages</button></div>
   <section id="chat-context" hidden aria-labelledby="chat-context-title"><h2 id="chat-context-title">Conversation context</h2><div id="chat-context-messages"></div></section>
 </div>
-<style>.date-filters{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}.date-filters input{min-width:0}.admissions :global(.chat-text){white-space:pre-wrap;overflow-wrap:anywhere}.admissions :global(.chat-meta){font-size:14px;color:var(--color-on-surface-variant)}</style>
+<style>
+  .chat-archive{margin-top:32px}.chat-hero{border-bottom:1px solid var(--color-outline-variant);padding-bottom:40px}.chat-hero .intro{max-width:52ch}.chat-hero .help{max-width:70ch}.chat-orientation{margin-top:40px}.chat-orientation-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:24px;margin-top:24px}.chat-orientation-grid>div{border-top:1px solid var(--color-outline);padding-top:16px}.chat-orientation-grid h3{font-size:var(--text-body-base);line-height:1.4;margin:8px 0}.chat-orientation-grid p{margin:0;color:var(--color-on-surface-variant)}.chat-step,.chat-access-state{font:11px/1 var(--font-mono);letter-spacing:.1em;text-transform:uppercase;color:var(--color-tertiary)}.chat-search-section{margin-top:48px}.chat-section-heading{display:flex;justify-content:space-between;gap:24px;align-items:end;border-top:1px solid var(--color-outline-variant);padding-top:24px}.chat-section-heading h2{margin-bottom:4px}.chat-section-heading .help{margin:0}.chat-filter-grid{display:grid;grid-template-columns:2fr 1fr 1fr;gap:16px}.admissions :global(.chat-text){white-space:pre-wrap;overflow-wrap:anywhere}.admissions :global(.chat-meta){font-size:var(--text-body-base);color:var(--color-on-surface-variant)}
+  @media (max-width:700px){.chat-archive{margin-top:16px}.chat-hero{padding-bottom:32px}.chat-orientation-grid{grid-template-columns:1fr;gap:20px}.chat-section-heading{display:block}.chat-access-state{display:block;margin-top:16px}.chat-filter-grid{grid-template-columns:1fr;gap:0}}
+</style>
 <script>import { initChatArchive } from "../lib/admissions/chats";initChatArchive();</script>

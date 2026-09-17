@@ -12,9 +12,15 @@ it("serves the administrator page only after a successful server-side authorizat
 });
 
 import {onRequest as memberPage} from "../../functions/past-chats/[[path]]";
-it("gates the Past Chats page without serving its shell to pending applicants",async()=>{
+it("serves a useful Past Chats shell while keeping archive data gated",async()=>{
+  for (const status of [401,403]) {
+    const next=vi.fn(async()=>new Response("member archive"));
+    const response=await memberPage({request:new Request("https://genaicommunity.ai/past-chats"),env:{ADMISSIONS:{fetch:async(request)=>{expect(new URL(request.url).pathname).toBe("/api/v1/chats/access");return new Response(null,{status});}}},next});
+    expect(response.status).toBe(200);expect(next).toHaveBeenCalledTimes(1);
+    expect(response.headers.get("Cache-Control")).toContain("no-store");
+    expect(await response.text()).toContain("member archive");
+  }
   const next=vi.fn(async()=>new Response("member archive"));
-  const response=await memberPage({request:new Request("https://genaicommunity.ai/past-chats"),env:{ADMISSIONS:{fetch:async(request)=>{expect(new URL(request.url).pathname).toBe("/api/v1/chats/access");return new Response(null,{status:403});}}},next});
-  expect(response.status).toBe(403);expect(next).not.toHaveBeenCalled();
-  expect(response.headers.get("Cache-Control")).toContain("no-store");
+  const unavailable=await memberPage({request:new Request("https://genaicommunity.ai/past-chats"),env:{ADMISSIONS:{fetch:async()=>new Response(null,{status:503})}},next});
+  expect(unavailable.status).toBe(503);expect(next).not.toHaveBeenCalled();
 });

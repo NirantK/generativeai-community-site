@@ -2,7 +2,7 @@ import { test, expect } from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
 const group={id:'a'.repeat(64),title:'Test community',published:1,messageCount:2,firstMessageAt:1,lastMessageAt:2,importedAt:3,coverageNote:'Synthetic history'};
 const message={id:'b'.repeat(64),groupTitle:group.title,author:'Test Member',postedAt:1789430400000,text:'Retrieval project <img src=x onerror=alert(1)>'};
-test('members search, filter, paginate and read plain-text context',async({page})=>{
+test('members search, filter, paginate and read plain-text context',async({page},testInfo)=>{
  let searched=false;
  await page.route('**/api/v1/chats/**',async route=>{
   const url=new URL(route.request().url());
@@ -15,8 +15,8 @@ test('members search, filter, paginate and read plain-text context',async({page}
  await expect(page.getByText(message.text,{exact:true})).toBeVisible();
  expect(await page.locator('#chat-results img').count()).toBe(0);
  await page.getByLabel('Search messages').fill('retrieval');
- await page.getByLabel('Group',{exact:true}).selectOption(group.id);
- await page.getByLabel('From',{exact:true}).fill('2026-09-01');
+ await page.locator('#chat-group').selectOption(group.id);
+ await page.locator('#chat-from').fill('2026-09-01');
  await page.getByRole('button',{name:'Search chats'}).click();
  await expect.poll(()=>searched).toBe(true);
  await page.getByRole('button',{name:'Load more messages'}).click();
@@ -26,11 +26,14 @@ test('members search, filter, paginate and read plain-text context',async({page}
  const violations=(await new AxeBuilder({page}).withTags(['wcag2a','wcag2aa']).analyze()).violations;
  expect(violations.filter(v=>['serious','critical'].includes(v.impact??''))).toEqual([]);
  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth)).toBe(true);
+ if(['desktop','iphone-se'].includes(testInfo.project.name)) await page.screenshot({path:`.shots/past-chats-${testInfo.project.name}.png`,fullPage:true});
 });
 test('membership denial exposes no results',async({page})=>{
  await page.route('**/api/v1/chats/**',route=>route.fulfill({status:403,json:{error:{message:'Approved membership is required.'}}}));
  await page.goto('/past-chats');
- await expect(page.getByRole('status')).toHaveText('Approved membership is required.');
+ await expect(page.getByRole('status')).toContainText('Past Chats is for approved members. Start at Apply to join');
+ await expect(page.getByRole('link',{name:'Apply to join'}).first()).toHaveAttribute('href','/apply');
+ await expect(page.getByRole('heading',{name:'How access works'})).toBeVisible();
  await expect(page.locator('#chat-results article')).toHaveCount(0);
 });
 test('admin can unpublish a group and hide a message',async({page})=>{
