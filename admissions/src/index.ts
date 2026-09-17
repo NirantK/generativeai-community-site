@@ -1,3 +1,4 @@
+export { AssessmentEvaluationWorkflow } from "./evaluation";
 import { WorkerEntrypoint } from "cloudflare:workers";
 import { getAgentByName } from "agents";
 import { createRemoteJWKSet, jwtVerify, errors } from "jose";

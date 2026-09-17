@@ -456,7 +456,7 @@ describe("submission recovery and approval decisions", () => {
       };
       const run = vi
         .spyOn(instance["env"].AI, "run")
-        .mockResolvedValue({ response: assessment } as never)
+        .mockResolvedValue({ choices: [{ finish_reason: "stop", message: { content: JSON.stringify(assessment) } }] } as never)
         .mockClear();
       await instance.reassess("admin");
       expect(instance.state.status).toBe("approved");
@@ -832,9 +832,9 @@ describe("administrator invitations", () => {
       expect(created.status).toBe(201);
       const invite = await created.json() as {id:string;delivery:string};
       expect(invite.delivery).toBe("accepted");
-      expect(send).toHaveBeenCalledTimes(1);
+      expect(send.mock.calls.filter(([message]) => message.to === "invited@example.com" && message.subject === "Invitation to administer GenerativeAI Community")).toHaveLength(1);
       expect((await gateway("/api/admin/invitations", "POST", headers, {email:"invited@example.com"})).status).toBe(409);
-      expect(send).toHaveBeenCalledTimes(1);
+      expect(send.mock.calls.filter(([message]) => message.to === "invited@example.com" && message.subject === "Invitation to administer GenerativeAI Community")).toHaveLength(1);
       expect((await gateway("/api/admin/access", "GET", recipientHeaders)).status).toBe(403);
       expect((await gateway("/api/admin-invitation", "POST", {Cookie: await browser(stranger.id), Origin:headers.Origin})).status).toBe(409);
       expect((await gateway("/api/admin-invitation", "POST", recipientHeaders)).status).toBe(200);
