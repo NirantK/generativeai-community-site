@@ -68,6 +68,7 @@ export function initApplication() {
       void api<{invitation: unknown}>("/api/admin-invitation").then(r => { el("admin-invitation").hidden = !r.invitation; }).catch(() => { el("admin-invitation").hidden = true; });
       el("appeal-section").hidden = !s.appeal?.eligible;
       el("past-chats-link").hidden = s.status !== "approved";
+      el("member-agent-link").hidden = s.status !== "approved";
       el("identity").textContent = `Signed in as ${s.profile.name}`;
       el("email-status").textContent = s.profile.email
         ? `LinkedIn email: ${s.profile.email}`

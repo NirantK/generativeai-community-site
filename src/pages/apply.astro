@@ -71,6 +71,7 @@ const fields = [
       <div class="actions">
         <p id="identity"></p>
         <a id="past-chats-link" href="/past-chats" hidden>Past Chats</a>
+        <a id="member-agent-link" href="/apply#agent-token" hidden>Generate a token for your agent</a>
         <a id="admin-link" href="/admin" hidden>Review applications</a>
         <div id="admin-invitation" hidden><p>You’re invited to administer the community. Administrators can read applications, make admission decisions, and invite other administrators.</p><button id="accept-admin" type="button">Accept administrator invitation</button></div>
         <button id="logout" type="button">
@@ -125,11 +126,13 @@ const fields = [
           <button type="submit">Submit appeal for admin review</button>
         </form>
       </section>
+      <span id="agent-token" class="anchor-target" aria-hidden="true"></span>
       <details id="agent-section" open>
-        <summary>Apply using an AI agent</summary>
+        <summary>Generate a token for your AI agent</summary>
         <p>
-          Use Codex or another agent to prepare and submit your application.
-          Save consent above, then generate a token for your agent.
+          Use Codex or another agent to prepare and submit your application, or
+          search Past Chats after you’re approved. Save consent above, then
+          generate a token for your agent.
         </p>
         <p class="help">
           The token lasts 24 hours and allows one application submission plus
