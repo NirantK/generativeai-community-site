@@ -2,9 +2,21 @@ import { z } from "zod";
 export const POLICY = "students-exceptional-v4";
 export const CONSENT = "admissions-v1";
 export const TOKEN_TTL = 24 * 60 * 60 * 1000;
+export const linkedinProfileSchema = z.string().trim().max(500).url().refine(value => {
+  try {
+    const url = new URL(value);
+    return url.protocol === "https:" && !url.username && !url.password && !url.port &&
+      /^(www\.|[a-z]{2}\.)?linkedin\.com$/.test(url.hostname) &&
+      /^\/in\/[\p{L}\p{N}._-]+\/?$/u.test(decodeURIComponent(url.pathname));
+  } catch { return false; }
+}, "Use your HTTPS LinkedIn profile link, such as https://www.linkedin.com/in/your-name/.").transform(value => {
+  const url = new URL(value);
+  return `https://www.linkedin.com${url.pathname.replace(/\/$/, "")}/`;
+});
 export const applicationSchema = z
   .object({
     whatsapp: z.string().trim().max(32).transform(value => value.replace(/[\s()-]/g, "")).pipe(z.string().regex(/^\+[1-9]\d{7,14}$/, "Enter your WhatsApp number with country code, for example +14155552671.")),
+    linkedinUrl: linkedinProfileSchema,
     role: z.string().trim().min(2).max(300),
     project: z.string().trim().min(40).max(4000),
     contribution: z.string().trim().min(20).max(2000),
@@ -73,6 +85,7 @@ export type RecordState = {
   payloadHash: string | null;
   idempotencyKey: string | null;
   status: "draft" | "submitted" | "review" | "approved" | "declined";
+  submittedAt?: number;
   submissionChannel?: "agent" | "form";
   appeals?: Appeal[];
   assessment: Assessment | null;

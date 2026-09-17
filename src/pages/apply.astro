@@ -2,6 +2,7 @@
 import BaseLayout from "../layouts/BaseLayout.astro";
 import "../styles/admissions.css";
 const fields = [
+  ["linkedinUrl", "LinkedIn profile URL", "https://www.linkedin.com/in/your-name/", "url", 500],
   ["whatsapp", "WhatsApp phone number (include country code)", "+91 98765 43210", "tel", 32],
   [
     "role",
@@ -164,6 +165,7 @@ const fields = [
           All fields are required. Students, independent builders, and people
           between roles are welcome.
         </p>
+        <p class="help">LinkedIn sign-in shares your name and email, but not your public profile URL. Paste your own profile link below so administrators can review it.</p>
         <form id="application-form">
           {fields.map(([name, label, placeholder, type, max]) => (
             <label for={name}>

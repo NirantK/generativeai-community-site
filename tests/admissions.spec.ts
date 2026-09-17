@@ -58,6 +58,7 @@ test("verified applicant submits a short application and sees saved status", asy
   await page.goto("/apply");
   await expect(page.getByText("Signed in as Test Builder")).toBeVisible();
   const fields = {
+    linkedinUrl: "https://www.linkedin.com/in/test-builder/",
     whatsapp: "+14155552671",
     role: "Student",
 
@@ -158,7 +159,7 @@ test("administrator can read evidence and record a decision", async ({
   );
   const id = "a".repeat(64);
   let decided = false;
-  await page.route("**/api/admin/applications", (r) =>
+  await page.route("**/api/admin/applications*", (r) =>
     r.fulfill({
       json: {
         applications: [
@@ -275,7 +276,7 @@ test("agent application is first and open by default with LinkedIn email and no 
 
 test("administrator invites a colleague by email and sees the pending invitation", async ({ page }) => {
   let invited=false;
-  await page.route("**/api/admin/applications", r => r.fulfill({json:{applications:[]}}));
+  await page.route("**/api/admin/applications*", r => r.fulfill({json:{applications:[]}}));
   await page.route("**/api/admin/bug-reports", r => r.fulfill({json:{reports:[]}}));
   await page.route("**/api/admin/invitations", r => {
     if(r.request().method()==="POST") {
@@ -319,7 +320,7 @@ test("admin review displays appeal evidence, reference status, and original reje
   const id="b".repeat(64);
   await page.route("**/api/admin/invitations",r=>r.fulfill({json:{invitations:[]}}));
   await page.route("**/api/admin/bug-reports",r=>r.fulfill({json:{reports:[]}}));
-  await page.route("**/api/admin/applications",r=>r.fulfill({json:{applications:[{id,name:"Appealing student",status:"review",appeal_status:"pending",delivery:"pending"}]}}));
+  await page.route("**/api/admin/applications*",r=>r.fulfill({json:{applications:[{id,name:"Appealing student",status:"review",appeal_status:"pending",delivery:"pending"}]}}));
   await page.route(`**/api/admin/applications/${id}`,r=>r.fulfill({json:{profile:draft.profile,application:{role:"Student"},status:"review",submissionChannel:"agent",delivery:{status:"pending"},history:[],appeals:[{submittedAt:Date.now(),previousDecision:{reason:"Original student rejection"},resolution:null,evidence:{explanation:"Original project details for a human reviewer",voucher:"<script>untrusted reference claim</script>"}}]}}));
   await page.goto("/admin");
   await expect(page.getByText(/APPEAL AWAITING REVIEW/)).toBeVisible();

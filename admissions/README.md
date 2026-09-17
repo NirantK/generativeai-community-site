@@ -176,3 +176,9 @@ npx --no-install wrangler d1 execute genai_admissions --config admissions/wrangl
 The SQL file is mode 0600 and must never enter CI artifacts or Git. Do not print it or message bodies to logs. Imports are idempotent by source group/message ID, update edits, remove explicit source deletions, and preserve admin-hidden messages and existing group visibility. An interruption may require rerunning the same import to rebuild its search entries. Absence from a partial export does not imply deletion. New groups start unpublished. Verify counts, date ranges, text sanitization, and source selection before publishing in the admin page (or authenticated operator SQL with an audit event). Use synthetic fixtures on staging. The GenerativeAI Group is refreshed by a local Codex automation every three days at 09:00 Asia/Kolkata. See `CHAT_ARCHIVE_SYNC.md` for the exact source, exporter, and validation procedure. Updates use wacli with the existing WhatsApp session; the Mac and network must be available. Beeper Desktop is not required.
 
 Run `python3 -m unittest discover -s scripts/tests` for import and privacy regression coverage. Application code and migrations deploy only through the GitHub workflow.
+
+## Administrator listing and LinkedIn profiles
+
+The administrator page defaults to approved applications in a responsive grid, ordered by approval time (newest first). Other status filters use submission time. Migration `0006_admin_listing.sql` adds listing metadata; an authenticated list request restores older rows from authoritative Agent records in batches of at most 100. Email retries do not change approval order.
+
+New form and API applications require an applicant-supplied public LinkedIn `/in/` URL. LinkedIn OIDC does not supply this URL. Links are validated and normalized, but are not proof of profile ownership. Older applications show “Not provided”; exact retries of previously accepted payloads remain valid.
