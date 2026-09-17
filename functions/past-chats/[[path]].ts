@@ -8,8 +8,11 @@ export async function onRequest({ request, env, next }: Context): Promise<Respon
   if (!env.ADMISSIONS) return new Response("Past Chats is temporarily unavailable.", { status: 503, headers });
   const url = new URL(request.url); url.pathname = "/api/v1/chats/access"; url.search = "";
   const access = await env.ADMISSIONS.fetch(new Request(url, { headers: request.headers }));
-  if (access.status === 401) return new Response(null, { status: 302, headers: { ...headers, Location: "/apply" } });
-  if (!access.ok) return new Response(access.status === 403 ? "Past Chats is available to approved members only." : "Past Chats is temporarily unavailable.", { status: access.status === 403 ? 403 : 503, headers });
+  // Keep the page shell public so visitors get a useful explanation and a
+  // clear application path. The Worker API remains membership-gated and never
+  // returns archive data to unauthenticated or unapproved visitors.
+  if (!access.ok && access.status !== 401 && access.status !== 403)
+    return new Response("Past Chats is temporarily unavailable.", { status: 503, headers });
   const asset = await next();
   const response = new Response(asset.body, asset);
   for (const [key,value] of Object.entries(headers)) response.headers.set(key,value);
