@@ -36,7 +36,7 @@ export class WhatsAppContainer extends Container<Env> {
    const snapshot=await this.env.STATE.get('session/latest.tar.gz');
    if(!snapshot || snapshot.size>30_000_000)throw new Error('session-checkpoint-required');
    await this.startAndWaitForPorts();
-   const restore=await this.containerFetch('http://container/restore',{method:'POST',headers:{'Content-Length':String(snapshot.size)},body:snapshot.body});
+   const restore=await this.containerFetch('http://container/restore',{method:'POST',headers:{'Content-Length':String(snapshot.size)},body:await snapshot.arrayBuffer()});
    if(!restore.ok)throw new Error('session-restore-failed');
    restored=true;
    await this.env.STATE.put('session/recovery-required',String(Date.now()));
