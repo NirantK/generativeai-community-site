@@ -77,7 +77,7 @@ export class ChatSyncWorkflow extends WorkflowEntrypoint<Env,{force?:boolean;pre
   if(this.env.SYNC_ENABLED!=='true')return {status:'paused'};
   const last=await this.env.STATE.get('last-success.json');
   const previous=last?await last.json<{at:number;digest:string}>():null;
-  if(!event.payload.force && previous && Date.now()-previous.at<3*DAY)return {status:'not-due'};
+  if(!event.payload.force && previous && Math.floor((Date.now()+19_800_000)/DAY)-Math.floor((previous.at+19_800_000)/DAY)<3)return {status:'not-due'};
   const owner=event.instanceId;
   await step.do('acquire-single-session',()=>this.env.WACLI.getByName('generativeai').acquire(owner));
   try {

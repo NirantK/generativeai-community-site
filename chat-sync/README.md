@@ -4,7 +4,7 @@ Deployment is **not a completed cutover** until the live preflight and authentic
 
 ## Architecture
 
-- A Worker cron checks daily at 09:00 IST. A successful checkpoint makes the workflow skip until three full days have elapsed; failures retry on the next daily check.
+- A Worker cron checks daily at 09:00 IST. A successful checkpoint makes the workflow skip until the third subsequent calendar day in Asia/Kolkata; failures retry on the next daily check.
 - One leased Durable Object owns the WhatsApp session and starts a native Linux `wacli` 0.18.2 container. No public Worker route, workers.dev URL, or HTTP administrative endpoint is enabled.
 - Private R2 bucket `genaicommunity-chat-sync-private` stores the session credential, sanitized single-group cache, pending sanitized export, and non-content sync results. Never enable public access. Treat the session snapshot as a credential.
 - The container uses the existing exporter/importer and source cutover. Only `120363049558306142@g.us` can be published. It retains namespaced IDs and applies explicit deletions; absence never deletes history.
