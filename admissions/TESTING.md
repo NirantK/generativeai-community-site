@@ -114,3 +114,17 @@ Policy v4 defaults clear student applications to decline unless exceptional orig
 ## Past Chats archive
 
 47 backend/page-gate tests, 4 Python importer tests, and 225 full-site browser checks passed locally for this change. Coverage includes current Agent approval, browser/token reads, bearer exclusion from administration, revocation, publication filtering, FTS/date/group search, cursor validation, context isolation, CSRF, moderation audit records, HTML-as-text rendering, mobile accessibility, import idempotency/edits, metadata exclusion, phone-number alias stability, and persistent deletion/hiding. Synthetic fixtures only: no real group history was exported or published during these tests. Source-group selection and actual history coverage remain separate operational checks.
+
+
+## Live model qualification on Cloudflare
+
+The assessor uses `@cf/moonshotai/kimi-k2.6`. Model changes must pass real inference, not just mocked unit tests.
+
+1. Deploy the PR to staging through GitHub Actions.
+2. Trigger `genaicommunity-assessment-evaluation-staging` with `npx wrangler workflows trigger genaicommunity-assessment-evaluation-staging '{"repeats":2}' --config admissions/wrangler.jsonc --env staging --json`.
+3. Inspect the workflow instance result; require zero failures across all 18 cases before merging. These tests execute inside Cloudflare using the staging AI binding and the same request/parser/policy functions as admissions. They create no applications and send no email.
+4. Record the model ID, workflow instance ID, totals, and latency in the PR.
+
+For diagnosis, `node scripts/eval-admission-model.mjs` sends the same fixtures to Cloudflare Workers AI over REST using the existing Wrangler login (requires AI permission). Inference is hosted on Cloudflare; only the test driver runs locally. Output contains case names/outcomes/latency/token usage, never credentials or applicant contact details.
+
+Cases cover the community-founder project, practitioners, ordinary and exceptional students, student company exceptions, recent and stale affiliations, vague applications, and prompt injection. Schema-invalid, refused, and truncated responses fail closed to review; legacy and OpenAI-style response envelopes are tested.

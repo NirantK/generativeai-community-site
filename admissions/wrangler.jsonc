@@ -18,7 +18,7 @@
     "SITE_URL": "https://genaicommunity.ai",
     "AUTO_APPROVALS_ENABLED": "true",
     "EMAIL_ENABLED": "true",
-    "AI_MODEL": "@cf/deepseek-ai/deepseek-v4-flash-0731",
+    "AI_MODEL": "@cf/moonshotai/kimi-k2.6",
     "LINKEDIN_CLIENT_ID": "78fhwyrcspfuoe"
   },
   "durable_objects": {
@@ -70,7 +70,7 @@
         "SITE_URL": "https://staging.genaicommunity.ai",
         "AUTO_APPROVALS_ENABLED": "true",
         "EMAIL_ENABLED": "true",
-        "AI_MODEL": "@cf/deepseek-ai/deepseek-v4-flash-0731",
+        "AI_MODEL": "@cf/moonshotai/kimi-k2.6",
         "LINKEDIN_CLIENT_ID": "78fhwyrcspfuoe"
       },
       "durable_objects": {
@@ -86,6 +86,11 @@
           "name": "genaicommunity-admission-review-staging",
           "binding": "REVIEW",
           "class_name": "AdmissionWorkflow"
+        },
+        {
+          "name": "genaicommunity-assessment-evaluation-staging",
+          "binding": "ASSESSMENT_EVALUATION",
+          "class_name": "AssessmentEvaluationWorkflow"
         }
       ],
       "d1_databases": [
