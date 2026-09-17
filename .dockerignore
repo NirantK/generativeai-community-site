@@ -1,0 +1,14 @@
+**
+!chat-sync/
+!chat-sync/Dockerfile
+!chat-sync/container/
+!chat-sync/container/*.py
+!scripts/
+!scripts/export-community-chat.py
+!scripts/import-chat-archive.py
+!scripts/chat_privacy.py
+!scripts/tests/
+!scripts/tests/*.py
+!admissions/
+!admissions/migrations/
+!admissions/migrations/0005_chat_archive.sql

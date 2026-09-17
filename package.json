@@ -21,6 +21,7 @@
   "dependencies": {
     "@astrojs/mdx": "^8.0.1",
     "@astrojs/sitemap": "^3.7.2",
+    "@cloudflare/containers": "0.3.7",
     "@fontsource-variable/geist": "^5.2.8",
     "@fontsource-variable/jetbrains-mono": "^5.2.8",
     "@tailwindcss/vite": "^4.3.0",

@@ -1,0 +1,18 @@
+{
+ "$schema":"../node_modules/wrangler/config-schema.json",
+ "name":"genaicommunity-chat-sync",
+ "main":"src/index.ts",
+ "compatibility_date":"2026-09-17",
+ "compatibility_flags":["nodejs_compat"],
+ "workers_dev":false,
+ "preview_urls":false,
+ "observability":{"enabled":true},
+ "vars":{"SYNC_ENABLED":"false"},
+ "triggers":{"crons":["30 3 * * *"]},
+ "containers":[{"class_name":"WhatsAppContainer","image":"./Dockerfile","image_build_context":"..","instance_type":"basic","max_instances":1}],
+ "durable_objects":{"bindings":[{"name":"WACLI","class_name":"WhatsAppContainer"}]},
+ "migrations":[{"tag":"v1","new_sqlite_classes":["WhatsAppContainer"]}],
+ "workflows":[{"name":"genaicommunity-chat-sync","binding":"SYNC","class_name":"ChatSyncWorkflow"}],
+ "r2_buckets":[{"binding":"STATE","bucket_name":"genaicommunity-chat-sync-private"}],
+ "d1_databases":[{"binding":"DB","database_name":"genai_admissions","database_id":"f60fba3c-e5b2-4c5d-9570-17188843e3fa"}]
+}
