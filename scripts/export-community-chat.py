@@ -81,7 +81,7 @@ def main():
     if not auth.get('success') or not auth.get('data', {}).get('authenticated'):
         raise RuntimeError('wacli is not authenticated')
     if args.sync:
-        call('--timeout', '60s', 'sync', '--once', '--idle-exit', '15s', '--max-reconnect', '45s', '--presence-mode', 'quiet')
+        call('sync', '--once', '--idle-exit', '15s', '--max-reconnect', '45s', '--presence-mode', 'quiet', timeout=900)
     payload = json.loads(call('messages', 'export', '--chat', SOURCE, '--limit', str(LIMIT), '--json'))
     if not payload.get('success'):
         raise RuntimeError('Export failed')
