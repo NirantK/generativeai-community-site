@@ -3,6 +3,7 @@ import { WorkflowEntrypoint, type WorkflowEvent, type WorkflowStep } from 'cloud
 const GROUP='80a506e83ca3ccc963bfbbc5493b124e85e5a87d7e074835728a1d78a9b38fca';
 const SOURCE='120363049558306142@g.us';
 const DAY=86400000;
+// Retain the original preflight instance identity: Containers reserves this slot even after stop.
 type Row={id:string;group_id:string;source_id:string;posted_at:number;author:string;body:string;hidden:number};
 type Export={rows:Row[];coverage:{sourceRef:string;provider:string;cachedRecords:number;messages:number;cutover:string;oldest:string|null;newest:string|null}};
 async function digest(value:string){return Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(value))),b=>b.toString(16).padStart(2,'0')).join('');}
@@ -73,17 +74,22 @@ async function metrics(db:D1Database){
 }
 export class ChatSyncWorkflow extends WorkflowEntrypoint<Env,{force?:boolean;preflight?:boolean}> {
  async run(event:WorkflowEvent<{force?:boolean;preflight?:boolean}>,step:WorkflowStep){
-  if(event.payload.preflight)return step.do('cloud-container-preflight',()=>this.env.WACLI.getByName('preflight').preflight());
+  if(event.payload.preflight){
+   const instance=this.env.WACLI.getByName('preflight');
+   await instance.acquire(event.instanceId);
+   try{return await step.do('cloud-container-preflight',()=>instance.preflight());}
+   finally{await instance.release(event.instanceId);}
+  }
   if(this.env.SYNC_ENABLED!=='true' && !event.payload.force)return {status:'paused'};
   const last=await this.env.STATE.get('last-success.json');
   const previous=last?await last.json<{at:number;digest:string}>():null;
   if(!event.payload.force && previous && Math.floor((Date.now()+19_800_000)/DAY)-Math.floor((previous.at+19_800_000)/DAY)<3)return {status:'not-due'};
   const owner=event.instanceId;
-  await step.do('acquire-single-session',()=>this.env.WACLI.getByName('generativeai').acquire(owner));
+  await step.do('acquire-single-session',()=>this.env.WACLI.getByName('preflight').acquire(owner));
   try {
    // Never overwrite an export awaiting import after a partial failure.
    const pending=await this.env.STATE.head('pending/export.json');
-   if(!pending)await step.do('sync-wacli',{retries:{limit:0,delay:'1 second'},timeout:'20 minutes'},()=>this.env.WACLI.getByName('generativeai').run(owner));
+   if(!pending)await step.do('sync-wacli',{retries:{limit:0,delay:'1 second'},timeout:'20 minutes'},()=>this.env.WACLI.getByName('preflight').run(owner));
    return await step.do('import-and-verify',{retries:{limit:2,delay:'30 seconds'},timeout:'10 minutes'},async()=>{
     if(await this.env.STATE.head('session/recovery-required'))throw new Error('session-recovery-required');
     const object=await this.env.STATE.get('pending/export.json');
@@ -114,7 +120,7 @@ export class ChatSyncWorkflow extends WorkflowEntrypoint<Env,{force?:boolean;pre
   }catch{
    await this.env.STATE.put('last-attempt.json',JSON.stringify({status:'could-not-sync',at:Date.now()}));
    throw new Error('could-not-sync: inspect authenticated workflow steps; archive checkpoint not advanced');
-  } finally {await this.env.WACLI.getByName('generativeai').release(owner);}
+  } finally {await this.env.WACLI.getByName('preflight').release(owner);}
  }
 }
 export default {
