@@ -10,6 +10,9 @@ import tempfile
 from datetime import datetime, timezone
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from chat_privacy import redact_text
+
 CLI = '/opt/homebrew/bin/wacli'
 STORE = '/Users/nirantk/.wacli-codex'
 SOURCE = '120363049558306142@g.us'
@@ -58,10 +61,10 @@ def normalize(messages):
         media = bool(raw.get('MediaType') or raw.get('ReactionToID'))
         selected[mid] = {
             'id': mid, 'timestamp': at.isoformat(),
-            'sender_name': html.escape(raw.get('SenderName') or ''),
+            'sender_name': html.escape(redact_text(raw.get('SenderName') or '')),
             'sender_id': raw.get('SenderJID') or '',
             # The shared importer expects HTML; wacli text is plain text.
-            'text': html.escape(raw.get('Text') or ''),
+            'text': html.escape(redact_text(raw.get('Text') or '')),
             'type': 'OTHER' if media else 'TEXT',
             'is_deleted': deleted, 'is_hidden': False,
         }

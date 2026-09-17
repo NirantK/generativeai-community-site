@@ -6,7 +6,7 @@ const { administrator = false } = Astro.props;
   <p class="eyebrow">{administrator ? "Community administration" : "Members only"}</p>
   <h1>Past Chats</h1>
   <p class="intro">Search conversations from the community’s WhatsApp groups.</p>
-  <p class="help">This contains available synced text history, which may be incomplete. Attachments and phone-number metadata are omitted. Historical messages may be outdated.</p>
+  <p class="help">This contains available synced text history, which may be incomplete. Attachments and phone metadata are omitted, and phone numbers in message text are replaced with stable privacy aliases. Historical messages may be outdated.</p>
   <div class="actions"><a href="/apply">Your account</a>{administrator && <a href="/admin">Application dashboard</a>}</div>
   <form id="chat-search">
     <label for="chat-query">Search messages</label><input id="chat-query" name="q" type="search" maxlength="200" placeholder="Try retrieval, voice agents, or evaluation" />

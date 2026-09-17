@@ -13,6 +13,9 @@ from datetime import datetime, timezone
 from html.parser import HTMLParser
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from chat_privacy import redact_text
+
 
 class PlainText(HTMLParser):
     def __init__(self):
@@ -102,7 +105,7 @@ def build(manifest):
             if str(message.get('type', 'TEXT')).upper() != 'TEXT':
                 totals['skipped'] += 1
                 continue
-            text = plain(message.get('text'))
+            text = redact_text(plain(message.get('text')))
             if not text:
                 totals['skipped'] += 1
                 continue
@@ -111,10 +114,10 @@ def build(manifest):
             posted = timestamp(message.get('timestamp'))
             if posted < 0 or posted > now + 86400000:
                 raise ValueError('Unexpected message timestamp')
-            author = plain(message.get('sender_name') or message.get('senderName'))
+            author = redact_text(plain(message.get('sender_name') or message.get('senderName')))
             sender = str(message.get('sender_id') or message.get('senderID') or source_id)
             # Display names sometimes contain raw phone/bridge identities. Never expose those.
-            if not author or '@' in author or re.search(r'\d[\d\s()+.-]{6,}\d', author):
+            if not author or '@' in author:
                 author = 'Member ' + hashed(ref + '\0' + sender)[:10]
             statements.append(f'DELETE FROM chat_search WHERE rowid=(SELECT rowid FROM chat_messages WHERE id={literal(mid)});')
             statements.append(f'INSERT INTO chat_messages(id,group_id,source_id,posted_at,author,body) VALUES({literal(mid)},{literal(gid)},{literal(source_id)},{posted},{literal(author[:200])},{literal(text)}) ON CONFLICT(id) DO UPDATE SET posted_at=excluded.posted_at,author=CASE WHEN chat_messages.hidden=0 THEN excluded.author ELSE chat_messages.author END,body=CASE WHEN chat_messages.hidden=0 THEN excluded.body ELSE chat_messages.body END;')

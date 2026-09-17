@@ -32,13 +32,19 @@ class ChatImportTests(unittest.TestCase):
     def message(self, **kwargs):
         return {'id': 'one', 'type': 'TEXT', 'timestamp': '2026-09-15T00:00:00Z', 'sender_name': 'Test Author', 'text': 'Original body', **kwargs}
 
-    def test_html_and_metadata_are_removed_and_names_pseudonymized(self):
+    def test_html_and_metadata_are_removed_and_phone_numbers_are_aliased(self):
         sql, _ = self.run_import([self.message(sender_name='+91 12345 67890', senderID='sensitive-bridge', text='<mx-reply>Private quoted identity</mx-reply><p>It\'s useful<br>code &lt;b&gt;</p><script>bad()</script>', attachments=[{'secret':'private'}])])
         author, body = self.db.execute('SELECT author,body FROM chat_messages').fetchone()
-        self.assertTrue(author.startswith('Member '))
+        self.assertEqual(author, 'amber bear noon')
         self.assertEqual(body, "It's useful\ncode <b>")
         for private in ('sensitive-bridge', '12345', 'Private quoted', 'bad()', 'attachments'):
             self.assertNotIn(private, sql)
+
+    def test_phone_alias_is_stable_across_formatting_and_history(self):
+        first = importer.redact_text('Call +91 12345 67890')
+        second = importer.redact_text('Call +911234567890')
+        self.assertEqual(first, second)
+        self.assertEqual(importer.redact_text('Meeting on 2026-09-17'), 'Meeting on 2026-09-17')
 
     def test_idempotency_edits_fts_and_moderation_survive_reimport(self):
         self.run_import([self.message()])
