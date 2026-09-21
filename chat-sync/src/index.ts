@@ -65,7 +65,7 @@ export class WhatsAppContainer extends Container<Env> {
  }
  async recover(owner:string){
   if((await this.ctx.storage.get<{owner:string}>('lease'))?.owner!==owner)throw new Error('lease-required');
-  if(!await this.env.STATE.head('session/recovery-required'))return {saved:false,reason:'recovery-not-required'};
+  if(!await this.env.STATE.head('session/recovery-required'))return {saved:false,bytes:0};
   // Do not start or restore: only the existing container can hold the latest session.
   return this.saveCheckpoint();
  }
