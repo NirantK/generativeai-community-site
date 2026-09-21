@@ -43,4 +43,4 @@ jobs:
       - name: Deploy private scheduled sync
         env:
           CLOUDFLARE_ACCOUNT_ID: 076c525b59739562570401e48fc0651c
-        run: npx --no-install wrangler deploy --config chat-sync/wrangler.jsonc
+        run: npx --no-install wrangler deploy --config chat-sync/wrangler.jsonc --containers-rollout none
