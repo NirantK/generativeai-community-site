@@ -49,7 +49,7 @@ export class WhatsAppContainer extends Container<Env> {
    const r=await this.containerFetch('http://container/selftest',{method:'POST'});
    if(!r.ok)throw new Error('container-selftest-failed');
    return await r.json<{passed:boolean;tests:number;wacli:boolean}>();
-  }finally{try{await this.stop();}catch{/* Preserve the startup failure when no container exists. */}}
+  }finally{try{await this.destroy();}catch{/* Preserve the startup failure when no container exists. */}}
  }
  async saveCheckpoint(){
   if(!this.ctx.container?.running)throw new Error('current-container-session-unavailable');
@@ -98,7 +98,7 @@ export class WhatsAppContainer extends Container<Env> {
     if(restored){
      await this.saveCheckpoint();
     }
-   } finally {if(!await this.env.STATE.head('session/recovery-required'))await this.stop();}
+   } finally {if(!await this.env.STATE.head('session/recovery-required'))await this.destroy();}
   }
  }
 }
