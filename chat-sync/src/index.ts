@@ -8,6 +8,27 @@ type Row={id:string;group_id:string;source_id:string;posted_at:number;author:str
 type Export={rows:Row[];coverage:{sourceRef:string;provider:string;cachedRecords:number;messages:number;cutover:string;oldest:string|null;newest:string|null}};
 async function digest(value:string){return Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(value))),b=>b.toString(16).padStart(2,'0')).join('');}
 
+async function checkpointBytes(response:Response){
+ if(!response.ok)throw new Error('checkpoint-response-failed');
+ const size=Number(response.headers.get('Content-Length'));
+ if(!Number.isSafeInteger(size)||size<=0||size>30_000_000)throw new Error('checkpoint-size-invalid');
+ const bytes=await response.arrayBuffer();
+ if(bytes.byteLength!==size)throw new Error('checkpoint-length-mismatch');
+ return bytes;
+}
+async function storagePreflight(bucket:R2Bucket){
+ const key=`tests/checkpoint-${crypto.randomUUID()}`;
+ const bytes=new Uint8Array([1,7,19,31]);
+ const response=new Response(new ReadableStream({start(c){c.enqueue(bytes);c.close();}}),{headers:{'Content-Length':'4'}});
+ try{
+  const body=await checkpointBytes(response);
+  await bucket.put(key,body);
+  const stored=await bucket.get(key);
+  if(!stored || Array.from(new Uint8Array(await stored.arrayBuffer())).join()!==bytes.join())throw new Error('checkpoint-roundtrip-failed');
+  return {passed:true,streamToR2Roundtrip:true};
+ }finally{await bucket.delete(key);}
+}
+
 export class WhatsAppContainer extends Container<Env> {
  defaultPort=8080;
  sleepAfter='20m';
@@ -22,12 +43,31 @@ export class WhatsAppContainer extends Container<Env> {
   await this.ctx.storage.transaction(async tx=>{if((await tx.get<{owner:string}>('lease'))?.owner===owner)await tx.delete('lease');});
  }
  async preflight(){
+  if(await this.env.STATE.head('session/recovery-required'))throw new Error('recover-session-before-preflight');
   try {
    await this.startAndWaitForPorts();
    const r=await this.containerFetch('http://container/selftest',{method:'POST'});
    if(!r.ok)throw new Error('container-selftest-failed');
    return await r.json<{passed:boolean;tests:number;wacli:boolean}>();
-  }finally{try{await this.stop();}catch{/* Preserve the startup failure when no container exists. */}}
+  }finally{try{await this.destroy();}catch{/* Preserve the startup failure when no container exists. */}}
+ }
+ async saveCheckpoint(){
+  if(!this.ctx.container?.running)throw new Error('current-container-session-unavailable');
+  const bytes=await checkpointBytes(await this.containerFetch('http://container/checkpoint',{method:'POST'}));
+  // Verify an immutable recovery copy before replacing the active checkpoint.
+  const key=`session/checkpoints/${crypto.randomUUID()}.tar.gz`;
+  await this.env.STATE.put(key,bytes);
+  if((await this.env.STATE.head(key))?.size!==bytes.byteLength)throw new Error('checkpoint-verification-failed');
+  await this.env.STATE.put('session/latest.tar.gz',bytes);
+  if((await this.env.STATE.head('session/latest.tar.gz'))?.size!==bytes.byteLength)throw new Error('active-checkpoint-verification-failed');
+  await this.env.STATE.delete('session/recovery-required');
+  return {saved:true,bytes:bytes.byteLength};
+ }
+ async recover(owner:string){
+  if((await this.ctx.storage.get<{owner:string}>('lease'))?.owner!==owner)throw new Error('lease-required');
+  if(!await this.env.STATE.head('session/recovery-required'))return {saved:false,bytes:0};
+  // Do not start or restore: only the existing container can hold the latest session.
+  return this.saveCheckpoint();
  }
  async run(owner:string) {
   if((await this.ctx.storage.get<{owner:string}>('lease'))?.owner!==owner)throw new Error('lease-required');
@@ -56,12 +96,9 @@ export class WhatsAppContainer extends Container<Env> {
   } finally {
    try {
     if(restored){
-     const checkpoint=await this.containerFetch('http://container/checkpoint',{method:'POST'});
-     if(!checkpoint.ok)throw new Error('checkpoint-failed');
-     await this.env.STATE.put('session/latest.tar.gz',checkpoint.body);
-     await this.env.STATE.delete('session/recovery-required');
+     await this.saveCheckpoint();
     }
-   } finally {await this.stop();}
+   } finally {if(!await this.env.STATE.head('session/recovery-required'))await this.destroy();}
   }
  }
 }
@@ -72,8 +109,16 @@ async function metrics(db:D1Database){
  if(integrity?.missing!==0||hidden?.exposed!==0)throw new Error('search-index-verification-failed');
  return counts;
 }
-export class ChatSyncWorkflow extends WorkflowEntrypoint<Env,{force?:boolean;preflight?:boolean}> {
- async run(event:WorkflowEvent<{force?:boolean;preflight?:boolean}>,step:WorkflowStep){
+export class ChatSyncWorkflow extends WorkflowEntrypoint<Env,{force?:boolean;preflight?:boolean;recover?:boolean;storageTest?:boolean}> {
+ async run(event:WorkflowEvent<{force?:boolean;preflight?:boolean;recover?:boolean;storageTest?:boolean}>,step:WorkflowStep){
+  if(event.payload.storageTest)return step.do('cloud-r2-checkpoint-test',()=>storagePreflight(this.env.STATE));
+  if(event.payload.recover){
+   const instance=this.env.WACLI.getByName('preflight');
+   await instance.acquire(event.instanceId);
+   try{return await step.do('recover-current-session',{retries:{limit:0,delay:'1 second'},timeout:'2 minutes'},()=>instance.recover(event.instanceId));}
+   finally{await instance.release(event.instanceId);}
+  }
+
   if(event.payload.preflight){
    const instance=this.env.WACLI.getByName('preflight');
    await instance.acquire(event.instanceId);
