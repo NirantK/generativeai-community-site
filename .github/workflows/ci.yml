@@ -38,6 +38,8 @@ jobs:
           npm run check:admissions
           npm run test:admissions
           npm run build:admissions
+          npx tsc -p api-gateway/tsconfig.json
+          npx wrangler deploy --dry-run --config api-gateway/wrangler.jsonc --env ""
       - name: Build
         run: npm run build
       - name: Build Pages Functions
@@ -92,6 +94,7 @@ jobs:
           npx --no-install wrangler deploy --config admissions/wrangler.jsonc --env ""
           npx --no-install wrangler secret bulk "$RUNNER_TEMP/admissions-secrets.json" --config admissions/wrangler.jsonc --env ""
           rm "$RUNNER_TEMP/admissions-secrets.json"
+          npx --no-install wrangler deploy --config api-gateway/wrangler.jsonc --env ""
       - name: Deploy tested commit to Cloudflare Pages
         env:
           CLOUDFLARE_ACCOUNT_ID: 076c525b59739562570401e48fc0651c
@@ -140,4 +143,5 @@ jobs:
           npx --no-install wrangler deploy --config admissions/wrangler.jsonc --env staging
           npx --no-install wrangler secret bulk "$RUNNER_TEMP/admissions-secrets.json" --config admissions/wrangler.jsonc --env staging
           rm "$RUNNER_TEMP/admissions-secrets.json"
+          npx --no-install wrangler deploy --config api-gateway/wrangler.jsonc --env staging
           npx --no-install wrangler pages deploy dist --project-name=generativeai-community-site --branch=staging --commit-hash="$GITHUB_SHA" --commit-dirty=false

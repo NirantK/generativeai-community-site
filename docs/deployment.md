@@ -25,7 +25,7 @@ The workflow is `.github/workflows/ci.yml`.
 ## One-time credential setup
 
 Set `CLOUDFLARE_API_TOKEN` as a GitHub repository secret or in the `production`
-environment. It needs Pages Write, Workers Scripts Write, and D1 Write for the
+environment. It needs Pages Write, Workers Scripts Write, D1 Write, and zone Workers Routes Edit for the
 Scaled Focus account. The latter permissions deploy the private admissions Worker
 and apply its migrations. Store `LINKEDIN_CLIENT_SECRET` as a repository secret
 for both environments.
@@ -93,3 +93,34 @@ Record the original failing timestamp/ray and the post-change check. Do not
 re-enable a broken setting to manufacture a baseline. After an owner-confirmed
 fix, inspect application status before retrying any POST with its original
 idempotency key and unchanged body.
+
+## Direct application API ingress
+
+`api-gateway/wrangler.jsonc` routes only HTTPS `/api/v1/*` on the exact production
+hostname to `genaicommunity-api`. It forwards the original request through the
+existing private `ADMISSIONS` service binding. Authentication, browser CSRF checks,
+rate limits, idempotency, and application state stay in `AdmissionsGateway`.
+Sign-in, token issuance, administrator endpoints, and static pages remain on Pages.
+The staging gateway has its own hostname route and staging service binding.
+Both gateways disable workers.dev and preview URLs.
+
+CI deploys the admissions service before its gateway. To roll back only ingress,
+remove the gateway route in Cloudflare; the existing Pages API function remains
+available. Do not disable zone-wide security or change applicant credentials.
+
+Incident evidence (22 September 2026, UTC):
+- 05:33:12: original applicant request blocked by zone Browser Integrity Check.
+- Approved BIC exception scope: exact host, HTTPS, `/api/v1/*`, bearer header.
+- Configuration rule: `6df44885dea446628028b1b7fbdff823`.
+- BIC-only WAF skip: `962fafac4709411aa399c1ad57f86dac`; all other skip options off.
+- 05:59:54: ray `a3ef16146e4ea92b-MAA` logged the skip but still returned 1010.
+- 06:11:29: authorized applicant token GET also returned 403/1010, ray
+  `a3ef270d8f2e7f7a-MAA`; token was never logged or stored in the repository.
+- 06:13:35: failing probe ray `a3ef2a222a2d58e7-MAA` did not reach Pages Functions.
+  A browser GET immediately afterward appeared in the connected live log, confirming
+  the stream worked. This locates the residual block before Pages execution; the
+  exact Cloudflare internal cause is not yet established.
+
+The direct route removes the Pages ingress hop. Verify the original urllib client
+with an existing valid token after rollout; a deployment or Trace simulation alone
+is not a successful end-to-end test.
