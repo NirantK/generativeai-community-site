@@ -94,27 +94,26 @@ test("verified applicant submits a short application and sees saved status", asy
   ).toBeVisible();
   expect(submitted).toBe(true);
 });
-test("token is shown once and removed on revocation", async ({ page }) => {
-  await page.route("**/api/v1/application", (r) => r.fulfill({ json: draft }));
-  await page.route("**/api/application-token", (r) =>
-    r.fulfill({
-      json:
-        r.request().method() === "POST"
-          ? { token: "test-only-token", expiresAt: Date.now() + 30 * 86400000 }
-          : { revoked: true },
-    }),
-  );
+test("token regeneration replaces the snippet and persists its button label", async ({ page }) => {
+  let issued = 0;
+  await page.route("**/api/v1/application", r => r.fulfill({ json: { ...draft, tokenActive: issued > 0 } }));
+  await page.route("**/api/application-token", r => {
+    expect(r.request().method()).toBe("POST");
+    issued++;
+    return r.fulfill({ json: { token: `test-token-${issued}` } });
+  });
   await page.goto("/apply");
-  await expect(page.locator("#agent-section")).toHaveAttribute("open", "");
-  await page
-    .getByRole("button", { name: "Generate application token" })
-    .click();
-  await expect(page.locator("#token-value")).toHaveText("test-only-token");
-  await expect(page.locator("#agent-api-guidance")).toBeVisible();
-  await expect(page.locator("#token-next-step")).toContainText("GET /api/v1/application");
-  await expect(page.locator("#token-next-step")).toContainText("POST /api/v1/application");
-  await expect(page.locator("#message")).toContainText("Your agent should now use the API");
-  await page.getByRole("button", { name: "Revoke token", exact: true }).click();
+  await page.getByRole("button", { name: "Generate token", exact: true }).click();
+  await expect(page.locator("#token-snippet")).toContainText("Authorization: Bearer test-token-1");
+  await expect(page.locator("#token-snippet")).toContainText("/api/v1/application");
+  await expect(page.getByRole("button", { name: "Revoke token" })).toHaveCount(0);
+  await expect(page.locator("#token-next-step")).toHaveCount(0);
+  await expect(page.getByRole("link", { name: "Continue to agent instructions" })).toHaveAttribute("href", "/api-instructions");
+  await page.getByRole("button", { name: "Regenerate token", exact: true }).click();
+  await expect(page.locator("#token-snippet")).toContainText("test-token-2");
+  await expect(page.locator("#token-snippet")).not.toContainText("test-token-1");
+  await page.reload();
+  await expect(page.getByRole("button", { name: "Regenerate token", exact: true })).toBeEnabled();
   await expect(page.locator("#token-output")).toBeHidden();
 });
 
@@ -127,10 +126,10 @@ test("approved member with old consent can generate a token without accepting ag
   }));
   await page.goto("/apply");
   await expect(page.locator("#consent-section")).toBeHidden();
-  const button = page.getByRole("button", { name: "Generate application token" });
+  const button = page.getByRole("button", { name: "Generate token", exact: true });
   await expect(button).toBeEnabled();
   await button.click();
-  await expect(page.locator("#token-value")).toHaveText("test-only-approved-token");
+  await expect(page.locator("#token-snippet")).toContainText("test-only-approved-token");
 });
 
 test("token generation shows local progress and a local failure message", async ({ page }) => {
@@ -142,7 +141,7 @@ test("token generation shows local progress and a local failure message", async 
     await route.fulfill({ status: 503, json: { error: { message: "Token service is temporarily unavailable." } } });
   });
   await page.goto("/apply");
-  const button = page.getByRole("button", { name: "Generate application token" });
+  const button = page.getByRole("button", { name: "Generate token", exact: true });
   await expect(button).toBeEnabled();
   await button.click();
   await expect(page.locator("#token-status")).toContainText("Creating your token");
