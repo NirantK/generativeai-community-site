@@ -94,6 +94,7 @@ export class AdmissionAgent extends Agent<Env, RecordState> {
       enrichment: { status: enrichment.status, source: enrichment.source, data: enrichment.data, updatedAt: enrichment.updatedAt },
       status,
       consent: consent === CONSENT || application ? consent : null,
+      consentCurrent: consent === CONSENT,
       delivery: { status: delivery.status },
       receipt: { status: this.state.receipt?.status ?? "pending" },
       submissionChannel: this.state.submissionChannel ?? "unknown",
@@ -133,7 +134,7 @@ export class AdmissionAgent extends Agent<Env, RecordState> {
   }
   async token() {
     return this.serial(async () => {
-      if (this.state.consent !== CONSENT)
+      if (this.state.status !== "approved" && this.state.consent !== CONSENT)
         throw new ApiError(
           403,
           "consent",

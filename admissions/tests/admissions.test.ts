@@ -58,9 +58,11 @@ describe("member model API", () => {
     }));
     try {
       const modelList = await (await gateway("/api/v1/models", "GET", headers)).json() as any;
-      expect(modelList.models.map((model:any) => model.name)).toContain("laya-typed-decisions");
+      expect(modelList.models.map((model:any) => model.name)).toContain("mys/laya-typed-decisions-GGUF");
+      expect(modelList.models[0].sourceUrl).toBe("https://huggingface.co/mys/laya-typed-decisions-GGUF");
+      expect(modelList.models[0].upstreamUrl).toBe("https://huggingface.co/convaiinnovations/laya-typed-decisions");
       const request = {
-        model: "laya-typed-decisions",
+        model: "mys/laya-typed-decisions-GGUF",
         state: {message:"Charged twice"},
         questions: {billing:{type:"noul",instructions:"Is this about billing?"}},
       };
@@ -72,7 +74,7 @@ describe("member model API", () => {
       expect(data.usage).toEqual({gpuSeconds:0.125432,totalGpuSeconds:0.125432,requestCount:1});
       expect(fetchMock).toHaveBeenCalledOnce();
       expect((fetchMock.mock.calls[0][1] as RequestInit).headers).toMatchObject({Authorization:"Bearer test-proxy-token"});
-      const usage = await (await gateway("/api/v1/models/usage?model=laya-typed-decisions", "GET", headers)).json() as any;
+      const usage = await (await gateway("/api/v1/models/usage?model=mys%2Flaya-typed-decisions-GGUF", "GET", headers)).json() as any;
       expect(usage.usage).toEqual({requestCount:1,gpuSeconds:0.125432});
       expect((await gateway("/api/v1/models/usage?model=unknown", "GET", headers)).status).toBe(404);
     } finally {
@@ -242,6 +244,17 @@ describe("real Worker and Durable Object security", () => {
     await expect((async () => await agent.token())()).rejects.toThrow(
       "email_unverified",
     );
+  });
+  it("lets an approved member with prior consent generate a token", async () => {
+    const { agent } = await account();
+    await runInDurableObject(agent, async instance => {
+      instance.setState({ ...instance.state, consent: "admissions-v1", status: "approved", application: sample });
+    });
+    const state = await agent.publicState();
+    expect(state.consent).toBe("admissions-v1");
+    expect(state.consentCurrent).toBe(false);
+    const { token } = await agent.token();
+    expect(await agent.authorizeToken(await digest(token))).toBe(true);
   });
   it("replaces and revokes token hashes without storing the raw token", async () => {
     const { agent } = await account();

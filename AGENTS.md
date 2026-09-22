@@ -14,6 +14,6 @@ The site and admissions services deploy through `.github/workflows/ci.yml` after
 
 ## Member model API
 
-The `laya-typed-decisions` model is deployed in the `scaledfocus` Modal workspace. `inference/laya_gguf_modal.py` builds the pinned runtime and weights on a T4. `inference/metered_proxy.py` serializes inference and reports elapsed GPU-container seconds in `X-GPU-Seconds`. Model additions belong in the registry in `admissions/src/models.ts` and the public OpenAPI specification; callers always name the model.
+The `mys/laya-typed-decisions-GGUF` model is deployed in the `scaledfocus` Modal workspace. `inference/laya_gguf_modal.py` builds the pinned runtime and weights on a T4. `inference/metered_proxy.py` serializes inference and reports elapsed GPU-container seconds in `X-GPU-Seconds`. Model additions belong in the registry in `admissions/src/models.ts` and the public OpenAPI specification; callers always name the model.
 
 The private admissions Worker owns member authentication, the model gateway, and the D1 `model_usage` ledger. Only approved members with a current bearer token can call it. Keep the Modal proxy credential in the `MODAL_PROXY_TOKEN` GitHub Actions secret and the deployed Worker secret, never in the repository or frontend. The CI workflow applies D1 migrations before deploying the Worker. The public route and usage docs are at `/models`.
