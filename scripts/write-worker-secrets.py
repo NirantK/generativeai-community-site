@@ -6,7 +6,10 @@ import sys
 value = os.environ.get('LINKEDIN_CLIENT_SECRET', '')
 if not value:
     raise SystemExit('LINKEDIN_CLIENT_SECRET must be set as a GitHub Actions secret.')
-secrets = {'LINKEDIN_CLIENT_SECRET': value}
+modal_proxy_token = os.environ.get('MODAL_PROXY_TOKEN', '')
+if not modal_proxy_token:
+    raise SystemExit('MODAL_PROXY_TOKEN must be set as a GitHub Actions secret.')
+secrets = {'LINKEDIN_CLIENT_SECRET': value, 'MODAL_PROXY_TOKEN': modal_proxy_token}
 for name in ('ADMIN_EMAILS', 'WHATSAPP_INVITE_URL'):
     if os.environ.get(name):
         secrets[name] = os.environ[name]

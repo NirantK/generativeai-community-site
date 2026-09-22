@@ -20,6 +20,7 @@ import migration from "../migrations/0001_admissions.sql?raw";
 import appealMigration from "../migrations/0004_appeal_index.sql?raw";
 import adminMigration from "../migrations/0003_administrators.sql?raw";
 import bugMigration from "../migrations/0002_bug_reports.sql?raw";
+import modelMigration from "../migrations/0007_model_usage.sql?raw";
 const sample = {
   linkedinUrl: "https://www.linkedin.com/in/test-builder/",
   whatsapp: "+14155552671",
@@ -34,10 +35,51 @@ const sample = {
     "I want to share evaluation methods and learn from other builders.",
 };
 beforeAll(async () => {
-  for (const query of (migration + bugMigration + adminMigration + appealMigration + archiveMigration + listingMigration)
+  for (const query of (migration + bugMigration + adminMigration + appealMigration + archiveMigration + listingMigration + modelMigration)
     .split(";")
     .filter((s) => s.trim()))
     await env.INDEX.prepare(query).run();
+});
+
+describe("member model API", () => {
+  it("requires an approved member and records measured GPU seconds under the account", async () => {
+    const owner = await account();
+    await owner.agent.consent();
+    const { token } = await owner.agent.token();
+    const headers = { Authorization: `Bearer ${token}` };
+    expect((await gateway("/api/v1/models", "GET", headers)).status).toBe(403);
+    await runInDurableObject(owner.agent, async instance => {
+      instance.setState({ ...instance.state, status: "approved" });
+    });
+    const previous = env.MODAL_PROXY_TOKEN;
+    env.MODAL_PROXY_TOKEN = "test-proxy-token";
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response(JSON.stringify({answers:{billing:{noul:true}}}), {
+      status: 200, headers: {"X-GPU-Seconds":"0.125432", "Content-Type":"application/json"},
+    }));
+    try {
+      const modelList = await (await gateway("/api/v1/models", "GET", headers)).json() as any;
+      expect(modelList.models.map((model:any) => model.name)).toContain("laya-typed-decisions");
+      const request = {
+        model: "laya-typed-decisions",
+        state: {message:"Charged twice"},
+        questions: {billing:{type:"noul",instructions:"Is this about billing?"}},
+      };
+      const response = await gateway("/api/v1/models/infer", "POST", headers, request);
+      expect(response.status).toBe(200);
+      const data = await response.json() as any;
+      expect(data.model).toBe(request.model);
+      expect(data.result.answers.billing.noul).toBe(true);
+      expect(data.usage).toEqual({gpuSeconds:0.125432,totalGpuSeconds:0.125432,requestCount:1});
+      expect(fetchMock).toHaveBeenCalledOnce();
+      expect((fetchMock.mock.calls[0][1] as RequestInit).headers).toMatchObject({Authorization:"Bearer test-proxy-token"});
+      const usage = await (await gateway("/api/v1/models/usage?model=laya-typed-decisions", "GET", headers)).json() as any;
+      expect(usage.usage).toEqual({requestCount:1,gpuSeconds:0.125432});
+      expect((await gateway("/api/v1/models/usage?model=unknown", "GET", headers)).status).toBe(404);
+    } finally {
+      fetchMock.mockRestore();
+      env.MODAL_PROXY_TOKEN = previous;
+    }
+  });
 });
 async function account(
   verified = true,

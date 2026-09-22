@@ -1,0 +1,59 @@
+---
+import BaseLayout from "../layouts/BaseLayout.astro";
+
+const example = `curl https://genaicommunity.ai/api/v1/models/infer \\
+  -H "Authorization: Bearer $COMMUNITY_API_TOKEN" \\
+  -H "Content-Type: application/json" \\
+  -d '{
+    "model": "laya-typed-decisions",
+    "state": {"message": "I was charged twice for the same invoice."},
+    "questions": {
+      "billing": {
+        "type": "noul",
+        "instructions": "Is this a billing issue?"
+      }
+    }
+  }'`;
+---
+
+<BaseLayout title="Model API" description="Member API for Laya typed decisions, with per-request GPU usage metering." sourcePath="src/pages/models.astro">
+  <article class="max-w-[72ch]">
+    <h1 class="text-display-lg leading-[1.1] tracking-[-0.04em] font-bold mt-stack-md">Models for community builders.</h1>
+    <p class="text-on-surface-variant text-lg mt-stack-md">Call Laya Typed Decisions from your own tools. Every approved member can use the API and see their GPU seconds after each call.</p>
+
+    <div class="border-y border-outline-variant mt-stack-lg py-stack-md grid sm:grid-cols-3 gap-stack-md">
+      <div><p class="font-mono text-label-caps uppercase text-on-surface-variant">Available model</p><p class="font-mono text-tertiary mt-2 break-all">laya-typed-decisions</p></div>
+      <div><p class="font-mono text-label-caps uppercase text-on-surface-variant">Runtime</p><p class="mt-2">GGUF on Modal T4</p></div>
+      <div><p class="font-mono text-label-caps uppercase text-on-surface-variant">Meter</p><p class="mt-2">GPU container seconds</p></div>
+    </div>
+
+    <section class="mt-stack-lg">
+      <h2 class="text-headline-md font-semibold">Get access</h2>
+      <p class="mt-stack-sm text-on-surface-variant">Sign in with LinkedIn on <a class="text-primary underline underline-offset-4" href="/apply">Apply</a>. Once approved, generate an application API token there and send it as <code class="text-tertiary">Authorization: Bearer</code>. Tokens last 24 hours; generating a replacement revokes the previous one. Keep the token out of source code, logs, and URLs.</p>
+    </section>
+
+    <section class="mt-stack-lg">
+      <h2 class="text-headline-md font-semibold">Make a decision</h2>
+      <p class="mt-stack-sm text-on-surface-variant">Send a state and a map of typed questions. The <code class="text-tertiary">model</code> field is required, so this API can accept more models later.</p>
+      <pre class="bg-surface-container-low border border-outline-variant p-gutter mt-stack-md overflow-x-auto text-code-sm text-on-surface"><code>{example}</code></pre>
+      <p class="mt-stack-sm text-on-surface-variant">The response has <code class="text-tertiary">result</code> with the model’s answers, plus <code class="text-tertiary">usage.gpuSeconds</code>, <code class="text-tertiary">usage.totalGpuSeconds</code>, and <code class="text-tertiary">usage.requestCount</code>. A completed model call is metered even if the model rejects its input.</p>
+    </section>
+
+    <section class="mt-stack-lg">
+      <h2 class="text-headline-md font-semibold">Read your usage</h2>
+      <pre class="bg-surface-container-low border border-outline-variant p-gutter mt-stack-md overflow-x-auto text-code-sm"><code>curl "https://genaicommunity.ai/api/v1/models/usage?model=laya-typed-decisions" \
+  -H "Authorization: Bearer $COMMUNITY_API_TOKEN"</code></pre>
+      <p class="mt-stack-sm text-on-surface-variant">GPU seconds measure elapsed inference time inside the allocated GPU container. They exclude cold start, time waiting outside the container, and idle time. The number is an API usage meter, not a bill or a reading of GPU processor utilization. The total is tied to your member account and survives token renewal.</p>
+    </section>
+
+    <section class="mt-stack-lg border-t border-outline-variant pt-stack-md">
+      <h2 class="text-headline-md font-semibold">Endpoints</h2>
+      <dl class="mt-stack-md divide-y divide-outline-variant border-y border-outline-variant">
+        <div class="py-3 sm:grid sm:grid-cols-[260px_1fr] gap-gutter"><dt class="font-mono text-code-sm text-tertiary">GET /api/v1/models</dt><dd class="text-on-surface-variant">List models currently available to members.</dd></div>
+        <div class="py-3 sm:grid sm:grid-cols-[260px_1fr] gap-gutter"><dt class="font-mono text-code-sm text-tertiary">POST /api/v1/models/infer</dt><dd class="text-on-surface-variant">Run typed decisions and return per-call and cumulative usage.</dd></div>
+        <div class="py-3 sm:grid sm:grid-cols-[260px_1fr] gap-gutter"><dt class="font-mono text-code-sm text-tertiary">GET /api/v1/models/usage</dt><dd class="text-on-surface-variant">Read your current total for a named model.</dd></div>
+      </dl>
+      <p class="mt-stack-md"><a class="text-primary underline underline-offset-4" href="/openapi.json">Full OpenAPI specification</a> · <a class="text-primary underline underline-offset-4" href="https://huggingface.co/mys/laya-typed-decisions-GGUF">Model weights and license</a></p>
+    </section>
+  </article>
+</BaseLayout>

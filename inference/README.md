@@ -15,6 +15,10 @@ Use `uv run modal curl <endpoint>/health` for an authenticated operator check;
 API clients use a Modal proxy token. A successful health response reports
 `device: cuda:0` and `family: typed-decisions`.
 
-Modal's server proxy requires a workspace proxy token. Do not put that token in this repository or expose the Modal URL as an unauthenticated backend. The service provides `GET /health`, `POST /v1/systemone`, and `POST /v1/decide` with a request body containing `state` and typed `questions`. See the [ggmlc Laya API](https://github.com/monatis/ggmlc/tree/v0.9.2/examples/laya) for the full schema.
+Modal's server proxy requires a workspace proxy token. Do not put that token in this repository or expose the Modal URL as an unauthenticated backend. The service provides `GET /health` and `POST /v1/decide` with a request body containing `state` and typed `questions`. See the [ggmlc Laya API](https://github.com/monatis/ggmlc/tree/v0.9.2/examples/laya) for the underlying question schema. `metered_proxy.py` forwards calls to ggmlc on loopback and adds `X-GPU-Seconds` to completed inference responses.
 
-The deployment keeps zero warm containers and permits at most one T4 container to control spend. A request after scale-to-zero can receive a 503 while the container starts; clients should retry it. No site route, member authentication, or usage meter is added here.
+The deployment keeps zero warm containers and permits at most one T4 container to control spend. Calls are serialized so their measured durations do not overlap. A request after scale-to-zero can receive a 503 while the container starts; the site gateway retries those responses.
+
+The public member route is `POST /api/v1/models/infer` on `genaicommunity.ai`. The site Worker authenticates approved members, selects the model from a server-side registry, invokes this protected endpoint, saves measured microseconds in D1, and returns per-call and cumulative usage. `GET /api/v1/models/usage?model=laya-typed-decisions` reads the current member total. The Modal proxy token is a Cloudflare Worker secret supplied through the `MODAL_PROXY_TOKEN` GitHub Actions secret; it never belongs in client code.
+
+The meter measures elapsed inference time in the GPU container. It excludes cold start, upstream queueing, and idle time. It is an API usage measure rather than the exact Modal invoice total.

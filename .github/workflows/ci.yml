@@ -87,6 +87,7 @@ jobs:
           LINKEDIN_CLIENT_SECRET: ${{ secrets.LINKEDIN_CLIENT_SECRET }}
           ADMIN_EMAILS: ${{ secrets.ADMIN_EMAILS }}
           WHATSAPP_INVITE_URL: ${{ secrets.WHATSAPP_INVITE_URL }}
+          MODAL_PROXY_TOKEN: ${{ secrets.MODAL_PROXY_TOKEN }}
         run: |
           node scripts/check-production-config.mjs
           python3 scripts/write-worker-secrets.py "$RUNNER_TEMP/admissions-secrets.json"
@@ -136,6 +137,7 @@ jobs:
           LINKEDIN_CLIENT_SECRET: ${{ secrets.LINKEDIN_CLIENT_SECRET }}
           ADMIN_EMAILS: ${{ secrets.ADMIN_EMAILS }}
           WHATSAPP_INVITE_URL: ${{ secrets.WHATSAPP_INVITE_URL }}
+          MODAL_PROXY_TOKEN: ${{ secrets.MODAL_PROXY_TOKEN }}
           WRANGLER_SEND_METRICS: 'false'
         run: |
           python3 scripts/write-worker-secrets.py "$RUNNER_TEMP/admissions-secrets.json"

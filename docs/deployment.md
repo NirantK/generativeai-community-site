@@ -28,7 +28,10 @@ Set `CLOUDFLARE_API_TOKEN` as a GitHub repository secret or in the `production`
 environment. It needs Pages Write, Workers Scripts Write, D1 Write, and zone Workers Routes Edit for the
 Scaled Focus account. The latter permissions deploy the private admissions Worker
 and apply its migrations. Store `LINKEDIN_CLIENT_SECRET` as a repository secret
-for both environments.
+for both environments. Store `MODAL_PROXY_TOKEN` as a repository secret for both
+environments; it contains the protected Modal endpoint proxy token. The Worker
+receives it through `wrangler secret bulk`. Never expose that token in Pages,
+client code, logs, or committed files.
 Do not put the token in source, logs, issues, or command arguments. From an authenticated
 terminal, `gh secret set CLOUDFLARE_API_TOKEN --repo NirantK/generativeai-community-site`
 prompts for the value securely. The account ID is public configuration.
