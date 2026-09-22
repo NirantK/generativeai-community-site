@@ -99,10 +99,10 @@ The application token is also the model usage token. Approved members do not
 need a separate credential or another acceptance. With the same bearer token:
 - GET /api/v1/models to list all available models and source links.
 - POST /api/v1/models/infer with JSON containing model, state, and questions.
-  For Laya, set model to mys/laya-typed-decisions-GGUF.
+  Select mys/laya-typed-decisions-GGUF or mys/laya-multilingual-GGUF.
 - Read usage.gpuSeconds and usage.totalGpuSeconds in the inference response.
-- GET /api/v1/models/usage?model=mys%2Flaya-typed-decisions-GGUF to read the
-  current account total without running the model.
+- GET /api/v1/models/usage?model=mys%2Flaya-multilingual-GGUF to read the
+  multilingual account total without running the model. Each model has its own total.
 GPU seconds measure elapsed inference inside the GPU container, not a bill.
 Use /models for examples and original model source links.</pre>
       <p>

@@ -48,15 +48,18 @@ immediately revokes the previous token. New tokens last 30 days.
 
 1. GET /api/v1/models to list every available model and its source links.
 2. POST /api/v1/models/infer with JSON containing `model`, `state`, and
-   `questions`. The registered model name is `mys/laya-typed-decisions-GGUF`,
-   matching the Hugging Face repository path. Other names may be added later;
-   always use the name returned by the list endpoint.
+   `questions`. The registered names are `mys/laya-typed-decisions-GGUF` and
+   `mys/laya-multilingual-GGUF`, matching their Hugging Face repository paths.
+   Always use a name returned by the list endpoint.
 3. Read `usage.gpuSeconds`, `usage.totalGpuSeconds`, and `usage.requestCount`
-   in the inference response. GET /api/v1/models/usage?model=mys%2Flaya-typed-decisions-GGUF
-   to read the current account total without running inference. The meter
+   in the inference response. GET /api/v1/models/usage?model=mys%2Flaya-multilingual-GGUF
+   to read the multilingual account total without running inference. Each model
+   has a separate total. The meter
    records GPU container inference seconds, not a bill.
 
 Sources: [GGUF weights by mys](https://huggingface.co/mys/laya-typed-decisions-GGUF),
 [original Laya checkpoint by Convai Innovations](https://huggingface.co/convaiinnovations/laya-typed-decisions),
+[multilingual GGUF weights by mys](https://huggingface.co/mys/laya-multilingual-GGUF),
+[original multilingual checkpoint](https://huggingface.co/convaiinnovations/laya-multilingual),
 [ggmlc runtime](https://github.com/monatis/ggmlc/tree/v0.9.2/examples/laya).
 See [model API documentation](/models) and [OpenAPI contract](/openapi.json).
