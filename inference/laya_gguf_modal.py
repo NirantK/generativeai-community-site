@@ -1,6 +1,7 @@
 """Serve the typed-decisions GGUF with ggmlc on Modal's lowest-cost GPU."""
 
 import subprocess
+import sys
 
 import modal
 
@@ -31,6 +32,7 @@ image = (
         f"--output {MODEL_PATH}",
         f"echo '{MODEL_SHA256}  {MODEL_PATH}' | sha256sum --check --status",
     )
+    .add_local_file("inference/metered_proxy.py", "/opt/metered_proxy.py")
 )
 
 
@@ -39,6 +41,7 @@ image = (
     gpu="T4",
     cpu=1,
     memory=4096,
+    target_concurrency=1,
     port=8000,
     name="laya",
     min_containers=0,
@@ -55,15 +58,18 @@ class LayaServer:
                 "serve",
                 MODEL_PATH,
                 "--port",
-                "8000",
+                "8001",
                 "--device",
                 "cuda",
                 "--cuda-graph",
             ]
         )
+        self.proxy = subprocess.Popen([sys.executable, "/opt/metered_proxy.py"])
 
     @modal.exit()
     def stop(self):
+        self.proxy.terminate()
+        self.proxy.wait(timeout=10)
         self.process.terminate()
         try:
             self.process.wait(timeout=10)

@@ -14,6 +14,7 @@ interface __BaseEnv_Env {
 	LINKEDIN_CLIENT_SECRET: string;
 	WHATSAPP_INVITE_URL: string;
 	CRUSTDATA_API_KEY: string;
+	MODAL_PROXY_TOKEN: string;
 	ADMISSION: DurableObjectNamespace<import("./src/index").AdmissionAgent>;
 	REVIEW: Workflow<Parameters<import("./src/index").AdmissionWorkflow['run']>[0]['payload']>;
 }
@@ -35,6 +36,7 @@ declare namespace Cloudflare {
 		LINKEDIN_CLIENT_SECRET: string;
 		WHATSAPP_INVITE_URL: string;
 		CRUSTDATA_API_KEY: string;
+		MODAL_PROXY_TOKEN: string;
 		ADMISSION: DurableObjectNamespace<import("./src/index").AdmissionAgent>;
 		REVIEW: Workflow<Parameters<import("./src/index").AdmissionWorkflow['run']>[0]['payload']>;
 	}
@@ -45,7 +47,7 @@ type StringifyValues<EnvType extends Record<string, unknown>> = {
 	[Binding in keyof EnvType]: EnvType[Binding] extends string ? EnvType[Binding] : string;
 };
 declare namespace NodeJS {
-	interface ProcessEnv extends StringifyValues<Pick<Cloudflare.Env, "SITE_URL" | "AUTO_APPROVALS_ENABLED" | "EMAIL_ENABLED" | "AI_MODEL" | "ADMIN_EMAILS" | "LINKEDIN_CLIENT_ID" | "LINKEDIN_CLIENT_SECRET" | "WHATSAPP_INVITE_URL" | "CRUSTDATA_API_KEY">> {}
+interface ProcessEnv extends StringifyValues<Pick<Cloudflare.Env, "SITE_URL" | "AUTO_APPROVALS_ENABLED" | "EMAIL_ENABLED" | "AI_MODEL" | "ADMIN_EMAILS" | "LINKEDIN_CLIENT_ID" | "LINKEDIN_CLIENT_SECRET" | "WHATSAPP_INVITE_URL" | "CRUSTDATA_API_KEY" | "MODAL_PROXY_TOKEN">> {}
 }
 
 // Begin runtime types
