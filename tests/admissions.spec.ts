@@ -99,7 +99,7 @@ test("token is shown once and removed on revocation", async ({ page }) => {
     r.fulfill({
       json:
         r.request().method() === "POST"
-          ? { token: "test-only-token", expiresAt: Date.now() + 86400000 }
+          ? { token: "test-only-token", expiresAt: Date.now() + 30 * 86400000 }
           : { revoked: true },
     }),
   );
