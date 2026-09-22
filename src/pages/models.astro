@@ -16,21 +16,25 @@ const example = `curl https://genaicommunity.ai/api/v1/models/infer \\
   }'`;
 ---
 
-<BaseLayout title="Model API" description="Member API for Laya typed decisions, with per-request GPU usage metering." sourcePath="src/pages/models.astro">
+<BaseLayout title="Model API" description="Member API for Laya typed decisions and multilingual inference, with per-request GPU usage metering." sourcePath="src/pages/models.astro">
   <article class="max-w-[72ch]">
     <h1 class="text-display-lg leading-[1.1] tracking-[-0.04em] font-bold mt-stack-md">Community model API</h1>
-    <p class="text-on-surface-variant text-lg mt-stack-md">Use Laya Typed Decisions in your own tools. The API is open to every approved member and reports usage in T4 seconds after each call.</p>
+    <p class="text-on-surface-variant text-lg mt-stack-md">Use Laya Typed Decisions or Laya Multilingual in your own tools. The API is open to every approved member and reports usage in T4 seconds after each call.</p>
 
     <section class="mt-stack-lg border border-outline-variant bg-surface-container-low p-gutter">
       <h2 class="text-headline-md font-semibold">Available models</h2>
       <p class="font-mono text-tertiary mt-stack-sm break-all">mys/laya-typed-decisions-GGUF</p>
       <p class="mt-stack-sm text-on-surface-variant">Laya specializes in decisions about invoices, security incidents, customer service, and agent traces. This checkpoint supports English only.</p>
       <p class="mt-stack-md text-on-surface-variant">Source: <a class="text-primary underline underline-offset-4" href="https://huggingface.co/mys/laya-typed-decisions-GGUF">GGUF weights by mys</a> · <a class="text-primary underline underline-offset-4" href="https://huggingface.co/convaiinnovations/laya-typed-decisions">original Laya checkpoint by Convai Innovations</a> · <a class="text-primary underline underline-offset-4" href="https://github.com/monatis/ggmlc/tree/v0.9.2/examples/laya">ggmlc runtime</a>. The weights use the Apache-2.0 license.</p>
+      <p class="font-mono text-tertiary mt-stack-md break-all">mys/laya-multilingual-GGUF</p>
+      <p class="mt-stack-sm text-on-surface-variant">The full multilingual F16 checkpoint for typed choices, scores, and yes/no decisions across languages. It runs as a separate protected T4 app and has its own usage total.</p>
+      <p class="mt-stack-sm text-on-surface-variant">The upstream model ships uncalibrated and is weak on zero-shot typed-decisions benchmarks. Validate its answers on your language and workflow before treating probabilities as thresholds.</p>
+      <p class="mt-stack-md text-on-surface-variant">Source: <a class="text-primary underline underline-offset-4" href="https://huggingface.co/mys/laya-multilingual-GGUF">GGUF weights by mys</a> · <a class="text-primary underline underline-offset-4" href="https://huggingface.co/convaiinnovations/laya-multilingual">original Laya checkpoint by Convai Innovations</a> · <a class="text-primary underline underline-offset-4" href="https://github.com/monatis/ggmlc/tree/v0.9.2/examples/laya">ggmlc runtime</a>. The weights are Apache-2.0 licensed.</p>
       <p class="mt-stack-md text-on-surface-variant">Use the Hugging Face repository path above as the model name in inference and usage requests.</p>
     </section>
 
     <div class="border-y border-outline-variant mt-stack-lg py-stack-md grid sm:grid-cols-3 gap-stack-md">
-      <div><p class="font-mono text-label-caps uppercase text-on-surface-variant">Catalog</p><p class="font-mono text-tertiary mt-2">1 model</p></div>
+      <div><p class="font-mono text-label-caps uppercase text-on-surface-variant">Catalog</p><p class="font-mono text-tertiary mt-2">2 models</p></div>
       <div><p class="font-mono text-label-caps uppercase text-on-surface-variant">Runtime</p><p class="mt-2">GGUF on NVIDIA T4</p></div>
       <div><p class="font-mono text-label-caps uppercase text-on-surface-variant">Meter</p><p class="mt-2">T4 seconds</p></div>
     </div>
@@ -49,8 +53,9 @@ const example = `curl https://genaicommunity.ai/api/v1/models/infer \\
 
     <section class="mt-stack-lg">
       <h2 class="text-headline-md font-semibold">Make a decision</h2>
-      <p class="mt-stack-sm text-on-surface-variant">Send the state you want evaluated and a map of typed questions. The <code class="text-tertiary">model</code> field is required. It selects which model to call and lets us add models to the same API.</p>
+      <p class="mt-stack-sm text-on-surface-variant">Send the state you want evaluated and a map of typed questions. The required <code class="text-tertiary">model</code> field selects which model to call.</p>
       <pre class="bg-surface-container-low border border-outline-variant p-gutter mt-stack-md overflow-x-auto text-code-sm text-on-surface"><code>{example}</code></pre>
+      <p class="mt-stack-md text-on-surface-variant">For multilingual input, use the same request with <code class="text-tertiary">"model": "mys/laya-multilingual-GGUF"</code> and put your text and question instructions in the desired language.</p>
       <p class="mt-stack-sm text-on-surface-variant">The response includes <code class="text-tertiary">result</code> with the model’s answers. It also reports usage for this call in <code class="text-tertiary">usage.gpuSeconds</code>, your total in <code class="text-tertiary">usage.totalGpuSeconds</code>, and the number of calls in <code class="text-tertiary">usage.requestCount</code>.</p>
       <p class="mt-stack-sm text-on-surface-variant">Usage includes <code class="text-tertiary">gpu: "T4"</code>, <code class="text-tertiary">unit: "T4 seconds"</code>, and <code class="text-tertiary">measurement: "inference"</code>. A completed model call is metered even if the model rejects its input.</p>
     </section>
@@ -59,7 +64,7 @@ const example = `curl https://genaicommunity.ai/api/v1/models/infer \\
       <h2 class="text-headline-md font-semibold">Read your usage</h2>
       <pre class="bg-surface-container-low border border-outline-variant p-gutter mt-stack-md overflow-x-auto text-code-sm"><code>curl "https://genaicommunity.ai/api/v1/models/usage?model=mys%2Flaya-typed-decisions-GGUF" \
   -H "Authorization: Bearer $COMMUNITY_API_TOKEN"</code></pre>
-      <p class="mt-stack-sm text-on-surface-variant">T4 seconds measure elapsed inference time inside the allocated GPU container. Startup, time waiting outside the container, and idle time are excluded. This meter does not measure GPU utilization or billed usage. Your total belongs to your member account, so it stays the same when you renew your token.</p>
+      <p class="mt-stack-sm text-on-surface-variant">Replace the model query value with <code class="text-tertiary">mys%2Flaya-multilingual-GGUF</code> for its separate total. T4 seconds measure elapsed inference time inside the allocated GPU container. Startup, time waiting outside the container, and idle time are excluded. This meter does not measure GPU utilization or billed usage. Your totals belong to your member account, so they stay the same when you renew your token.</p>
     </section>
 
     <section class="mt-stack-lg border-t border-outline-variant pt-stack-md">

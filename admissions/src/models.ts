@@ -11,6 +11,15 @@ export const models = {
     endpoint: "https://scaledfocus--genaicommunity-laya-typed-decisions-gguf-laya.us-east.modal.direct/v1/decide",
     gpu: "T4",
   },
+  "mys/laya-multilingual-GGUF": {
+    description: "Multilingual typed choices, scores, and yes/no decisions using the full F16 checkpoint.",
+    sourceUrl: "https://huggingface.co/mys/laya-multilingual-GGUF",
+    upstreamUrl: "https://huggingface.co/convaiinnovations/laya-multilingual",
+    runtimeUrl: "https://github.com/monatis/ggmlc/tree/v0.9.2/examples/laya",
+    license: "Apache-2.0",
+    endpoint: "https://scaledfocus--genaicommunity-laya-multilingual-gguf-laya.us-east.modal.direct/v1/decide",
+    gpu: "T4",
+  },
 } as const;
 
 const requestSchema = z.object({

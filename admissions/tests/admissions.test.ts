@@ -43,6 +43,11 @@ beforeAll(async () => {
 
 describe("member model API", () => {
   it("requires an approved member and records measured GPU seconds under the account", async () => {
+    expect((await gateway("/api/v1/models", "GET")).status).toBe(401);
+    expect((await gateway("/api/v1/models/infer", "POST", {Origin:"https://genaicommunity.ai"}, {
+      model: "mys/laya-multilingual-GGUF", state: {message: "Hallo"},
+      questions: {greeting:{type:"noul",instructions:"Ist das eine Begrüßung?"}},
+    })).status).toBe(401);
     const owner = await account();
     await owner.agent.consent();
     const { token } = await owner.agent.token();
@@ -53,14 +58,18 @@ describe("member model API", () => {
     });
     const previous = env.MODAL_PROXY_TOKEN;
     env.MODAL_PROXY_TOKEN = "test-proxy-token";
-    const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response(JSON.stringify({answers:{billing:{noul:true}}}), {
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockImplementation(async () => new Response(JSON.stringify({answers:{billing:{noul:true}}}), {
       status: 200, headers: {"X-GPU-Seconds":"0.125432", "Content-Type":"application/json"},
     }));
     try {
       const modelList = await (await gateway("/api/v1/models", "GET", headers)).json() as any;
       expect(modelList.models.map((model:any) => model.name)).toContain("mys/laya-typed-decisions-GGUF");
+      expect(modelList.models.map((model:any) => model.name)).toContain("mys/laya-multilingual-GGUF");
+      expect(modelList.models).toHaveLength(2);
       expect(modelList.models[0].sourceUrl).toBe("https://huggingface.co/mys/laya-typed-decisions-GGUF");
       expect(modelList.models[0].upstreamUrl).toBe("https://huggingface.co/convaiinnovations/laya-typed-decisions");
+      expect(modelList.models[1].sourceUrl).toBe("https://huggingface.co/mys/laya-multilingual-GGUF");
+      expect(modelList.models[1].upstreamUrl).toBe("https://huggingface.co/convaiinnovations/laya-multilingual");
       const request = {
         model: "mys/laya-typed-decisions-GGUF",
         state: {message:"Charged twice"},
@@ -76,6 +85,20 @@ describe("member model API", () => {
       expect((fetchMock.mock.calls[0][1] as RequestInit).headers).toMatchObject({Authorization:"Bearer test-proxy-token"});
       const usage = await (await gateway("/api/v1/models/usage?model=mys%2Flaya-typed-decisions-GGUF", "GET", headers)).json() as any;
       expect(usage.usage).toEqual({gpu:"T4",unit:"T4 seconds",measurement:"inference",requestCount:1,gpuSeconds:0.125432});
+      const multilingual = await gateway("/api/v1/models/infer", "POST", headers, {
+        model: "mys/laya-multilingual-GGUF",
+        state: {message: "Me cobraron dos veces por la misma factura."},
+        questions: {billing:{type:"noul",instructions:"¿Es un problema de facturación?"}},
+      });
+      expect(multilingual.status).toBe(200);
+      const multilingualData = await multilingual.json() as any;
+      expect(multilingualData.model).toBe("mys/laya-multilingual-GGUF");
+      expect(multilingualData.usage).toEqual({gpu:"T4",unit:"T4 seconds",measurement:"inference",gpuSeconds:0.125432,totalGpuSeconds:0.125432,requestCount:1});
+      expect(fetchMock.mock.calls[1][0]).toBe("https://scaledfocus--genaicommunity-laya-multilingual-gguf-laya.us-east.modal.direct/v1/decide");
+      const multilingualUsage = await (await gateway("/api/v1/models/usage?model=mys%2Flaya-multilingual-GGUF", "GET", headers)).json() as any;
+      expect(multilingualUsage.usage).toEqual({gpu:"T4",unit:"T4 seconds",measurement:"inference",requestCount:1,gpuSeconds:0.125432});
+      const typedUsageAgain = await (await gateway("/api/v1/models/usage?model=mys%2Flaya-typed-decisions-GGUF", "GET", headers)).json() as any;
+      expect(typedUsageAgain.usage).toEqual({gpu:"T4",unit:"T4 seconds",measurement:"inference",requestCount:1,gpuSeconds:0.125432});
       expect((await gateway("/api/v1/models/usage?model=unknown", "GET", headers)).status).toBe(404);
     } finally {
       fetchMock.mockRestore();
