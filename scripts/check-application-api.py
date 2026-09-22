@@ -33,7 +33,13 @@ with response:
     if not isinstance(body, dict):
         body = {}
     edge_block = body.get("cloudflare_error") is True or body.get("error_code") == 1010
-    authenticated = response.status == 200 and not args.invalid_token and not edge_block
+    application_response = (
+        "application/json" in response.headers.get("content-type", "")
+        and isinstance(body.get("profile"), dict)
+        and body.get("status") in {"draft", "submitted", "review", "approved", "declined"}
+        and "application" in body
+    )
+    authenticated = response.status == 200 and application_response and not args.invalid_token and not edge_block
     result = "authenticated" if authenticated else "edge_blocked" if edge_block else "token_rejected" if response.status == 401 else "unexpected_response"
     print(json.dumps({
         "timestamp": datetime.datetime.now(datetime.timezone.utc).isoformat(),
