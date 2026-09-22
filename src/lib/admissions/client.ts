@@ -7,6 +7,7 @@ type Snapshot = {
   delivery: { status: string };
   receipt?: { status: string };
   application: Record<string, string> | null;
+  enrichment: { status: string; source: "email" | "linkedin" | null; data: { name: string; title: string | null; location: string | null; company: string | null; school: string | null; degree: string | null } | null };
 };
 const el = <T extends HTMLElement = HTMLElement>(id: string) =>
   document.getElementById(id) as T;
@@ -59,6 +60,7 @@ async function api<T = Snapshot>(
 export function initApplication() {
   let submissionKey = crypto.randomUUID();
   let appealKey = crypto.randomUUID();
+  let enrichmentPoll: number | undefined;
   async function refresh() {
     try {
       const s: Snapshot = await api("/api/v1/application");
@@ -74,6 +76,20 @@ export function initApplication() {
         ? `LinkedIn email: ${s.profile.email}`
         : "LinkedIn did not provide an email. Add an email to your LinkedIn account and sign in again.";
       el("refresh-linkedin").hidden = s.profile.emailVerified;
+      if (enrichmentPoll) window.clearTimeout(enrichmentPoll);
+      const enrichment = s.enrichment ?? { status: "idle", source: null, data: null };
+      el("enrichment-section").hidden = enrichment.status === "idle";
+      el("enrichment-status").textContent = enrichment.status === "pending"
+        ? "Looking up your professional profile…"
+        : enrichment.status === "matched" ? "We found this professional profile:"
+        : enrichment.status === "no_match" ? "No matching professional profile was found. You can still apply."
+        : "Profile lookup is unavailable. You can still apply.";
+      el("enrichment-details").textContent = enrichment.data
+        ? [["Name", enrichment.data.name], ["Role", enrichment.data.title],
+           ["Company", enrichment.data.company], ["Location", enrichment.data.location],
+           ["School", enrichment.data.school], ["Degree", enrichment.data.degree]]
+            .filter(([, value]) => !!value).map(([label, value]) => `${label}: ${value}`).join(" · ") : "";
+      if (enrichment.status === "pending") enrichmentPoll = window.setTimeout(() => void refresh(), 3000);
       el("consent-section").hidden = !!s.consent;
       el("form-section").hidden = !!s.application;
       el("status-section").hidden = !s.application;
@@ -164,6 +180,14 @@ export function initApplication() {
     appealKey = crypto.randomUUID();
     await refresh();
     notice("Appeal saved for administrator review.");
+  });
+  el<HTMLInputElement>("linkedinUrl").addEventListener("change", async () => {
+    const linkedinUrl = el<HTMLInputElement>("linkedinUrl").value.trim();
+    if (!linkedinUrl) return;
+    try {
+      await api("/api/application-enrichment", "POST", { linkedinUrl });
+      await refresh();
+    } catch (e) { notice((e as Error).message, true); }
   });
   form("application-form", async (d) => {
     await api(

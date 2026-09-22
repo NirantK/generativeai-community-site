@@ -1,6 +1,6 @@
 import { z } from "zod";
 export const POLICY = "students-exceptional-v5";
-export const CONSENT = "admissions-v1";
+export const CONSENT = "admissions-v2";
 export const TOKEN_TTL = 24 * 60 * 60 * 1000;
 export const linkedinProfileSchema = z.string().trim().max(500).url().refine(value => {
   try {
@@ -44,6 +44,11 @@ export const assessmentSchema = z
     uncertain: z.boolean(),
     reasons: z.string().min(1).max(1500),
     evidence: z.array(z.string().min(10).max(1000)).min(1).max(5),
+    paper: z.object({
+      title: z.string().min(10).max(500),
+      venue: z.enum(["ICML", "NeurIPS", "ACL"]),
+      year: z.number().int().min(1980).max(2100),
+    }).nullable().optional(),
   })
   .strict();
 export type Assessment = z.infer<typeof assessmentSchema>;
@@ -54,6 +59,25 @@ export const appealSchema = z.object({
 }).strict().refine(value => !!(value.proofUrl || value.explanation || value.voucher), "Provide work evidence, a project explanation, or a community member who can vouch for you.");
 export type Decision = { actor: string; reason: string; at: number };
 export type Appeal = { id: string; key: string; hash: string; evidence: z.infer<typeof appealSchema>; submittedAt: number; previousDecision: Decision; resolution: (Decision & { action: "approve" | "decline" }) | null };
+export type EnrichedPerson = {
+  name: string;
+  title: string | null;
+  location: string | null;
+  company: string | null;
+  school: string | null;
+  degree: string | null;
+};
+export type Enrichment = {
+  status: "idle" | "pending" | "matched" | "no_match" | "unavailable";
+  source: "email" | "linkedin" | null;
+  lookupValue: string | null;
+  data: EnrichedPerson | null;
+  updatedAt: number | null;
+};
+export const initialEnrichment = (): Enrichment => ({
+  status: "idle", source: null, lookupValue: null, data: null, updatedAt: null,
+});
+
 export type Profile = {
   id: string;
   sub: string;
@@ -82,6 +106,7 @@ export type RecordState = {
     attempts: number;
   } | null;
   application: Application | null;
+  enrichment: Enrichment;
   payloadHash: string | null;
   idempotencyKey: string | null;
   status: "draft" | "submitted" | "review" | "approved" | "declined";
@@ -105,6 +130,7 @@ export function initialRecord(): RecordState {
     tokenExpires: 0,
     verification: null,
     application: null,
+    enrichment: initialEnrichment(),
     payloadHash: null,
     idempotencyKey: null,
     status: "draft",

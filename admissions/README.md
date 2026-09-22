@@ -52,6 +52,8 @@ email ledger. D1 stores hashed sessions, token lookups, one-use OAuth state, rat
 counters and an administrator listing projection. Decisions always read Agent state.
 Do not use the projection as authorization or approval truth.
 
+After current browser consent, Crustdata enrichment is queued from a verified email and refreshed when the applicant enters a LinkedIn URL. The URL takes precedence. Results are matched on the exact identifier, high confidence, and the signed-in name; only a small professional summary is stored and shown to the applicant. An unavailable or unmatched lookup does not block submission. The assessment receives enrichment as untrusted background context, never as proof of personal contribution. The API key is a Worker secret and is not returned to the browser.
+
 A serialized mutation queue protects concurrent token issuance, submission, decisions
 and email attempts. A deterministic workflow ID plus scheduled redispatch recovers
 submission/dispatch failures. `AgentWorkflow` assesses the application, waits for a
@@ -182,3 +184,10 @@ Run `python3 -m unittest discover -s scripts/tests` for import and privacy regre
 The administrator page defaults to approved applications in a responsive grid, ordered by approval time (newest first). Other status filters use submission time. Migration `0006_admin_listing.sql` adds listing metadata; an authenticated list request restores older rows from authoritative Agent records in batches of at most 100. Email retries do not change approval order.
 
 New form and API applications require an applicant-supplied public LinkedIn `/in/` URL. LinkedIn OIDC does not supply this URL. Links are validated and normalized, but are not proof of profile ownership. Older applications show “Not provided”; exact retries of previously accepted payloads remain valid.
+
+Crustdata enrichment runs after application consent, using a verified email or
+applicant-entered LinkedIn profile. The applicant sees the matched professional
+summary; the review model receives the same summary as untrusted context. Store
+`CRUSTDATA_API_KEY` in each admissions Worker secret store and in GitHub Actions
+for deployment. Publication claims for ICML, NeurIPS, and ACL main tracks are
+checked against official proceedings through the free Parallel MCP search.

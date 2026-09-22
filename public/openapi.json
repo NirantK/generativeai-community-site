@@ -772,6 +772,83 @@
               }
             ]
           },
+          "enrichment": {
+            "type": "object",
+            "description": "Applicant-visible Crustdata lookup result. External data is supplementary and may be outdated.",
+            "properties": {
+              "status": {
+                "enum": [
+                  "idle",
+                  "pending",
+                  "matched",
+                  "no_match",
+                  "unavailable"
+                ]
+              },
+              "source": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "enum": [
+                  "email",
+                  "linkedin",
+                  null
+                ]
+              },
+              "data": {
+                "anyOf": [
+                  {
+                    "type": "object",
+                    "properties": {
+                      "name": {
+                        "type": "string"
+                      },
+                      "title": {
+                        "type": [
+                          "string",
+                          "null"
+                        ]
+                      },
+                      "location": {
+                        "type": [
+                          "string",
+                          "null"
+                        ]
+                      },
+                      "company": {
+                        "type": [
+                          "string",
+                          "null"
+                        ]
+                      },
+                      "school": {
+                        "type": [
+                          "string",
+                          "null"
+                        ]
+                      },
+                      "degree": {
+                        "type": [
+                          "string",
+                          "null"
+                        ]
+                      }
+                    }
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "updatedAt": {
+                "type": [
+                  "integer",
+                  "null"
+                ]
+              }
+            }
+          },
           "status": {
             "enum": [
               "draft",

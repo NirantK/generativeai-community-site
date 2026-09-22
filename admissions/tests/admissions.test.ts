@@ -436,6 +436,33 @@ describe("submission recovery and approval decisions", () => {
     });
     expect((await other.agent.inspect()).status).toBe("review");
   });
+  it("shows enrichment state to the applicant without exposing lookup internals", async () => {
+    const { agent } = await account();
+    await agent.consent();
+    const state = await agent.setEnrichmentUrl("https://www.linkedin.com/in/builder");
+    expect(state.enrichment).toMatchObject({ status: "pending", source: "linkedin" });
+    expect(state.enrichment).not.toHaveProperty("lookupValue");
+    await agent.enrich();
+    expect((await agent.publicState()).enrichment.status).toBe("unavailable");
+  });
+  it("passes completed enrichment to the application review model", async () => {
+    const { agent } = await account();
+    await runInDurableObject(agent, async (instance) => {
+      instance.setState({ ...instance.state, application: sample, status: "submitted",
+        enrichment: { status: "matched", source: "linkedin", lookupValue: sample.linkedinUrl,
+          data: { name: "Test applicant", title: "Researcher", location: null,
+            company: "Example AI", school: null, degree: null }, updatedAt: Date.now() } });
+      const run = vi.spyOn(instance["env"].AI, "run").mockResolvedValue({
+        response: JSON.stringify({ relevant: false, concrete: false, contribution: false,
+          uncertain: true, reasons: "Needs review", evidence: [sample.project], paper: null }),
+      });
+      await instance.assess();
+      const request = run.mock.calls.at(-1)![1] as { messages: Array<{ role: string; content: string }> };
+      const supplied = JSON.parse(request.messages.find((message) => message.role === "user")!.content);
+      expect(supplied.externalEnrichment).toMatchObject({ name: "Test applicant", company: "Example AI" });
+      expect(supplied.application).toMatchObject({ role: sample.role, project: sample.project, contribution: sample.contribution, motivation: sample.motivation });
+    });
+  });
   it("accepts structured JSON model output and only reassesses undecided review cases", async () => {
     const { agent } = await account();
     await runInDurableObject(agent, async (instance) => {

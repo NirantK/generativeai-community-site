@@ -16,9 +16,12 @@ import {
   whatsappInvite,
   submissionResult,
   emailFailure,
+  initialEnrichment,
 } from "./domain";
-import type { RecordState, Profile, Assessment, Delivery } from "./domain";
+import type { RecordState, Profile, Assessment, Delivery, Enrichment } from "./domain";
 import { ApiError, digest, randomToken, escapeHtml } from "./security";
+import { verifyMainTrackPaper } from "./publication";
+import { enrichPerson } from "./crustdata";
 
 export class AdmissionAgent extends Agent<Env, RecordState> {
   initialState = initialRecord();
@@ -77,16 +80,20 @@ export class AdmissionAgent extends Agent<Env, RecordState> {
         ...(changed ? { tokenHash: null, tokenExpires: 0 } : {}),
       });
       await this.index();
+      if (this.state.consent === CONSENT && this.state.profile?.emailVerified)
+        await this.queueEnrichment("email", this.state.profile.email);
       return this.publicState();
     });
   }
   async publicState() {
     const { profile, application, status, consent, delivery } = this.state;
+    const enrichment = this.state.enrichment ?? initialEnrichment();
     return {
       profile,
       application,
+      enrichment: { status: enrichment.status, source: enrichment.source, data: enrichment.data, updatedAt: enrichment.updatedAt },
       status,
-      consent,
+      consent: consent === CONSENT || application ? consent : null,
       delivery: { status: delivery.status },
       receipt: { status: this.state.receipt?.status ?? "pending" },
       submissionChannel: this.state.submissionChannel ?? "unknown",
@@ -99,7 +106,7 @@ export class AdmissionAgent extends Agent<Env, RecordState> {
       },
       missingRequirements: [
         ...(!profile?.emailVerified ? ["verifiedEmail"] : []),
-        ...(!consent ? ["consent"] : []),
+        ...(!application && consent !== CONSENT ? ["consent"] : []),
         ...(!application ? Object.keys(applicationSchema.shape) : []),
       ],
       tokenActive:
@@ -119,6 +126,8 @@ export class AdmissionAgent extends Agent<Env, RecordState> {
   async consent() {
     return this.serial(async () => {
       this.write({ consent: CONSENT }, "consent", "applicant");
+      if (this.state.profile?.emailVerified)
+        await this.queueEnrichment("email", this.state.profile.email);
       return this.publicState();
     });
   }
@@ -161,6 +170,48 @@ export class AdmissionAgent extends Agent<Env, RecordState> {
       );
       return { revoked: true };
     });
+  }
+  private async queueEnrichment(source: "email" | "linkedin", lookupValue: string) {
+    if (this.state.consent !== CONSENT || !lookupValue) return;
+    const previous = this.state.enrichment ?? initialEnrichment();
+    if (source === "email" && previous.source === "linkedin") return;
+    if (previous.source === source && previous.lookupValue === lookupValue &&
+        !["idle", "unavailable"].includes(previous.status)) return;
+    const next: Enrichment = {
+      status: "pending", source, lookupValue, data: null, updatedAt: null,
+    };
+    this.write({ enrichment: next }, "enrichment_queued");
+    await this.schedule(1, "enrich");
+  }
+  async setEnrichmentUrl(input: unknown) {
+    return this.serial(async () => {
+      const url = applicationSchema.shape.linkedinUrl.parse(input);
+      if (this.state.application) throw new ApiError(409, "submitted", "Application already submitted.");
+      if (this.state.consent !== CONSENT) throw new ApiError(403, "consent", "Save consent first.");
+      await this.queueEnrichment("linkedin", url);
+      return this.publicState();
+    });
+  }
+  private async refreshEnrichment() {
+    const snapshot = this.state.enrichment ?? initialEnrichment();
+    if (snapshot.status !== "pending" || !snapshot.source || !snapshot.lookupValue) return;
+    let data: Enrichment["data"] = null;
+    let status: Enrichment["status"] = "unavailable";
+    try {
+      if (this.env.CRUSTDATA_API_KEY) {
+        data = await enrichPerson(this.env.CRUSTDATA_API_KEY, snapshot.source,
+          snapshot.lookupValue, this.state.profile!.name);
+        status = data ? "matched" : "no_match";
+      }
+    } catch { /* Enrichment failures must not block submission or assessment. */ }
+    const current = this.state.enrichment;
+    if (current?.source === snapshot.source && current.lookupValue === snapshot.lookupValue) {
+      this.write({ enrichment: { ...current, status, data, updatedAt: Date.now() } },
+        "enrichment_checked");
+    }
+  }
+  async enrich() {
+    return this.serial(() => this.refreshEnrichment());
   }
   async submit(input: unknown, key: string, tokenHash?: string) {
     return this.serial(async () => {
@@ -216,6 +267,7 @@ export class AdmissionAgent extends Agent<Env, RecordState> {
           "applicant",
         );
         await this.schedule(1, "deliverReceipt");
+        await this.queueEnrichment("linkedin", parsed.data.linkedinUrl);
         await this.schedule(30, "ensureWorkflow");
       }
       await this.index();
@@ -252,13 +304,14 @@ export class AdmissionAgent extends Agent<Env, RecordState> {
     return this.serial(async () => {
       if (this.state.status !== "submitted") return;
       const application = this.state.application!;
+      await this.refreshEnrichment();
       let assessment: Assessment | null = null;
       let failure: "model_unavailable" | "invalid_model_output" | null =
         "model_unavailable";
       try {
         const output = await this.env.AI.run(
           this.env.AI_MODEL as Parameters<Ai["run"]>[0],
-          assessmentRequest(application),
+          assessmentRequest(application, new Date().toISOString().slice(0, 10), this.state.enrichment?.data ?? null),
         );
         failure = "invalid_model_output";
         assessment = parseAssessment(output);
@@ -266,11 +319,23 @@ export class AdmissionAgent extends Agent<Env, RecordState> {
       } catch {
         /* Fail closed to human review; never reject on infrastructure failure. */
       }
+      const ordinaryApproval = !!assessment && !assessment.paper && qualifies(assessment, application);
+      let verifiedPaperUrl: string | null = null;
+      if (assessment?.paper && !ordinaryApproval && this.env.AUTO_APPROVALS_ENABLED === "true") {
+        try {
+          verifiedPaperUrl = await verifyMainTrackPaper(
+            assessment.paper,
+            this.state.profile!.name,
+            application,
+          );
+        } catch {
+          // Search outages or unclear evidence require human review.
+        }
+      }
       const approved =
-        !!assessment &&
-        qualifies(assessment, application) &&
-        this.env.AUTO_APPROVALS_ENABLED === "true";
-      const declined = !!assessment && rejectStudent(assessment, application) && this.env.AUTO_APPROVALS_ENABLED === "true";
+        this.env.AUTO_APPROVALS_ENABLED === "true" &&
+        (ordinaryApproval || !!verifiedPaperUrl);
+      const declined = !!assessment && !verifiedPaperUrl && rejectStudent(assessment, application) && this.env.AUTO_APPROVALS_ENABLED === "true";
       this.write(
         {
           assessment,
@@ -279,7 +344,7 @@ export class AdmissionAgent extends Agent<Env, RecordState> {
           model: this.env.AI_MODEL,
           status: approved ? "approved" : declined ? "declined" : "review",
           decision: approved || declined
-            ? { actor: "agent", reason: assessment!.reasons, at: Date.now() }
+            ? { actor: "agent", reason: verifiedPaperUrl ? `Verified main-track paper: ${verifiedPaperUrl}` : assessment!.reasons, at: Date.now() }
             : null,
         },
         approved ? "auto_approved" : declined ? "auto_declined_student" : "review_required",
@@ -460,7 +525,7 @@ export class AdmissionAgent extends Agent<Env, RecordState> {
           html:
             kind === "receipt"
               ? receiptHtml
-              : `<p>Your application is approved.</p><p><a href="${escapeHtml(url!)}">Join our WhatsApp community</a></p><p>Now that you’re a member, explore <a href="${escapeHtml(this.env.SITE_URL)}/past-chats">Past Chats</a> to search conversations that shaped the community.</p><p>To let your AI agent search Past Chats, <a href="${escapeHtml(this.env.SITE_URL)}/apply#agent-token">generate a member API token</a> after signing in. You can then give the token and the <a href="${escapeHtml(this.env.SITE_URL)}/api-instructions">agent instructions</a> to your agent.</p><p>Please read our <a href="${escapeHtml(this.env.SITE_URL)}/#whatsapp-community-rules">community rules</a>.</p>`,
+              : `<p>Your application is approved.</p><p><a href="${escapeHtml(url!)}">Join our WhatsApp community</a></p><p>Now that you’re a member, explore <a href="${escapeHtml(this.env.SITE_URL)}/past-chats">Past Chats</a> to search conversations that shaped the community.</p><p>To let your AI agent search Past Chats, <a href="${escapeHtml(this.env.SITE_URL)}/apply#agent-token">generate a member API token</a> after signing in. You can then give the token && the <a href="${escapeHtml(this.env.SITE_URL)}/api-instructions">agent instructions</a> to your agent.</p><p>Please read our <a href="${escapeHtml(this.env.SITE_URL)}/#whatsapp-community-rules">community rules</a>.</p>`,
         });
         this.write(
           {

@@ -338,6 +338,7 @@ async function handle(req: Request, env: Env): Promise<Response> {
       const {
         profile,
         application,
+        enrichment,
         status,
         assessment,
         assessmentFailure,
@@ -353,6 +354,7 @@ async function handle(req: Request, env: Env): Promise<Response> {
       return json({
         profile,
         application,
+        enrichment,
         status,
         assessment,
         assessmentFailure,
@@ -540,6 +542,11 @@ async function handle(req: Request, env: Env): Promise<Response> {
       .strict()
       .parse(await body(req));
     return json(await auth.agent.consent());
+  }
+  if (path === "/api/application-enrichment" && req.method === "POST") {
+    await limit(env, `enrich:${auth.id}`, 5);
+    const data = z.object({ linkedinUrl: z.string().max(300) }).strict().parse(await body(req));
+    return json(await auth.agent.setEnrichmentUrl(data.linkedinUrl));
   }
   throw new ApiError(404, "not_found", "Endpoint not found.");
 }

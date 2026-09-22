@@ -11,6 +11,7 @@ export default defineConfig({
           EMAIL_ENABLED: "false",
           AUTO_APPROVALS_ENABLED: "false",
           ADMIN_EMAILS: "admin-sub",
+          CRUSTDATA_API_KEY: "",
         },
       },
     }),

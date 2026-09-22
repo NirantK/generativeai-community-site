@@ -100,6 +100,12 @@ const fields = [
         <p id="email-status" class="help"></p>
         <a id="refresh-linkedin" href="/auth/linkedin" hidden>Refresh LinkedIn sign-in</a>
       </section>
+      <section id="enrichment-section" hidden>
+        <h2>Profile enrichment</h2>
+        <p id="enrichment-status" class="help" role="status"></p>
+        <p id="enrichment-details" hidden></p>
+        <p class="help">These details come from Crustdata. Your own application answers remain yours to review and submit.</p>
+      </section>
       <section id="consent-section">
         <h2>Before you apply</h2>
         <form id="consent-form">
@@ -110,7 +116,7 @@ const fields = [
               <a href="/#whatsapp-community-rules">community rules</a> and the{" "}
               <a href="/terms-and-conditions">Terms &amp; Conditions</a> and{" "}
               <a href="/privacy-policy">Privacy Policy</a>. I
-              consent to AI-assisted assessment of my application and email
+              consent to AI-assisted assessment, Crustdata professional profile lookup, and email
               about my application and invitation.
             </span>
           </label>
@@ -220,8 +226,7 @@ const fields = [
             </button>
           </div>
           <p class="help">
-            Applications are final once submitted. Clear matches are approved
-            automatically; other applications receive a human review.
+            Applications are final once submitted. If you have an ICML, NeurIPS, or ACL main-track paper, include its exact title, venue, and year so we can verify it. Clear matches are approved automatically; other applications receive a human review.
           </p>
         </form>
       </section>

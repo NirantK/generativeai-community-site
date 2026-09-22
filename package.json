@@ -19,6 +19,8 @@
     "dev:admissions": "wrangler dev --config admissions/wrangler.jsonc"
   },
   "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.30.0",
+    "@astrojs/cloudflare": "^14.3.1",
     "@astrojs/mdx": "^8.0.1",
     "@astrojs/sitemap": "^3.7.2",
     "@cloudflare/containers": "0.3.7",
