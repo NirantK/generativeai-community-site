@@ -6,7 +6,8 @@ const draft = {
     email: "builder@example.com",
     emailVerified: true,
   },
-  consent: "admissions-v1",
+  consent: "admissions-v2",
+  consentCurrent: true,
   status: "draft",
   application: null,
   delivery: { status: "pending" },
@@ -117,6 +118,40 @@ test("token is shown once and removed on revocation", async ({ page }) => {
   await expect(page.locator("#token-output")).toBeHidden();
 });
 
+test("approved member with old consent can generate a token without accepting again", async ({ page }) => {
+  await page.route("**/api/v1/application", route => route.fulfill({
+    json: { ...draft, consent: "admissions-v1", consentCurrent: false, status: "approved", application: { role: "AI engineer" } },
+  }));
+  await page.route("**/api/application-token", route => route.fulfill({
+    json: { token: "test-only-approved-token", expiresAt: Date.now() + 30 * 86400000 },
+  }));
+  await page.goto("/apply");
+  await expect(page.locator("#consent-section")).toBeHidden();
+  const button = page.getByRole("button", { name: "Generate application token" });
+  await expect(button).toBeEnabled();
+  await button.click();
+  await expect(page.locator("#token-value")).toHaveText("test-only-approved-token");
+});
+
+test("token generation shows local progress and a local failure message", async ({ page }) => {
+  await page.route("**/api/v1/application", route => route.fulfill({ json: draft }));
+  let release!: () => void;
+  const waiting = new Promise<void>(resolve => { release = resolve; });
+  await page.route("**/api/application-token", async route => {
+    await waiting;
+    await route.fulfill({ status: 503, json: { error: { message: "Token service is temporarily unavailable." } } });
+  });
+  await page.goto("/apply");
+  const button = page.getByRole("button", { name: "Generate application token" });
+  await expect(button).toBeEnabled();
+  await button.click();
+  await expect(page.locator("#token-status")).toContainText("Creating your token");
+  await expect(button).toBeDisabled();
+  release();
+  await expect(page.locator("#token-status")).toContainText("Token service is temporarily unavailable.");
+  await expect(button).toBeEnabled();
+});
+
 test("visiting agents can discover the API workflow before signing in", async ({ page, request }) => {
   await page.goto("/api-instructions");
   await expect(page.locator('link[rel="service-desc"]')).toHaveAttribute("href", "/openapi.json");
@@ -124,7 +159,11 @@ test("visiting agents can discover the API workflow before signing in", async ({
   await expect(page.locator("#agent-instructions")).toContainText("SAME Idempotency-Key");
   const response = await request.get("/llms.txt");
   expect(response.ok()).toBe(true);
-  expect(await response.text()).toContain("Continue through the API after LinkedIn sign-in");
+  const instructions = await response.text();
+  expect(instructions).toContain("Continue through the API after LinkedIn sign-in");
+  expect(instructions).toContain("The application token is also the model API token");
+  expect(instructions).toContain("GET /api/v1/models");
+  expect(instructions).toContain("mys/laya-typed-decisions-GGUF");
 });
 test("outage is not misrepresented as signed out", async ({ page }) => {
   await page.route("**/api/v1/application", (r) =>

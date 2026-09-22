@@ -1,6 +1,7 @@
 type Snapshot = {
   profile: { name: string; email: string; emailVerified: boolean };
   consent: string | null;
+  consentCurrent: boolean;
   status: string;
   decisionReason?: string | null;
   appeal?: { eligible: boolean; status: string };
@@ -20,6 +21,7 @@ async function api<T = Snapshot>(
   method = "GET",
   data?: unknown,
   key?: string,
+  signal?: AbortSignal,
 ): Promise<T> {
   const response = await fetch(path, {
     method,
@@ -29,6 +31,7 @@ async function api<T = Snapshot>(
       ...(key ? { "Idempotency-Key": key } : {}),
     },
     body: data ? JSON.stringify(data) : undefined,
+    signal,
   });
   if (!response.headers.get("content-type")?.includes("application/json")) {
     throw new Error(
@@ -61,6 +64,8 @@ export function initApplication() {
   let submissionKey = crypto.randomUUID();
   let appealKey = crypto.randomUUID();
   let enrichmentPoll: number | undefined;
+  let issuingToken = false;
+  let canIssueToken = false;
   async function refresh() {
     try {
       const s: Snapshot = await api("/api/v1/application");
@@ -90,11 +95,14 @@ export function initApplication() {
            ["School", enrichment.data.school], ["Degree", enrichment.data.degree]]
             .filter(([, value]) => !!value).map(([label, value]) => `${label}: ${value}`).join(" · ") : "";
       if (enrichment.status === "pending") enrichmentPoll = window.setTimeout(() => void refresh(), 3000);
-      el("consent-section").hidden = !!s.consent;
+      el("consent-section").hidden = s.status === "approved" || s.consentCurrent;
       el("form-section").hidden = !!s.application;
       el("status-section").hidden = !s.application;
-      const canSubmit = s.profile.emailVerified && !!s.consent;
-      el<HTMLButtonElement>("issue-token").disabled = !canSubmit;
+      const canSubmit = s.profile.emailVerified && s.consentCurrent;
+      canIssueToken = s.profile.emailVerified && (s.status === "approved" || s.consentCurrent);
+      el<HTMLButtonElement>("issue-token").disabled = !canIssueToken || issuingToken;
+      if (!canIssueToken && !issuingToken)
+        el("token-status").textContent = "Save consent and verify your LinkedIn email above to enable token generation.";
       el<HTMLButtonElement>(
         "application-form",
       ).querySelector<HTMLButtonElement>("button[type=submit]")!.disabled =
@@ -198,14 +206,39 @@ export function initApplication() {
     );
     await refresh();
   });
-  action("issue-token", async () => {
-    const result = await api<{ token: string }>(
-      "/api/application-token",
-      "POST",
-    );
-    el("token-output").hidden = false;
-    el("token-value").textContent = result.token;
-    notice("Application token created. Your agent should now use the API to prepare and submit your application. Copy the token before leaving this page.");
+  el("issue-token").addEventListener("click", async () => {
+    if (issuingToken || !canIssueToken) return;
+    issuingToken = true;
+    const button = el<HTMLButtonElement>("issue-token");
+    const status = el("token-status");
+    button.disabled = true;
+    status.classList.remove("error");
+    status.textContent = "Creating your token…";
+    const slowMessage = window.setTimeout(() => {
+      status.textContent = "Still creating your token. Please keep this page open.";
+    }, 8000);
+    try {
+      const result = await api<{ token: string }>(
+        "/api/application-token", "POST", undefined, undefined,
+        AbortSignal.timeout(60000),
+      );
+      el("token-output").hidden = false;
+      el("token-value").textContent = result.token;
+      status.textContent = "Token created. Copy it now; it is shown only once.";
+      el("token-output").scrollIntoView({ block: "nearest" });
+      notice("Application token created. Your agent should now use the API to prepare and submit your application. Copy the token before leaving this page.");
+    } catch (error) {
+      const message = (error as Error).name === "TimeoutError"
+        ? "Token creation timed out. It may have succeeded; generating again will replace any earlier token."
+        : (error as Error).message;
+      status.textContent = message;
+      status.classList.add("error");
+      notice(message, true);
+    } finally {
+      window.clearTimeout(slowMessage);
+      issuingToken = false;
+      button.disabled = !canIssueToken;
+    }
   });
   action("revoke-token", async () => {
     await api("/api/application-token", "DELETE");

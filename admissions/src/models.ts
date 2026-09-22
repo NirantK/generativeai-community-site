@@ -2,8 +2,12 @@ import { z } from "zod";
 import { ApiError, body, json } from "./security";
 
 export const models = {
-  "laya-typed-decisions": {
+  "mys/laya-typed-decisions-GGUF": {
     description: "Typed choices, scores, and yes/no decisions for operational workflows.",
+    sourceUrl: "https://huggingface.co/mys/laya-typed-decisions-GGUF",
+    upstreamUrl: "https://huggingface.co/convaiinnovations/laya-typed-decisions",
+    runtimeUrl: "https://github.com/monatis/ggmlc/tree/v0.9.2/examples/laya",
+    license: "Apache-2.0",
     endpoint: "https://scaledfocus--genaicommunity-laya-typed-decisions-gguf-laya.us-east.modal.direct/v1/decide",
     gpu: "T4",
   },
@@ -89,7 +93,7 @@ async function infer(req: Request, env: Env, accountId: string) {
 
 export async function modelApi(req: Request, env: Env, accountId: string, path: string): Promise<Response> {
   if (path === "/api/v1/models" && req.method === "GET")
-    return json({ models: Object.entries(models).map(([name, model]) => ({ name, description: model.description, gpu: model.gpu })) });
+    return json({ models: Object.entries(models).map(([name, model]) => ({ name, description: model.description, gpu: model.gpu, sourceUrl: model.sourceUrl, upstreamUrl: model.upstreamUrl, runtimeUrl: model.runtimeUrl, license: model.license })) });
   if (path === "/api/v1/models/usage" && req.method === "GET") {
     const name = new URL(req.url).searchParams.get("model");
     if (!name) throw new ApiError(400, "model_required", "Supply a model name.");
