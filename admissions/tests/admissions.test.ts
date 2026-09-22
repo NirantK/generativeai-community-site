@@ -212,6 +212,19 @@ describe("real Worker and Durable Object security", () => {
     await agent.revoke();
     expect(await agent.authorizeToken(await digest(second.token))).toBe(false);
   });
+  it("issues application tokens for 30 days", async () => {
+    const { agent } = await account();
+    await agent.consent();
+    const issuedAt = Date.now();
+    const { token, expiresAt } = await agent.token();
+    const expectedLifetime = 30 * 24 * 60 * 60 * 1000;
+    expect(expiresAt).toBeGreaterThanOrEqual(issuedAt + expectedLifetime);
+    expect(expiresAt).toBeLessThanOrEqual(Date.now() + expectedLifetime);
+    const stored = await env.INDEX.prepare(
+      "SELECT expires_at FROM tokens WHERE hash=?",
+    ).bind(await digest(token)).first<{ expires_at: number }>();
+    expect(stored?.expires_at).toBe(expiresAt);
+  });
   it("expires tokens and refuses them on browser/admin endpoints", async () => {
     const { agent } = await account();
     await agent.consent();
