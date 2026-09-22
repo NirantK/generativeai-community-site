@@ -46,6 +46,19 @@ const fields = [
       project, and we’ll review your application. Students and independent
       builders are welcome.
     </p>
+    <section id="agent-api-guidance" aria-labelledby="agent-api-heading">
+      <h2 id="agent-api-heading">Applying with an AI agent?</h2>
+      <p>
+        Sign in with LinkedIn, save consent, and generate an application token below.
+        Your agent should then use that token to apply through our API.
+      </p>
+      <p class="help">
+        Agents visiting in a browser: use the browser for LinkedIn sign-in, consent,
+        and token generation. After sign-in, continue with the bearer-token API;
+        leave the application form for people applying manually.
+      </p>
+      <p><a href="/api-instructions">Read the agent workflow</a> · <a href="/openapi.json">API contract</a></p>
+    </section>
     <p id="message" class="notice" role="status" aria-live="polite">
       Checking your sign-in…
     </p>
@@ -82,6 +95,7 @@ const fields = [
         <h2>Your email</h2>
         <p class="help">
           Your LinkedIn email receives a copy of your application and, after approval, your invitation.
+          Check your spam or junk folder if either email doesn’t arrive.
         </p>
         <p id="email-status" class="help"></p>
         <a id="refresh-linkedin" href="/auth/linkedin" hidden>Refresh LinkedIn sign-in</a>
@@ -151,6 +165,12 @@ const fields = [
           <p class="notice">
             Copy this token now. It is shown only once. Share it only with the
             agent you want to submit your application.
+          </p>
+          <p id="token-next-step">
+            Next, your agent should read <code>GET /api/v1/application</code> using
+            <code>Authorization: Bearer &lt;application token&gt;</code>, prepare the
+            draft for your approval, and submit through <code>POST /api/v1/application</code>.
+            <a href="/api-instructions">Full agent instructions</a>
           </p>
           <pre id="token-value"></pre>
           <button id="copy-token" type="button">
