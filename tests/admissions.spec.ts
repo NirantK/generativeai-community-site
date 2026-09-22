@@ -159,7 +159,11 @@ test("visiting agents can discover the API workflow before signing in", async ({
   await expect(page.locator("#agent-instructions")).toContainText("SAME Idempotency-Key");
   const response = await request.get("/llms.txt");
   expect(response.ok()).toBe(true);
-  expect(await response.text()).toContain("Continue through the API after LinkedIn sign-in");
+  const instructions = await response.text();
+  expect(instructions).toContain("Continue through the API after LinkedIn sign-in");
+  expect(instructions).toContain("The application token is also the model API token");
+  expect(instructions).toContain("GET /api/v1/models");
+  expect(instructions).toContain("mys/laya-typed-decisions-GGUF");
 });
 test("outage is not misrepresented as signed out", async ({ page }) => {
   await page.route("**/api/v1/application", (r) =>
