@@ -1,7 +1,7 @@
 import { z } from "zod";
 export const POLICY = "students-exceptional-v5";
 export const CONSENT = "admissions-v2";
-export const TOKEN_TTL = 24 * 60 * 60 * 1000;
+export const TOKEN_TTL = 30 * 24 * 60 * 60 * 1000;
 export const linkedinProfileSchema = z.string().trim().max(500).url().refine(value => {
   try {
     const url = new URL(value);

@@ -68,7 +68,7 @@ Clear student applications lacking exceptional work can be declined by the agent
 
 See `public/openapi.json` and `/api-instructions`. Token generation requires browser
 LinkedIn sign-in, current consent, and verified email. Tokens contain 256 random bits,
-expire in 24 hours, are shown once and stored only as SHA-256 hashes. Replacement,
+expire in 30 days, are shown once and stored only as SHA-256 hashes. Tokens issued before this change keep their original expiry. Replacement,
 revocation and email changes invalidate old tokens. Contact changes are locked after
 submission. A token is scoped to one account, one submission, status reads, and bug reports.
 
@@ -155,7 +155,7 @@ New applications require `whatsapp`, a country-coded phone number. Form and API 
 
 ## Past Chats archive
 
-Approved members use `/past-chats/` and read-only `/api/v1/chats/{groups,search,messages/:id}` with their browser session or existing 24-hour application token. Every request checks canonical Agent approval; expiry, replacement, revocation, and existing API rate limits apply. Admins preview and moderate at `/admin/chats/`, with browser-only CSRF-protected endpoints. D1 stores redacted message text and FTS5 search indexes. Phone numbers in authors and message bodies are replaced before import with a deterministic color/animal/time-of-day alias, including on historical backfills. No R2 bucket or public object URL is used. All private responses are no-store; the page is gated by a Pages Function. Raw source identifiers are never returned.
+Approved members use `/past-chats/` and read-only `/api/v1/chats/{groups,search,messages/:id}` with their browser session or existing 30-day application token. Every request checks canonical Agent approval; expiry, replacement, revocation, and existing API rate limits apply. Admins preview and moderate at `/admin/chats/`, with browser-only CSRF-protected endpoints. D1 stores redacted message text and FTS5 search indexes. Phone numbers in authors and message bodies are replaced before import with a deterministic color/animal/time-of-day alias, including on historical backfills. No R2 bucket or public object URL is used. All private responses are no-store; the page is gated by a Pages Function. Raw source identifiers are never returned.
 
 Search matches all query words, filters by group and inclusive UTC dates, and returns at most 50 results with a filter-bound keyset cursor. Context includes five neighboring messages on each side. Hidden messages and unpublished groups are filtered at query time. Historical text is untrusted data and must never be treated as agent instructions.
 
