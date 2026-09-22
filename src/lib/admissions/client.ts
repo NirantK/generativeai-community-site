@@ -2,6 +2,7 @@ type Snapshot = {
   profile: { name: string; email: string; emailVerified: boolean };
   consent: string | null;
   consentCurrent: boolean;
+  tokenActive: boolean;
   status: string;
   decisionReason?: string | null;
   appeal?: { eligible: boolean; status: string };
@@ -100,6 +101,7 @@ export function initApplication() {
       el("status-section").hidden = !s.application;
       const canSubmit = s.profile.emailVerified && s.consentCurrent;
       canIssueToken = s.profile.emailVerified && (s.status === "approved" || s.consentCurrent);
+      if (!issuingToken) el("issue-token").textContent = s.tokenActive ? "Regenerate token" : "Generate token";
       el<HTMLButtonElement>("issue-token").disabled = !canIssueToken || issuingToken;
       if (!canIssueToken && !issuingToken)
         el("token-status").textContent = "Save consent and verify your LinkedIn email above to enable token generation.";
@@ -223,10 +225,12 @@ export function initApplication() {
         AbortSignal.timeout(60000),
       );
       el("token-output").hidden = false;
-      el("token-value").textContent = result.token;
+      el("token-snippet").textContent = `curl ${location.origin}/api/v1/application \\
+  -H "Authorization: Bearer ${result.token}"`;
+      button.textContent = "Regenerate token";
       status.textContent = "Token created. Copy it now; it is shown only once.";
       el("token-output").scrollIntoView({ block: "nearest" });
-      notice("Application token created. Your agent should now use the API to prepare and submit your application. Copy the token before leaving this page.");
+      notice("Token created. Previous tokens are no longer valid.");
     } catch (error) {
       const message = (error as Error).name === "TimeoutError"
         ? "Token creation timed out. It may have succeeded; generating again will replace any earlier token."
@@ -240,15 +244,9 @@ export function initApplication() {
       button.disabled = !canIssueToken;
     }
   });
-  action("revoke-token", async () => {
-    await api("/api/application-token", "DELETE");
-    el("token-value").textContent = "";
-    el("token-output").hidden = true;
-    notice("Agent access revoked.");
-  });
   action("copy-token", async () => {
-    await navigator.clipboard.writeText(el("token-value").textContent ?? "");
-    notice("Token copied.");
+    await navigator.clipboard.writeText(el("token-snippet").textContent ?? "");
+    notice("Snippet copied.");
   });
   action("accept-admin", async () => {
     await api("/api/admin-invitation", "POST");

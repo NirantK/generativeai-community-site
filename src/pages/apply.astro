@@ -148,45 +148,19 @@ const fields = [
       </section>
       <span id="agent-token" class="anchor-target" aria-hidden="true"></span>
       <details id="agent-section" open>
-        <summary>Generate a token for your AI agent</summary>
-        <p>
-          Use Codex or another agent to prepare and submit your application, or
-          search Past Chats after you’re approved. New applicants save consent
-          above before generating a token. Approved members can generate one
-          using their existing approval.
-        </p>
-        <p class="help">
-          New tokens last 30 days and allow one application submission plus
-          status checks, eligible appeals, approved-member chat search, and bug reports of up to 200 words. Replacing it immediately revokes the old token. It
-          cannot change your account or email. Tokens issued before this change keep their original expiry; replace yours to get 30 days.
-        </p>
+        <summary>Your API token</summary>
+        <p class="help">Use the same token for your application and member APIs. Tokens last 30 days. Regenerating immediately invalidates all previous tokens.</p>
         <div class="actions">
-          <button id="issue-token" type="button">
-            Generate application token
-          </button>
-          <button id="revoke-token" type="button">
-            Revoke token
-          </button>
+          <button id="issue-token" type="button" disabled>Generate token</button>
         </div>
         <p id="token-status" class="help" role="status" aria-live="polite"></p>
         <div id="token-output" hidden>
-          <p class="notice">
-            Copy this token now. It is shown only once. Share it only with the
-            agent you want to submit your application.
-          </p>
-          <p id="token-next-step">
-            Next, your agent should read <code>GET /api/v1/application</code> using
-            <code>Authorization: Bearer &lt;application token&gt;</code>, prepare the
-            draft for your approval, and submit through <code>POST /api/v1/application</code>.
-            <a href="/api-instructions">Full agent instructions</a>
-          </p>
-          <pre id="token-value"></pre>
-          <button id="copy-token" type="button">
-            Copy token
-          </button>
+          <p class="notice">Copy this snippet now. The token is shown only once.</p>
+          <pre id="token-snippet"></pre>
+          <button id="copy-token" type="button">Copy snippet</button>
         </div>
         <p>
-          <a href="/api-instructions">Read agent instructions</a> ·{" "}
+          <a href="/api-instructions">Continue to agent instructions</a> ·{" "}
           <a href="/openapi.json">OpenAPI specification</a>
         </p>
       </details>
