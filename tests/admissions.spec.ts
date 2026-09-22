@@ -24,6 +24,8 @@ test("LinkedIn is the only sign-in option", async ({ page }, info) => {
   await expect(
     page.getByRole("link", { name: "Sign in with LinkedIn", exact: true }),
   ).toHaveAttribute("href", "/auth/linkedin");
+  await expect(page.locator("#agent-api-guidance")).toBeVisible();
+  await expect(page.locator("#agent-api-guidance")).toContainText("After sign-in, continue with the bearer-token API");
   const results = await new AxeBuilder({ page })
     .withTags(["wcag2a", "wcag2aa"])
     .analyze();
@@ -107,8 +109,22 @@ test("token is shown once and removed on revocation", async ({ page }) => {
     .getByRole("button", { name: "Generate application token" })
     .click();
   await expect(page.locator("#token-value")).toHaveText("test-only-token");
+  await expect(page.locator("#agent-api-guidance")).toBeVisible();
+  await expect(page.locator("#token-next-step")).toContainText("GET /api/v1/application");
+  await expect(page.locator("#token-next-step")).toContainText("POST /api/v1/application");
+  await expect(page.locator("#message")).toContainText("Your agent should now use the API");
   await page.getByRole("button", { name: "Revoke token", exact: true }).click();
   await expect(page.locator("#token-output")).toBeHidden();
+});
+
+test("visiting agents can discover the API workflow before signing in", async ({ page, request }) => {
+  await page.goto("/api-instructions");
+  await expect(page.locator('link[rel="service-desc"]')).toHaveAttribute("href", "/openapi.json");
+  await expect(page.locator("#agent-instructions")).toContainText("After sign-in, continue via the API");
+  await expect(page.locator("#agent-instructions")).toContainText("SAME Idempotency-Key");
+  const response = await request.get("/llms.txt");
+  expect(response.ok()).toBe(true);
+  expect(await response.text()).toContain("Continue through the API after LinkedIn sign-in");
 });
 test("outage is not misrepresented as signed out", async ({ page }) => {
   await page.route("**/api/v1/application", (r) =>

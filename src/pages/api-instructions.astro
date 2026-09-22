@@ -7,6 +7,11 @@ import "../styles/admissions.css";
   <article class="admissions">
     <p class="eyebrow">Application API · v1</p>
     <h1>Let your agent help you apply.</h1>
+    <p>
+      This workflow also applies to agents visiting the site in a browser. Complete
+      LinkedIn sign-in, consent, and token generation in the browser, then use the
+      application API for the draft and submission. The token is your application API key.
+    </p>
     <ol class="list-decimal pl-6 space-y-3">
       <li>
         <a href="/apply">Sign in with LinkedIn</a> and save
@@ -26,6 +31,12 @@ Use https://genaicommunity.ai/openapi.json for the API contract.
 Send requests only to the same origin that issued my token.
 Use my application token as an Authorization: Bearer credential.
 Do not print the token, commit it, put it in URLs, or send it to another host.
+If you are visiting in a browser, use it for LinkedIn sign-in, consent, and token
+generation only. Ask me to complete the LinkedIn authentication when needed.
+After sign-in, continue via the API even if the manual application form is visible.
+If a token was already generated, use it; do not replace it unnecessarily.
+Browser form submissions are recorded as manual applications and have different
+appeal eligibility. Never silently switch an agent application to the manual form.
 
 1. GET /api/v1/application to read existing details and requirements.
 2. Ask me for any missing background. Never invent qualifications.
@@ -37,6 +48,15 @@ Do not print the token, commit it, put it in URLs, or send it to another host.
    if a network failure requires a retry.
 5. GET /api/v1/application to check status. Honor Retry-After and
    do not poll more often than once per minute.
+
+If Cloudflare returns Error 1010 or a non-retryable edge block, stop and report
+the ray ID and timestamp to the site owner. Do not spoof a browser signature,
+regenerate the token, or submit through the manual form to evade the block.
+After the owner confirms a fix, first GET /api/v1/application with the same token.
+If it is still a draft, retry the original POST with the SAME Idempotency-Key
+and exact JSON body. If it is already submitted, use the saved result.
+An application 401 means the token is invalid, expired, or revoked; return to
+/apply to generate a replacement. An edge 403 alone does not prove that.
 
 The token expires after 24 hours. It permits one submission and
 status reads, eligible appeals, plain-text bug reports, and approved-member chat search; it cannot change my identity, email, or consent.

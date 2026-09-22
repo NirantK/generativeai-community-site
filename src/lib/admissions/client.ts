@@ -105,7 +105,7 @@ export function initApplication() {
       } else
         notice(
           canSubmit
-            ? "Apply using an AI agent, or use the form below."
+            ? "Generate an application token below so your agent can apply through the API. You can also apply manually with the form."
             : "Save consent to continue. If LinkedIn did not confirm your email, refresh your LinkedIn sign-in.",
         );
     } catch (e) {
@@ -181,7 +181,7 @@ export function initApplication() {
     );
     el("token-output").hidden = false;
     el("token-value").textContent = result.token;
-    notice("Application token created. Copy it before leaving this page.");
+    notice("Application token created. Your agent should now use the API to prepare and submit your application. Copy the token before leaving this page.");
   });
   action("revoke-token", async () => {
     await api("/api/application-token", "DELETE");

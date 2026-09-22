@@ -71,3 +71,25 @@ Page/URL changes or when explicitly requested.
 - Replacement deployment token `genaicommunity-github-deploy-v2` authenticated successfully. The original token was removed from Cloudflare after confirmation.
 - The initial failed OAuth exchange was fixed by correcting the client secret and provider issuer. Real staging login passed on build `61cee8b`. The official staging hostname now needs its own callback smoke test.
 - Production publishing, app privacy-policy registration, administrator configuration, and controlled email delivery remain pending.
+
+## Application API edge checks
+
+Agents use the browser for LinkedIn sign-in, consent, and token issuance, then use
+`/api/v1/application` with their bearer token. Browser Integrity Check can reject
+non-browser clients before the application validates a token (Cloudflare Error 1010).
+The 22 September incident was confirmed in Cloudflare traffic logs as a BIC block.
+
+Keep any BIC exception restricted to HTTPS, the exact production hostname,
+`/api/v1/*`, and an `Authorization: Bearer` header. Token validation, managed WAF,
+and rate limits must remain active. A saved rule is not proof that the API works.
+
+Run `python3 scripts/check-application-api.py` and enter an existing application
+token at the hidden prompt. The script performs only GET, uses Python urllib's
+default user agent, and prints status, ray ID, and the result without token or
+applicant data. Only an authenticated HTTP 200 is green. `--invalid-token` provides
+an edge-only probe: a 401 shows token rejection, never authenticated success.
+
+Record the original failing timestamp/ray and the post-change check. Do not
+re-enable a broken setting to manufacture a baseline. After an owner-confirmed
+fix, inspect application status before retrying any POST with its original
+idempotency key and unchanged body.
