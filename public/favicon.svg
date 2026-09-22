@@ -3,6 +3,5 @@
   <rect x="0.5" y="0.5" width="31" height="31" fill="none" stroke="#414754" stroke-width="1"/>
   <text x="4" y="22" font-family="ui-monospace, 'JetBrains Mono', monospace" font-size="16" font-weight="700" fill="#aec6ff" letter-spacing="-0.5">G</text>
   <rect x="20" y="20" width="8" height="2" fill="#4edea3">
-    <animate attributeName="opacity" values="1;0;1" dur="1.2s" repeatCount="indefinite"/>
   </rect>
 </svg>

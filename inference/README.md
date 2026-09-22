@@ -26,3 +26,11 @@ The public member route is `POST /api/v1/models/infer` on `genaicommunity.ai`. T
 The meter measures elapsed inference time in the GPU container. It excludes cold start, upstream queueing, and idle time. It is an API usage measure rather than the exact Modal invoice total.
 
 The multilingual checkpoint's own model card says its probabilities are uncalibrated and its zero-shot typed-decisions performance is weak. Validate and calibrate on the target language and workflow before treating confidence as a decision threshold.
+
+## Separate billed-usage report
+
+Run `uv run python inference/billed_usage.py --start 2026-09-22` to read the authoritative hourly billing report for this deployed app. It uses the locally configured workspace credential. Keep its output private to operators; member endpoints expose only their own inference usage.
+
+The report preserves exact decimal costs for T4, CPU, and memory separately, together with the interval and retrieval timestamp. T4 seconds are a current-rate equivalent derived from the reported GPU cost, not a raw duration supplied by the billing API. The current partial hour is excluded, source reporting can be delayed, and repeated queries can include revisions. Credits and reservations affect the final invoice separately. Startup, idle time and direct operator calls remain app overhead; they are not allocated to member requests.
+
+Validate the report conversion with `python3 -m unittest discover -s inference -p 'test_*.py'`.

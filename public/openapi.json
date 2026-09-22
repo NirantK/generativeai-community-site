@@ -327,7 +327,7 @@
     "/api/v1/bug-report": {
       "post": {
         "operationId": "reportApplicationBug",
-        "summary": "Report a bug in 1–200 words of UTF-8 plain text",
+        "summary": "Report a bug in 1\u2013200 words of UTF-8 plain text",
         "description": "At most 8,000 bytes. Scoped to the authenticated applicant. Do not include credentials or private email content. Same key/body retries reuse the saved report; a different body conflicts. At most five new reports per minute.",
         "parameters": [
           {
@@ -375,7 +375,7 @@
             "description": "Use text/plain"
           },
           "422": {
-            "description": "Report must contain 1–200 words of valid UTF-8"
+            "description": "Report must contain 1\u2013200 words of valid UTF-8"
           },
           "429": {
             "description": "Rate limited"
@@ -518,7 +518,7 @@
             "schema": {
               "type": "string"
             },
-            "description": "Optional 1–12 words, up to 200 characters; not raw FTS syntax"
+            "description": "Optional 1\u201312 words, up to 200 characters; not raw FTS syntax"
           },
           {
             "name": "group",
@@ -550,7 +550,7 @@
             "schema": {
               "type": "integer"
             },
-            "description": "1–50, default 20"
+            "description": "1\u201350, default 20"
           },
           {
             "name": "cursor",
@@ -728,8 +728,8 @@
     "/api/v1/models/infer": {
       "post": {
         "operationId": "inferModel",
-        "summary": "Run a model and meter GPU container seconds",
-        "description": "Requires an approved-member bearer token. The model field selects either mys/laya-typed-decisions-GGUF or mys/laya-multilingual-GGUF. A completed model call is recorded by member account and model; a cold-start 503 without a GPU measurement is retried internally. The per-call and model-specific cumulative seconds are returned in usage. GPU seconds measure wall-clock inference time inside the allocated GPU container, excluding cold start, external queue time, and idle time. A successful retry by the caller is a new metered call.",
+        "summary": "Run a model and meter T4 inference seconds",
+        "description": "Requires an approved-member bearer token. The model field selects either mys/laya-typed-decisions-GGUF or mys/laya-multilingual-GGUF. A completed model call is recorded by member account and model; a cold-start 503 without a GPU measurement is retried internally. The per-call and model-specific cumulative seconds are returned in usage. GPU seconds measure wall-clock inference time inside the allocated T4 container, excluding cold start, external queue time, and idle time. A successful retry by the caller is a new metered call.",
         "requestBody": {
           "required": true,
           "content": {
@@ -954,7 +954,7 @@
             "type": "string",
             "minLength": 9,
             "maxLength": 32,
-            "description": "Required WhatsApp number with +country code. Spaces, parentheses and hyphens are normalized; the stored result is 8–15 digits after +, with no leading zero. Example: +14155552671. Self-reported, not verified by WhatsApp."
+            "description": "Required WhatsApp number with +country code. Spaces, parentheses and hyphens are normalized; the stored result is 8\u201315 digits after +, with no leading zero. Example: +14155552671. Self-reported, not verified by WhatsApp."
           },
           "linkedinUrl": {
             "type": "string",
@@ -1345,7 +1345,10 @@
         "required": [
           "gpuSeconds",
           "totalGpuSeconds",
-          "requestCount"
+          "requestCount",
+          "gpu",
+          "unit",
+          "measurement"
         ],
         "properties": {
           "gpuSeconds": {
@@ -1361,6 +1364,19 @@
           "requestCount": {
             "type": "integer",
             "minimum": 0
+          },
+          "gpu": {
+            "type": "string",
+            "example": "T4"
+          },
+          "unit": {
+            "type": "string",
+            "example": "T4 seconds"
+          },
+          "measurement": {
+            "type": "string",
+            "const": "inference",
+            "description": "Elapsed inference time; excludes startup and idle time."
           }
         }
       },
@@ -1402,7 +1418,10 @@
             "type": "object",
             "required": [
               "requestCount",
-              "gpuSeconds"
+              "gpuSeconds",
+              "gpu",
+              "unit",
+              "measurement"
             ],
             "properties": {
               "requestCount": {
@@ -1412,6 +1431,19 @@
               "gpuSeconds": {
                 "type": "number",
                 "minimum": 0
+              },
+              "gpu": {
+                "type": "string",
+                "example": "T4"
+              },
+              "unit": {
+                "type": "string",
+                "example": "T4 seconds"
+              },
+              "measurement": {
+                "type": "string",
+                "const": "inference",
+                "description": "Elapsed inference time; excludes startup and idle time."
               }
             }
           }

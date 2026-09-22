@@ -95,7 +95,7 @@ async function infer(req: Request, env: Env, accountId: string) {
   const total = await totals(env, accountId, input.model);
   return json({
     id, model: input.model, result,
-    usage: { gpuSeconds: microseconds / 1_000_000, totalGpuSeconds: total.gpuSeconds, requestCount: total.requestCount },
+    usage: { gpu: model.gpu, unit: `${model.gpu} seconds`, measurement: "inference", gpuSeconds: microseconds / 1_000_000, totalGpuSeconds: total.gpuSeconds, requestCount: total.requestCount },
     ...(!validJson ? { error: { code: "model_response", message: "The model returned an invalid response." } } : {}),
   }, !validJson ? 502 : upstream.ok ? 200 : upstream.status >= 400 && upstream.status < 500 ? upstream.status : 502);
 }
@@ -106,8 +106,8 @@ export async function modelApi(req: Request, env: Env, accountId: string, path: 
   if (path === "/api/v1/models/usage" && req.method === "GET") {
     const name = new URL(req.url).searchParams.get("model");
     if (!name) throw new ApiError(400, "model_required", "Supply a model name.");
-    selectedModel(name);
-    return json({ model: name, usage: await totals(env, accountId, name) });
+    const model = selectedModel(name);
+    return json({ model: name, usage: { gpu: model.gpu, unit: `${model.gpu} seconds`, measurement: "inference", ...await totals(env, accountId, name) } });
   }
   if (path === "/api/v1/models/infer" && req.method === "POST") return infer(req, env, accountId);
   throw new ApiError(404, "not_found", "Model endpoint not found.");

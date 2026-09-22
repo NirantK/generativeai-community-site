@@ -80,11 +80,11 @@ describe("member model API", () => {
       const data = await response.json() as any;
       expect(data.model).toBe(request.model);
       expect(data.result.answers.billing.noul).toBe(true);
-      expect(data.usage).toEqual({gpuSeconds:0.125432,totalGpuSeconds:0.125432,requestCount:1});
+      expect(data.usage).toEqual({gpu:"T4",unit:"T4 seconds",measurement:"inference",gpuSeconds:0.125432,totalGpuSeconds:0.125432,requestCount:1});
       expect(fetchMock).toHaveBeenCalledOnce();
       expect((fetchMock.mock.calls[0][1] as RequestInit).headers).toMatchObject({Authorization:"Bearer test-proxy-token"});
       const usage = await (await gateway("/api/v1/models/usage?model=mys%2Flaya-typed-decisions-GGUF", "GET", headers)).json() as any;
-      expect(usage.usage).toEqual({requestCount:1,gpuSeconds:0.125432});
+      expect(usage.usage).toEqual({gpu:"T4",unit:"T4 seconds",measurement:"inference",requestCount:1,gpuSeconds:0.125432});
       const multilingual = await gateway("/api/v1/models/infer", "POST", headers, {
         model: "mys/laya-multilingual-GGUF",
         state: {message: "Me cobraron dos veces por la misma factura."},
@@ -93,12 +93,12 @@ describe("member model API", () => {
       expect(multilingual.status).toBe(200);
       const multilingualData = await multilingual.json() as any;
       expect(multilingualData.model).toBe("mys/laya-multilingual-GGUF");
-      expect(multilingualData.usage).toEqual({gpuSeconds:0.125432,totalGpuSeconds:0.125432,requestCount:1});
+      expect(multilingualData.usage).toEqual({gpu:"T4",unit:"T4 seconds",measurement:"inference",gpuSeconds:0.125432,totalGpuSeconds:0.125432,requestCount:1});
       expect(fetchMock.mock.calls[1][0]).toBe("https://scaledfocus--genaicommunity-laya-multilingual-gguf-laya.us-east.modal.direct/v1/decide");
       const multilingualUsage = await (await gateway("/api/v1/models/usage?model=mys%2Flaya-multilingual-GGUF", "GET", headers)).json() as any;
-      expect(multilingualUsage.usage).toEqual({requestCount:1,gpuSeconds:0.125432});
+      expect(multilingualUsage.usage).toEqual({gpu:"T4",unit:"T4 seconds",measurement:"inference",requestCount:1,gpuSeconds:0.125432});
       const typedUsageAgain = await (await gateway("/api/v1/models/usage?model=mys%2Flaya-typed-decisions-GGUF", "GET", headers)).json() as any;
-      expect(typedUsageAgain.usage).toEqual({requestCount:1,gpuSeconds:0.125432});
+      expect(typedUsageAgain.usage).toEqual({gpu:"T4",unit:"T4 seconds",measurement:"inference",requestCount:1,gpuSeconds:0.125432});
       expect((await gateway("/api/v1/models/usage?model=unknown", "GET", headers)).status).toBe(404);
     } finally {
       fetchMock.mockRestore();
