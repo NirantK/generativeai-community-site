@@ -137,6 +137,19 @@ def reference_benchmark():
         rows, startup, torch.cuda.max_memory_allocated() / 1e9, "A10"), "rows": rows}
 
 
+@app.function(image=reference_image, gpu="A10", cpu=4, memory=32768,
+              volumes={"/cache": cache}, timeout=3600)
+def cold_reference():
+    from hopper_decisions.model import Decider
+
+    started = time.perf_counter()
+    decider = Decider(adapter=adapter_path())
+    model_initialization_seconds = time.perf_counter() - started
+    del decider
+    return {"variant": "reference", "gpu": "A10",
+            "model_initialization_seconds": model_initialization_seconds}
+
+
 def run_native_benchmark(variant: str, gpu: str):
     import subprocess
     from native_score import NativeDecider
@@ -178,6 +191,21 @@ def run_native_benchmark(variant: str, gpu: str):
               volumes={"/cache": cache, "/artifacts": artifacts}, timeout=3600)
 def native_benchmark_a10(variant: str):
     return run_native_benchmark(variant, "A10")
+
+
+@app.function(image=native_image, gpu="A10", cpu=4, memory=32768,
+              volumes={"/cache": cache, "/artifacts": artifacts}, timeout=3600)
+def cold_native_a10(variant: str):
+    from native_score import NativeDecider
+
+    started = time.perf_counter()
+    decider = NativeDecider(f"/artifacts/hopper-{variant}-no-mtp.gguf",
+                            "/opt/hopper-native-score", "/opt/hopper/hopper_decisions/maps/hopper.json")
+    decider.score(next(tasks())[1])
+    model_initialization_seconds = time.perf_counter() - started
+    decider.close()
+    return {"variant": variant, "gpu": "A10",
+            "model_initialization_seconds": model_initialization_seconds}
 
 
 @app.function(image=native_t4_image, gpu="T4", cpu=4, memory=32768,
@@ -278,7 +306,14 @@ def paired_benchmark(variant: str):
 
 @app.local_entrypoint()
 def main(variant: str = "reference", gpu: str = "A10"):
-    if variant == "reference":
+    if variant in ("cold-reference", "cold-q8_0"):
+        if gpu != "A10":
+            raise ValueError("cold-start comparison is A10-only")
+        started = time.perf_counter()
+        result = (cold_reference.remote() if variant == "cold-reference"
+                  else cold_native_a10.remote("q8_0"))
+        result["first_invocation_wall_seconds"] = time.perf_counter() - started
+    elif variant == "reference":
         if gpu != "A10":
             raise ValueError("reference benchmark is pinned to A10")
         result = reference_benchmark.remote()

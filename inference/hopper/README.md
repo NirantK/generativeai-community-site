@@ -11,6 +11,8 @@ The native scorer calls `llama_decode` across the prompt and reads final-positio
 .venv/bin/modal run inference/hopper/conversion_modal.py --mode repair
 .venv/bin/modal run inference/hopper/benchmark_modal.py --variant paired-bf16
 .venv/bin/modal run inference/hopper/benchmark_modal.py --variant paired-q8_0
+.venv/bin/modal run inference/hopper/benchmark_modal.py --variant cold-reference
+.venv/bin/modal run inference/hopper/benchmark_modal.py --variant cold-q8_0
 python3 inference/hopper/compare.py inference/hopper/results/paired-bf16-reference-a10.json inference/hopper/results/paired-bf16-candidate-a10.json
 ```
 
