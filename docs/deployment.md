@@ -133,4 +133,6 @@ than Cloudflare `1010`) for `/api/v1/application`, `/api/v1/models`,
 `/api/v1/models/usage`, `/v1/models`, `/v1/models/usage`, and `/v1/systemone`
 on production and staging. This verifies edge passage and token rejection; an
 existing valid member token is still required for an authenticated end-to-end
-inference and usage check.
+inference and usage check. Run `python3 scripts/check-xor-member-api.py` from
+the repository root with that token at its hidden prompt. It makes one text and
+one image inference call and checks Xor's usage total and other models' totals.
