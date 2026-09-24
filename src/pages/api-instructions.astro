@@ -97,13 +97,18 @@ an expired/revoked token in /apply. Newly issued tokens remain valid for 30 days
 
 The application token is also the model usage token. Approved members do not
 need a separate credential or another acceptance. With the same bearer token:
-- GET /api/v1/models to list all available models and source links.
-- POST /api/v1/models/infer with JSON containing model, state, and questions.
-  Select mys/laya-typed-decisions-GGUF or mys/laya-multilingual-GGUF.
-- Read usage.gpuSeconds and usage.totalGpuSeconds in the inference response.
-- GET /api/v1/models/usage?model=mys%2Flaya-multilingual-GGUF to read the
+- GET /v1/models to list all available models and source links.
+- POST /v1/systemone with JSON containing model, state, and questions.
+  Select mys/laya-typed-decisions-GGUF, mys/laya-multilingual-GGUF, HopitAI/hopper,
+  or juspay/xor. Xor accepts text and up to eight static base64 PNG, JPEG, or WebP images.
+  Hopper accepts exactly one typed question per call.
+- Read answers, usage.input_tokens, usage.output_tokens, usage.gpuSeconds, and
+  usage.totalGpuSeconds in the SystemOne response.
+- GET /v1/models/usage?model=mys%2Flaya-multilingual-GGUF to read the
   multilingual account total without running the model. Each model has its own total.
-T4 seconds measure elapsed inference inside the GPU container, not a bill.
+GET /v1/models/usage?model=HopitAI%2Fhopper reads Hopper's separate A10 total.
+GET /v1/models/usage?model=juspay%2Fxor reads Xor's separate A100 80GB total.
+GPU seconds measure elapsed inference inside the selected GPU container, not a bill.
 Use /models for examples and original model source links.</pre>
       <p>
         <a href="/openapi.json">OpenAPI specification</a> ·{" "}

@@ -2,7 +2,7 @@
   "openapi": "3.1.0",
   "info": {
     "title": "GenerativeAI Community application and member API",
-    "version": "1.6.0",
+    "version": "1.7.0",
     "description": "Generate a 30-day application token after LinkedIn sign-in at /apply. New applicants accept terms in the browser; approved members can use their existing approval without accepting again. Previously issued tokens keep their original expiry. One application per LinkedIn account. Tokens are not OAuth access tokens. Never expose tokens in logs or URLs. Approved members can also read the Past Chats archive with the same valid token. Approval is checked on every archive request. Approved members can use the metered model API with the same valid token. Model usage totals belong to the member account."
   },
   "servers": [
@@ -17,6 +17,44 @@
     }
   ],
   "paths": {
+    "/v1/models": {
+      "$ref": "#/paths/~1api~1v1~1models"
+    },
+    "/v1/models/usage": {
+      "$ref": "#/paths/~1api~1v1~1models~1usage"
+    },
+    "/v1/systemone": {
+      "post": {
+        "operationId": "systemOne",
+        "summary": "Answer typed questions with a selected model",
+        "description": "TypeSafe SystemOne-compatible path and response envelope. Send a model name returned by GET /v1/models. The response has top-level model, answers, and token usage; GPU usage is an extension. Hopper accepts exactly one question per request. Xor accepts text and up to eight static base64 images. Requires an approved-member bearer token. A cold start may return 503 model_starting with Retry-After.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/ModelInferenceRequest" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Named typed answers, token counts, and measured GPU usage",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/SystemOneResponse" }
+              }
+            }
+          },
+          "401": { "description": "Missing or expired token" },
+          "403": { "description": "Approved membership required" },
+          "404": { "description": "Unknown model" },
+          "422": { "description": "Invalid model request" },
+          "429": { "description": "Rate limit exceeded; honor Retry-After" },
+          "502": { "description": "Model or meter returned an invalid response" },
+          "503": { "description": "Model unavailable or still starting" }
+        }
+      }
+    },
     "/api/v1/application": {
       "get": {
         "operationId": "getApplication",
@@ -728,8 +766,9 @@
     "/api/v1/models/infer": {
       "post": {
         "operationId": "inferModel",
-        "summary": "Run a model and meter allocated GPU inference seconds",
-        "description": "Requires an approved-member bearer token. The model field selects one of the listed models. Xor accepts text state and up to eight static PNG, JPEG, or WebP base64 data URLs. A completed model call is recorded by member account and model. Cold starts may return 503 model_starting with Retry-After. GPU seconds are elapsed inference time multiplied by GPU count, excluding cold start, external queue time, and idle time.",
+        "deprecated": true,
+        "summary": "Run a model and meter inference seconds on its selected GPU",
+        "description": "Requires an approved-member bearer token. The model field selects either Laya model, HopitAI/hopper, or juspay/xor. Hopper accepts exactly one typed question; Xor accepts text and up to eight static PNG, JPEG, or WebP base64 data URLs. The response retains the legacy result envelope. Completed calls are recorded by member account and model. GPU seconds are elapsed inference time multiplied by GPU count, excluding cold start, external queue time, and idle time. Only confirmed pre-inference readiness failures are retried; cold starts may return 503 model_starting with Retry-After.",
         "requestBody": {
           "required": true,
           "content": {
@@ -1271,7 +1310,7 @@
           "sourceUrl": {
             "type": "string",
             "format": "uri",
-            "description": "Released weights repository."
+            "description": "Model weights or adapter repository."
           },
           "upstreamUrl": {
             "type": "string",
@@ -1300,11 +1339,11 @@
         "properties": {
           "model": {
             "type": "string",
-            "description": "Registered model name: mys/laya-typed-decisions-GGUF, mys/laya-multilingual-GGUF, or juspay/xor.",
+            "description": "Registered model name: mys/laya-typed-decisions-GGUF, mys/laya-multilingual-GGUF, HopitAI/hopper, or juspay/xor.",
             "example": "mys/laya-multilingual-GGUF"
           },
           "state": {
-            "description": "JSON context for Laya; text string for Xor.",
+            "description": "JSON context for Laya; text string for Hopper or Xor.",
             "example": {
               "message": "I was charged twice for the same invoice."
             }
@@ -1332,10 +1371,10 @@
                   "type": "string"
                 },
                 "criteria": {
-                  "description": "Choice and binary criteria use a map. Xor score criteria use an ordered array of 2–26 strings.",
+                  "description": "Choice and optional yes/no criteria use a map. Hopper and Xor score criteria use an ordered array of 2–26 level descriptions.",
                   "oneOf": [
-                    {"type":"object","additionalProperties":{"type":["string","null"]}},
-                    {"type":"array","minItems":2,"maxItems":26,"items":{"type":"string"}}
+                    {"type": "object", "additionalProperties": {"type": ["string", "null"]}},
+                    {"type": "array", "minItems": 2, "maxItems": 26, "items": {"type": "string"}}
                   ]
                 }
               }
@@ -1345,8 +1384,8 @@
             "type": "array",
             "minItems": 1,
             "maxItems": 8,
-            "description": "Xor only: base64 data URLs for static PNG, JPEG, or WebP. Total decoded bytes ≤5 MiB, pixels ≤16 million; request JSON ≤8 MiB.",
-            "items": {"type":"string","pattern":"^data:image/(png|jpeg|webp);base64,"}
+            "description": "Xor only: static PNG, JPEG, or WebP base64 data URLs. Total decoded bytes ≤5 MiB, pixels ≤16 million, request JSON ≤8 MiB.",
+            "items": {"type": "string", "pattern": "^data:image/(png|jpeg|webp);base64,"}
           }
         }
       },
@@ -1383,7 +1422,7 @@
           "gpuCount": {
             "type": "integer",
             "minimum": 1,
-            "description": "Number of allocated GPUs for this model."
+            "description": "Allocated GPU count for this model."
           },
           "unit": {
             "type": "string",
@@ -1396,7 +1435,7 @@
           }
         }
       },
-      "ModelInferenceResponse": {
+    "ModelInferenceResponse": {
         "type": "object",
         "required": [
           "id",
@@ -1408,7 +1447,29 @@
           "id": {
             "type": "string",
             "format": "uuid"
-          },
+    },
+    "SystemOneResponse": {
+      "type": "object",
+      "required": ["model", "answers", "usage"],
+      "properties": {
+        "model": { "type": "string", "description": "The selected registered model name." },
+        "answers": {
+          "type": "object",
+          "minProperties": 1,
+          "description": "Typed answers keyed by the names supplied in questions.",
+          "additionalProperties": { "type": "object" }
+        },
+        "usage": {
+          "allOf": [
+            { "$ref": "#/components/schemas/ModelUsage" },
+            { "type": "object", "required": ["input_tokens", "output_tokens"], "properties": {
+              "input_tokens": { "type": "integer", "minimum": 0 },
+              "output_tokens": { "type": "integer", "minimum": 0 }
+            }}
+          ]
+        }
+      }
+    },
           "model": {
             "type": "string"
           },

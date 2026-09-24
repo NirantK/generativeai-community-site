@@ -46,25 +46,29 @@ Authorization: Bearer for model listing, inference, and usage. Keep it secret.
 If one already exists, use it instead of generating a replacement, which
 immediately revokes the previous token. New tokens last 30 days.
 
-1. GET /api/v1/models to list every available model and its source links.
-2. POST /api/v1/models/infer with JSON containing `model`, `state`, and
+1. GET /v1/models to list every available model and its source links.
+2. POST /v1/systemone with JSON containing `model`, `state`, and
    `questions`. The registered names are `mys/laya-typed-decisions-GGUF`,
-   `mys/laya-multilingual-GGUF`, and `juspay/xor`, matching their Hugging Face
-   repository paths. Xor runs on one NVIDIA A100 80GB with the official BF16
-   SGLang wrapper and supports up to eight base64 PNG, JPEG, or WebP images.
+   `mys/laya-multilingual-GGUF`, `HopitAI/hopper`, and `juspay/xor`, matching
+   their Hugging Face repository paths. Xor runs on one A100 80GB using the
+   BF16 SGLang wrapper and accepts up to eight base64 PNG, JPEG, or WebP images.
    Always use a name returned by the list endpoint.
-3. Read `usage.gpuSeconds`, `usage.totalGpuSeconds`, and `usage.requestCount`
-   in the inference response. `usage.gpu` and `usage.gpuCount` identify the
-   allocated hardware, and `usage.measurement` is `inference`.
-   GET /api/v1/models/usage?model=mys%2Flaya-multilingual-GGUF
+3. Read top-level `answers`, `usage.input_tokens`, `usage.output_tokens`,
+   `usage.gpuSeconds`, `usage.totalGpuSeconds`, and `usage.requestCount`
+   in the inference response. `usage.gpu` and `usage.gpuCount` name the
+   allocated hardware; `usage.measurement` is `inference`.
+   Hopper accepts exactly one typed question per call. GET /v1/models/usage?model=mys%2Flaya-multilingual-GGUF
    to read the multilingual account total without running inference. Each model
    has a separate total. The meter records allocated GPU-seconds during
    inference, excluding cold startup, queueing, and idle time; it is not a bill.
+   The legacy POST /api/v1/models/infer retains its result envelope.
 
 Sources: [GGUF weights by mys](https://huggingface.co/mys/laya-typed-decisions-GGUF),
 [original Laya checkpoint by Convai Innovations](https://huggingface.co/convaiinnovations/laya-typed-decisions),
 [multilingual GGUF weights by mys](https://huggingface.co/mys/laya-multilingual-GGUF),
 [original multilingual checkpoint](https://huggingface.co/convaiinnovations/laya-multilingual),
+[Hopper adapter](https://huggingface.co/HopitAI/hopper),
+[Hopper v1.1.0 runtime](https://github.com/hopit-ai/hopper/tree/v1.1.0),
 [ggmlc runtime](https://github.com/monatis/ggmlc/tree/v0.9.2/examples/laya),
 [Xor checkpoint by Juspay](https://huggingface.co/juspay/xor),
 [SGLang runtime](https://github.com/sgl-project/sglang).

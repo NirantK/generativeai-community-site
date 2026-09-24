@@ -108,29 +108,42 @@ describe("member model API", () => {
 
   it("requires an approved member and records measured GPU seconds under the account", async () => {
     expect((await gateway("/api/v1/models", "GET")).status).toBe(401);
+    expect((await gateway("/v1/models", "GET")).status).toBe(401);
+    expect((await gateway("/v1/systemone", "POST", {Origin:"https://genaicommunity.ai"}, {
+      model: "mys/laya-multilingual-GGUF", state: "Hallo",
+      questions: {greeting:{type:"noul",instructions:"Ist das eine Begrüßung?"}},
+    })).status).toBe(401);
     expect((await gateway("/api/v1/models/infer", "POST", {Origin:"https://genaicommunity.ai"}, {
       model: "mys/laya-multilingual-GGUF", state: {message: "Hallo"},
       questions: {greeting:{type:"noul",instructions:"Ist das eine Begrüßung?"}},
+    })).status).toBe(401);
+    expect((await gateway("/api/v1/models/infer", "POST", {Origin:"https://genaicommunity.ai"}, {
+      model: "HopitAI/hopper", state: "A duplicate invoice charge.",
+      questions: {billing:{type:"noul",instructions:"Is this a billing issue?"}},
     })).status).toBe(401);
     const owner = await account();
     await owner.agent.consent();
     const { token } = await owner.agent.token();
     const headers = { Authorization: `Bearer ${token}` };
     expect((await gateway("/api/v1/models", "GET", headers)).status).toBe(403);
+    expect((await gateway("/v1/models", "GET", headers)).status).toBe(403);
     await runInDurableObject(owner.agent, async instance => {
       instance.setState({ ...instance.state, status: "approved" });
     });
     const previous = env.MODAL_PROXY_TOKEN;
     env.MODAL_PROXY_TOKEN = "test-proxy-token";
-    const fetchMock = vi.spyOn(globalThis, "fetch").mockImplementation(async () => new Response(JSON.stringify({answers:{billing:{noul:true}}}), {
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockImplementation(async () => new Response(JSON.stringify({answers:{billing:{type:"noul",noul:0.9}},usage:{input_tokens:20,output_tokens:0}}), {
       status: 200, headers: {"X-GPU-Seconds":"0.125432", "Content-Type":"application/json"},
     }));
     try {
       const modelList = await (await gateway("/api/v1/models", "GET", headers)).json() as any;
       expect(modelList.models.map((model:any) => model.name)).toContain("mys/laya-typed-decisions-GGUF");
       expect(modelList.models.map((model:any) => model.name)).toContain("mys/laya-multilingual-GGUF");
+      expect(modelList.models.map((model:any) => model.name)).toContain("HopitAI/hopper");
+      expect(modelList.models).toHaveLength(4);
       expect(modelList.models.map((model:any) => model.name)).toContain("juspay/xor");
-      expect(modelList.models).toHaveLength(3);
+      const systemOneList = await (await gateway("/v1/models", "GET", headers)).json() as any;
+      expect(systemOneList.models.map((model:any) => model.name)).toEqual(modelList.models.map((model:any) => model.name));
       expect(modelList.models[0].sourceUrl).toBe("https://huggingface.co/mys/laya-typed-decisions-GGUF");
       expect(modelList.models[0].upstreamUrl).toBe("https://huggingface.co/convaiinnovations/laya-typed-decisions");
       expect(modelList.models[1].sourceUrl).toBe("https://huggingface.co/mys/laya-multilingual-GGUF");
@@ -144,7 +157,7 @@ describe("member model API", () => {
       expect(response.status).toBe(200);
       const data = await response.json() as any;
       expect(data.model).toBe(request.model);
-      expect(data.result.answers.billing.noul).toBe(true);
+      expect(data.result.answers.billing.noul).toBe(0.9);
       expect(data.usage).toEqual({gpu:"T4",gpuCount:1,unit:"T4 seconds",measurement:"inference",gpuSeconds:0.125432,totalGpuSeconds:0.125432,requestCount:1});
       expect(fetchMock).toHaveBeenCalledOnce();
       expect((fetchMock.mock.calls[0][1] as RequestInit).headers).toMatchObject({Authorization:"Bearer test-proxy-token"});
@@ -162,8 +175,33 @@ describe("member model API", () => {
       expect(fetchMock.mock.calls[1][0]).toBe("https://scaledfocus--genaicommunity-laya-multilingual-gguf-laya.us-east.modal.direct/v1/decide");
       const multilingualUsage = await (await gateway("/api/v1/models/usage?model=mys%2Flaya-multilingual-GGUF", "GET", headers)).json() as any;
       expect(multilingualUsage.usage).toEqual({gpu:"T4",gpuCount:1,unit:"T4 seconds",measurement:"inference",requestCount:1,gpuSeconds:0.125432});
+      const systemOne = await gateway("/v1/systemone", "POST", headers, {
+        model: "mys/laya-multilingual-GGUF", state: "Hallo",
+        questions: {billing:{type:"noul",instructions:"Ist das eine Rechnungsfrage?"}},
+      });
+      expect(systemOne.status).toBe(200);
+      const systemOneData = await systemOne.json() as any;
+      expect(systemOneData).toEqual({
+        model:"mys/laya-multilingual-GGUF", answers:{billing:{type:"noul",noul:0.9}},
+        usage:{input_tokens:20,output_tokens:0,gpu:"T4",gpuCount:1,unit:"T4 seconds",measurement:"inference",gpuSeconds:0.125432,totalGpuSeconds:0.250864,requestCount:2},
+      });
+      expect((await gateway("/v1/models/usage?model=mys%2Flaya-multilingual-GGUF", "GET", headers)).status).toBe(200);
       const typedUsageAgain = await (await gateway("/api/v1/models/usage?model=mys%2Flaya-typed-decisions-GGUF", "GET", headers)).json() as any;
       expect(typedUsageAgain.usage).toEqual({gpu:"T4",gpuCount:1,unit:"T4 seconds",measurement:"inference",requestCount:1,gpuSeconds:0.125432});
+      const hopperRequest = {
+        model: "HopitAI/hopper", state: "The invoice was charged twice.",
+        questions: {billing: {type:"choice", instructions:"Which issue is this?", criteria:{billing:"Billing issue",other:"Other issue"}}},
+      };
+      expect((await gateway("/api/v1/models/infer", "POST", headers, {...hopperRequest, questions:{a:hopperRequest.questions.billing,b:hopperRequest.questions.billing}})).status).toBe(422);
+      expect((await gateway("/api/v1/models/infer", "POST", headers, {model:"HopitAI/hopper",state:"x",questions:{rating:{type:"score",instructions:"Rate",criteria:{"0":"bad","1":"good"}}}})).status).toBe(422);
+      const hopper = await gateway("/v1/systemone", "POST", headers, hopperRequest);
+      expect(hopper.status).toBe(200);
+      const hopperData = await hopper.json() as any;
+      expect(hopperData.answers.billing.type).toBe("noul");
+      expect(hopperData.usage).toEqual({input_tokens:20,output_tokens:0,gpu:"A10",gpuCount:1,unit:"A10 seconds",measurement:"inference",gpuSeconds:0.125432,totalGpuSeconds:0.125432,requestCount:1});
+      expect(fetchMock.mock.calls[3][0]).toBe("https://scaledfocus--genaicommunity-hopper-hopper.us-east.modal.direct/v1/decide");
+      const hopperUsage = await (await gateway("/api/v1/models/usage?model=HopitAI%2Fhopper", "GET", headers)).json() as any;
+      expect(hopperUsage.usage).toEqual({gpu:"A10",gpuCount:1,unit:"A10 seconds",measurement:"inference",requestCount:1,gpuSeconds:0.125432});
       expect((await gateway("/api/v1/models/usage?model=unknown", "GET", headers)).status).toBe(404);
     } finally {
       fetchMock.mockRestore();
