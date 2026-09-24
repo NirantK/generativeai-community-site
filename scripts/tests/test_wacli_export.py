@@ -26,3 +26,12 @@ class ExportTests(unittest.TestCase):
         self.assertEqual(messages[0]['sender_name'], 'amber bear noon')
     def test_other_group_fails_closed(self):
         with self.assertRaises(ValueError): exporter.normalize([self.row(ChatJID='other@g.us')])
+    def test_stale_cached_chat_name_does_not_change_group_identity(self):
+        messages, overlap = exporter.normalize([self.row(ChatName='Stale participant name')])
+        self.assertEqual((len(messages), overlap), (1, 0))
+    def test_job_group_keeps_history_before_primary_cutover(self):
+        row=self.row(ChatJID=exporter.JOBS_SOURCE,ChatName='Stale participant name',Timestamp='2025-01-01T00:00:00Z')
+        messages, overlap=exporter.normalize([row],exporter.JOBS_SOURCE,exporter.JOBS_CUTOVER)
+        self.assertEqual((len(messages), overlap), (1, 0))
+        with self.assertRaises(ValueError):
+            exporter.normalize([row],exporter.SOURCE,exporter.CUTOVER)
