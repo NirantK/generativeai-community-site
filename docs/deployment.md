@@ -136,3 +136,7 @@ existing valid member token is still required for an authenticated end-to-end
 inference and usage check. Run `python3 scripts/check-xor-member-api.py` from
 the repository root with that token at its hidden prompt. It makes one text and
 one image inference call and checks Xor's usage total and other models' totals.
+On 24 September 2026, the probe passed against production using an existing
+approved-member token from macOS Keychain: both calls returned valid answers,
+Xor's A100 80GB request count rose from zero to two, the summed GPU seconds
+matched the response meters, and the other three models' totals were unchanged.

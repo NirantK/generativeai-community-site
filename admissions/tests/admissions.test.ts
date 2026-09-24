@@ -88,6 +88,13 @@ describe("member model API", () => {
       expect(cold.headers.get("Retry-After")).toBe("30");
       expect((await cold.json() as any).error.code).toBe("model_starting");
       expect(fetchMock).toHaveBeenCalledTimes(3);
+      fetchMock.mockReset().mockImplementation(async () => new Response('{"error":"no upstreams available"}',
+        {status:503, headers:{"Content-Type":"application/json"}}));
+      const platformCold = await gateway("/api/v1/models/infer", "POST", {Authorization:`Bearer ${token}`}, request);
+      expect(platformCold.status).toBe(503);
+      expect(platformCold.headers.get("Retry-After")).toBe("30");
+      expect((await platformCold.json() as any).error.code).toBe("model_starting");
+      expect(fetchMock).toHaveBeenCalledTimes(3);
       fetchMock.mockReset().mockRejectedValue(new Error("timeout after possible inference"));
       const timedOut = await gateway("/api/v1/models/infer", "POST", {Authorization:`Bearer ${token}`}, request);
       expect(timedOut.status).toBe(503);
