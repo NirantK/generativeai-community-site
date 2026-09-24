@@ -1,0 +1,2 @@
+ALTER TABLE model_usage ADD COLUMN gpu_type TEXT NOT NULL DEFAULT 'T4';
+ALTER TABLE model_usage ADD COLUMN gpu_count INTEGER NOT NULL DEFAULT 1 CHECK (gpu_count > 0);

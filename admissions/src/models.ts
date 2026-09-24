@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { ApiError, body, json } from "./security";
+import { validateImages } from "./model-images";
 
 export const models = {
   "mys/laya-typed-decisions-GGUF": {
@@ -10,6 +11,7 @@ export const models = {
     license: "Apache-2.0",
     endpoint: "https://scaledfocus--genaicommunity-laya-typed-decisions-gguf-laya.us-east.modal.direct/v1/decide",
     gpu: "T4",
+    gpuCount: 1,
   },
   "mys/laya-multilingual-GGUF": {
     description: "Multilingual typed choices, scores, and yes/no decisions using the full F16 checkpoint.",
@@ -19,6 +21,7 @@ export const models = {
     license: "Apache-2.0",
     endpoint: "https://scaledfocus--genaicommunity-laya-multilingual-gguf-laya.us-east.modal.direct/v1/decide",
     gpu: "T4",
+    gpuCount: 1,
   },
   "HopitAI/hopper": {
     description: "Calibrated one-pass typed decisions using Hopper's pinned fast-kernel BF16 runtime.",
@@ -28,6 +31,17 @@ export const models = {
     license: "Apache-2.0",
     endpoint: "https://scaledfocus--genaicommunity-hopper-hopper.us-east.modal.direct/v1/decide",
     gpu: "A10",
+    gpuCount: 1,
+  },
+  "juspay/xor": {
+    description: "Calibrated typed decisions over text and images using Xor.",
+    sourceUrl: "https://huggingface.co/juspay/xor",
+    upstreamUrl: "https://huggingface.co/Qwen/Qwen3.6-35B-A3B",
+    runtimeUrl: "https://github.com/sgl-project/sglang",
+    license: "Apache-2.0",
+    endpoint: "https://scaledfocus--genaicommunity-xor-xor.us-east.modal.direct/v1/systemone",
+    gpu: "A100 80GB",
+    gpuCount: 1,
   },
 } as const;
 
@@ -39,6 +53,7 @@ const requestSchema = z.object({
     instructions: z.string().min(1).max(2000),
     criteria: z.union([z.record(z.string(), z.string().nullable()), z.array(z.string())]).optional(),
   }).passthrough()),
+  images: z.unknown().optional(),
 }).strict();
 
 function selectedModel(name: string) {
@@ -58,10 +73,30 @@ async function totals(env: Env, accountId: string, model: string) {
 }
 
 async function infer(req: Request, env: Env, accountId: string, systemOne = false) {
-  const input = requestSchema.parse(await body(req));
+  const input = requestSchema.parse(await body(req, 8 * 1024 * 1024));
   const model = selectedModel(input.model);
   if (input.state === null || input.state === undefined || Object.keys(input.questions).length < 1 || Object.keys(input.questions).length > 16)
     throw new ApiError(422, "validation", "Supply a state and 1–16 typed questions.");
+  const xor = input.model === "juspay/xor";
+  if (!xor && new TextEncoder().encode(JSON.stringify(input)).length > 20000)
+    throw new ApiError(413, "body_size", "Application is too large.");
+  if (xor) {
+    if (typeof input.state !== "string")
+      throw new ApiError(422, "validation", "Xor state must be text.");
+    for (const question of Object.values(input.questions)) {
+      if (question.type === "score" && (!Array.isArray(question.criteria) || question.criteria.length < 2 ||
+          question.criteria.length > 26 || question.criteria.some(x => typeof x !== "string" || !x.trim())))
+        throw new ApiError(422, "validation", "Xor score requires 2–26 ordered levels.");
+      if (question.type === "choice" && (!question.criteria || Array.isArray(question.criteria) ||
+          Object.keys(question.criteria).length < 2 || Object.keys(question.criteria).length > 26))
+        throw new ApiError(422, "validation", "Xor choice requires 2–26 named options.");
+      if (question.type === "noul" && Array.isArray(question.criteria))
+        throw new ApiError(422, "validation", "Xor binary criteria must be a map.");
+    }
+  }
+  if (input.images !== undefined && !xor)
+    throw new ApiError(422, "validation", "Images are available only with juspay/xor.");
+  const images = input.images === undefined ? undefined : validateImages(input.images);
   if (input.model === "HopitAI/hopper") {
     if (Object.keys(input.questions).length !== 1)
       throw new ApiError(422, "validation", "Hopper accepts exactly one question per request.");
@@ -76,13 +111,15 @@ async function infer(req: Request, env: Env, accountId: string, systemOne = fals
   if (!env.MODAL_PROXY_TOKEN)
     throw new ApiError(503, "model_unavailable", "Model access is temporarily unavailable.");
 
-  const payload = JSON.stringify({ state: input.state, questions: input.questions });
+  const payload = JSON.stringify(xor
+    ? { model: "xor", state: input.state, questions: input.questions, ...(images ? { images } : {}) }
+    : { state: input.state, questions: input.questions });
   let upstream: Response | undefined;
   // Modal can return 503 while a scaled-to-zero T4 starts. Those responses
   // have no GPU measurement and are safe to retry before the model is called.
   // Hopper's first A10 activation includes fast-kernel compilation and can
   // take longer than a Laya startup. Only unmetered platform 503s are retried.
-  const startupAttempts = input.model === "HopitAI/hopper" ? 75 : 30;
+  const startupAttempts = xor ? 3 : input.model === "HopitAI/hopper" ? 75 : 30;
   for (let attempt = 0; attempt < startupAttempts; attempt++) {
     try {
       upstream = await fetch(model.endpoint, {
@@ -97,28 +134,35 @@ async function infer(req: Request, env: Env, accountId: string, systemOne = fals
     } catch {
       throw new ApiError(503, "model_unavailable", "The model could not be reached. Try again.");
     }
-    if (upstream.status !== 503 || upstream.headers.has("X-GPU-Seconds")) break;
+    const readinessFailure = upstream.status === 503 &&
+      upstream.headers.get("Content-Length") === "0" &&
+      !upstream.headers.has("Content-Type") &&
+      !upstream.headers.has("X-GPU-Seconds");
+    if (!readinessFailure) break;
     await upstream.body?.cancel();
-    if (attempt === startupAttempts - 1) throw new ApiError(503, "model_starting", "The model is still starting. Try again shortly.");
+    if (attempt === startupAttempts - 1) {
+      if (xor) return json({ error: { code: "model_starting", message: "The model is still starting. Try again shortly." } }, 503, { "Retry-After": "30" });
+      throw new ApiError(503, "model_starting", "The model is still starting. Try again shortly.");
+    }
     await new Promise(resolve => setTimeout(resolve, 2000));
   }
   if (!upstream) throw new ApiError(503, "model_unavailable", "The model could not be reached.");
   const measured = Number(upstream.headers.get("X-GPU-Seconds"));
   if (!upstream.headers.has("X-GPU-Seconds") || !Number.isFinite(measured) || measured < 0 || measured > 95)
     throw new ApiError(502, "meter_unavailable", "The model did not report a valid GPU duration.");
-  const microseconds = Math.round(measured * 1_000_000);
+  const microseconds = Math.round(measured * model.gpuCount * 1_000_000);
   let result: unknown = null;
   let validJson = true;
   try { result = await upstream.json(); }
   catch { validJson = false; }
   const id = crypto.randomUUID();
   await env.INDEX.prepare(
-    "INSERT INTO model_usage(id,account_id,model,gpu_microseconds,http_status,created_at) VALUES(?,?,?,?,?,?)",
-  ).bind(id, accountId, input.model, microseconds, upstream.status, Date.now()).run();
+    "INSERT INTO model_usage(id,account_id,model,gpu_microseconds,http_status,created_at,gpu_type,gpu_count) VALUES(?,?,?,?,?,?,?,?)",
+  ).bind(id, accountId, input.model, microseconds, upstream.status, Date.now(), model.gpu, model.gpuCount).run();
   const total = await totals(env, accountId, input.model);
   const legacy = {
     id, model: input.model, result,
-    usage: { gpu: model.gpu, unit: `${model.gpu} seconds`, measurement: "inference", gpuSeconds: microseconds / 1_000_000, totalGpuSeconds: total.gpuSeconds, requestCount: total.requestCount },
+    usage: { gpu: model.gpu, gpuCount: model.gpuCount, unit: `${model.gpu} seconds`, measurement: "inference", gpuSeconds: microseconds / 1_000_000, totalGpuSeconds: total.gpuSeconds, requestCount: total.requestCount },
     ...(!validJson ? { error: { code: "model_response", message: "The model returned an invalid response." } } : {}),
   };
   if (systemOne && upstream.ok) {
@@ -140,12 +184,12 @@ async function infer(req: Request, env: Env, accountId: string, systemOne = fals
 
 export async function modelApi(req: Request, env: Env, accountId: string, path: string): Promise<Response> {
   if ((path === "/api/v1/models" || path === "/v1/models") && req.method === "GET")
-    return json({ models: Object.entries(models).map(([name, model]) => ({ name, description: model.description, gpu: model.gpu, sourceUrl: model.sourceUrl, upstreamUrl: model.upstreamUrl, runtimeUrl: model.runtimeUrl, license: model.license })) });
+    return json({ models: Object.entries(models).map(([name, model]) => ({ name, description: model.description, gpu: model.gpu, gpuCount: model.gpuCount, sourceUrl: model.sourceUrl, upstreamUrl: model.upstreamUrl, runtimeUrl: model.runtimeUrl, license: model.license })) });
   if ((path === "/api/v1/models/usage" || path === "/v1/models/usage") && req.method === "GET") {
     const name = new URL(req.url).searchParams.get("model");
     if (!name) throw new ApiError(400, "model_required", "Supply a model name.");
     const model = selectedModel(name);
-    return json({ model: name, usage: { gpu: model.gpu, unit: `${model.gpu} seconds`, measurement: "inference", ...await totals(env, accountId, name) } });
+    return json({ model: name, usage: { gpu: model.gpu, gpuCount: model.gpuCount, unit: `${model.gpu} seconds`, measurement: "inference", ...await totals(env, accountId, name) } });
   }
   if (path === "/api/v1/models/infer" && req.method === "POST") return infer(req, env, accountId);
   if (path === "/v1/systemone" && req.method === "POST") return infer(req, env, accountId, true);

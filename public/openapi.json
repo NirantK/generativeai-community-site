@@ -27,7 +27,7 @@
       "post": {
         "operationId": "systemOne",
         "summary": "Answer typed questions with a selected model",
-        "description": "TypeSafe SystemOne-compatible path and response envelope. Send a model name returned by GET /v1/models. The response has top-level model, answers, and token usage; GPU usage is an extension. Hopper currently accepts exactly one question per request. Requires an approved-member bearer token.",
+        "description": "TypeSafe SystemOne-compatible path and response envelope. Send a model name returned by GET /v1/models. The response has top-level model, answers, and token usage; GPU usage is an extension. Hopper accepts exactly one question per request. Xor accepts text and up to eight static base64 images. Requires an approved-member bearer token. A cold start may return 503 model_starting with Retry-After.",
         "requestBody": {
           "required": true,
           "content": {
@@ -768,7 +768,7 @@
         "operationId": "inferModel",
         "deprecated": true,
         "summary": "Run a model and meter inference seconds on its selected GPU",
-        "description": "Requires an approved-member bearer token. The model field selects mys/laya-typed-decisions-GGUF, mys/laya-multilingual-GGUF, or HopitAI/hopper. Hopper accepts exactly one typed question per call, with a criteria map for choice questions or a criteria array for score questions. A completed model call is recorded by member account and model; a cold-start 503 without a GPU measurement is retried internally. The per-call and model-specific cumulative seconds are returned in usage. GPU seconds measure wall-clock inference time inside the allocated T4 or A10 container, excluding cold start, external queue time, and idle time. A successful retry by the caller is a new metered call.",
+        "description": "Requires an approved-member bearer token. The model field selects either Laya model, HopitAI/hopper, or juspay/xor. Hopper accepts exactly one typed question; Xor accepts text and up to eight static PNG, JPEG, or WebP base64 data URLs. The response retains the legacy result envelope. Completed calls are recorded by member account and model. GPU seconds are elapsed inference time multiplied by GPU count, excluding cold start, external queue time, and idle time. Only confirmed pre-inference readiness failures are retried; cold starts may return 503 model_starting with Retry-After.",
         "requestBody": {
           "required": true,
           "content": {
@@ -1285,6 +1285,7 @@
           "name",
           "description",
           "gpu",
+          "gpuCount",
           "sourceUrl",
           "upstreamUrl",
           "runtimeUrl",
@@ -1301,6 +1302,10 @@
           "gpu": {
             "type": "string",
             "example": "T4"
+          },
+          "gpuCount": {
+            "type": "integer",
+            "minimum": 1
           },
           "sourceUrl": {
             "type": "string",
@@ -1334,11 +1339,11 @@
         "properties": {
           "model": {
             "type": "string",
-            "description": "Registered model name: mys/laya-typed-decisions-GGUF, mys/laya-multilingual-GGUF, or HopitAI/hopper.",
+            "description": "Registered model name: mys/laya-typed-decisions-GGUF, mys/laya-multilingual-GGUF, HopitAI/hopper, or juspay/xor.",
             "example": "mys/laya-multilingual-GGUF"
           },
           "state": {
-            "description": "JSON context for the decision",
+            "description": "JSON context for Laya; text string for Hopper or Xor.",
             "example": {
               "message": "I was charged twice for the same invoice."
             }
@@ -1366,14 +1371,21 @@
                   "type": "string"
                 },
                 "criteria": {
-                  "description": "Choice and optional yes/no criteria use a map. Hopper score criteria use an array of level descriptions.",
+                  "description": "Choice and optional yes/no criteria use a map. Hopper and Xor score criteria use an ordered array of 2–26 level descriptions.",
                   "oneOf": [
                     {"type": "object", "additionalProperties": {"type": ["string", "null"]}},
-                    {"type": "array", "items": {"type": "string"}}
+                    {"type": "array", "minItems": 2, "maxItems": 26, "items": {"type": "string"}}
                   ]
                 }
               }
             }
+          },
+          "images": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 8,
+            "description": "Xor only: static PNG, JPEG, or WebP base64 data URLs. Total decoded bytes ≤5 MiB, pixels ≤16 million, request JSON ≤8 MiB.",
+            "items": {"type": "string", "pattern": "^data:image/(png|jpeg|webp);base64,"}
           }
         }
       },
@@ -1384,6 +1396,7 @@
           "totalGpuSeconds",
           "requestCount",
           "gpu",
+          "gpuCount",
           "unit",
           "measurement"
         ],
@@ -1405,6 +1418,11 @@
           "gpu": {
             "type": "string",
             "example": "T4"
+          },
+          "gpuCount": {
+            "type": "integer",
+            "minimum": 1,
+            "description": "Allocated GPU count for this model."
           },
           "unit": {
             "type": "string",
@@ -1479,6 +1497,7 @@
               "requestCount",
               "gpuSeconds",
               "gpu",
+              "gpuCount",
               "unit",
               "measurement"
             ],
@@ -1494,6 +1513,10 @@
               "gpu": {
                 "type": "string",
                 "example": "T4"
+              },
+              "gpuCount": {
+                "type": "integer",
+                "minimum": 1
               },
               "unit": {
                 "type": "string",

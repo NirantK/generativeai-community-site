@@ -165,10 +165,12 @@ test("visiting agents can discover the API workflow before signing in", async ({
   expect(instructions).toContain("mys/laya-typed-decisions-GGUF");
   expect(instructions).toContain("mys/laya-multilingual-GGUF");
   expect(instructions).toContain("HopitAI/hopper");
+  expect(instructions).toContain("juspay/xor");
   await page.goto("/models");
   await expect(page.getByText("mys/laya-typed-decisions-GGUF", { exact: true })).toBeVisible();
   await expect(page.getByText("mys/laya-multilingual-GGUF", { exact: true })).toBeVisible();
   await expect(page.getByText("HopitAI/hopper", { exact: true })).toBeVisible();
+  await expect(page.getByText("juspay/xor", { exact: true })).toBeVisible();
 });
 test("outage is not misrepresented as signed out", async ({ page }) => {
   await page.route("**/api/v1/application", (r) =>

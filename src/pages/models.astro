@@ -16,10 +16,10 @@ const example = `curl https://genaicommunity.ai/v1/systemone \\
   }'`;
 ---
 
-<BaseLayout title="Model API" description="Member API for Laya and Hopper typed decisions, with per-request GPU usage metering." sourcePath="src/pages/models.astro">
+<BaseLayout title="Model API" description="Member API for Laya, Hopper, and Xor typed decisions, with per-request GPU usage metering." sourcePath="src/pages/models.astro">
   <article class="max-w-[72ch]">
     <h1 class="text-display-lg leading-[1.1] tracking-[-0.04em] font-bold mt-stack-md">Community model API</h1>
-    <p class="text-on-surface-variant text-lg mt-stack-md">Use Laya Typed Decisions, Laya Multilingual, or Hopper in your own tools. The API is open to every approved member and reports usage in the selected GPU's seconds after each call.</p>
+    <p class="text-on-surface-variant text-lg mt-stack-md">Use Laya, Hopper, or Xor typed decisions in your own tools. The API is open to every approved member and reports allocated GPU seconds after each call.</p>
 
     <section class="mt-stack-lg border border-outline-variant bg-surface-container-low p-gutter">
       <h2 class="text-headline-md font-semibold">Available models</h2>
@@ -34,13 +34,16 @@ const example = `curl https://genaicommunity.ai/v1/systemone \\
       <p class="mt-stack-sm text-on-surface-variant">Calibrated one-pass typed decisions on a separate protected A10 app. This uses Hopper's pinned BF16 fast-kernel runtime. Experimental BF16 and Q8_0 GGUF ports were built, but failed fidelity and p95 latency checks; they are neither published nor used for live inference.</p>
       <p class="mt-stack-sm text-on-surface-variant">Hopper accepts exactly one typed question per call. For choices, provide a criteria map of option labels to descriptions; for scores, provide an array of level descriptions. Yes/no questions may omit criteria.</p>
       <p class="mt-stack-md text-on-surface-variant">Source: <a class="text-primary underline underline-offset-4" href="https://huggingface.co/HopitAI/hopper">Hopper adapter</a> · <a class="text-primary underline underline-offset-4" href="https://github.com/hopit-ai/hopper/tree/v1.1.0">Hopper v1.1.0 runtime</a>. Apache-2.0 licensed.</p>
-      <p class="mt-stack-md text-on-surface-variant">For inference and usage requests, use the three registry names shown in monospace above.</p>
+      <p class="font-mono text-tertiary mt-stack-md break-all">juspay/xor</p>
+      <p class="mt-stack-sm text-on-surface-variant">Xor evaluates typed choices, ordinal scores, and yes/no questions over text and images. It uses the released BF16 checkpoint and calibrated SGLang wrapper on one protected NVIDIA A100 80GB, scaling to zero when idle.</p>
+      <p class="mt-stack-md text-on-surface-variant">Source: <a class="text-primary underline underline-offset-4" href="https://huggingface.co/juspay/xor">Xor checkpoint by Juspay</a> · <a class="text-primary underline underline-offset-4" href="https://github.com/sgl-project/sglang">SGLang runtime</a>. Apache-2.0 licensed.</p>
+      <p class="mt-stack-md text-on-surface-variant">For inference and usage requests, use the four registry names shown in monospace above.</p>
     </section>
 
     <div class="border-y border-outline-variant mt-stack-lg py-stack-md grid sm:grid-cols-3 gap-stack-md">
-      <div><p class="font-mono text-label-caps uppercase text-on-surface-variant">Catalog</p><p class="font-mono text-tertiary mt-2">3 models</p></div>
-      <div><p class="font-mono text-label-caps uppercase text-on-surface-variant">Runtime</p><p class="mt-2">GGUF T4 or fast-kernel BF16 A10</p></div>
-      <div><p class="font-mono text-label-caps uppercase text-on-surface-variant">Meter</p><p class="mt-2">Selected GPU seconds</p></div>
+      <div><p class="font-mono text-label-caps uppercase text-on-surface-variant">Catalog</p><p class="font-mono text-tertiary mt-2">4 models</p></div>
+      <div><p class="font-mono text-label-caps uppercase text-on-surface-variant">Runtime</p><p class="mt-2">ggmlc, Hopper, and SGLang</p></div>
+      <div><p class="font-mono text-label-caps uppercase text-on-surface-variant">Meter</p><p class="mt-2">Allocated GPU seconds</p></div>
     </div>
 
     <section class="mt-stack-lg">
@@ -61,15 +64,16 @@ const example = `curl https://genaicommunity.ai/v1/systemone \\
       <pre class="bg-surface-container-low border border-outline-variant p-gutter mt-stack-md overflow-x-auto text-code-sm text-on-surface"><code>{example}</code></pre>
       <p class="mt-stack-md text-on-surface-variant">For multilingual input, use the same request with <code class="text-tertiary">"model": "mys/laya-multilingual-GGUF"</code> and put your text and question instructions in the desired language.</p>
       <p class="mt-stack-sm text-on-surface-variant">For Hopper, set <code class="text-tertiary">"model": "HopitAI/hopper"</code> and send one question. Its answer uses the same top-level <code class="text-tertiary">answers</code> structure.</p>
+      <p class="mt-stack-sm text-on-surface-variant">For Xor, set <code class="text-tertiary">"model": "juspay/xor"</code>, supply <code class="text-tertiary">state</code> as text, and use an ordered array of 2–26 level descriptions for a <code class="text-tertiary">score</code> question. Optional <code class="text-tertiary">images</code> accepts up to eight static PNG, JPEG, or WebP base64 data URLs. Images are limited to 5 MiB decoded and 16 megapixels combined; the full JSON request is limited to 8 MiB.</p>
       <p class="mt-stack-sm text-on-surface-variant">The response includes top-level <code class="text-tertiary">model</code>, <code class="text-tertiary">answers</code>, and <code class="text-tertiary">usage</code>, matching the SystemOne response convention. Usage includes <code class="text-tertiary">input_tokens</code> and <code class="text-tertiary">output_tokens</code> plus our GPU extensions: <code class="text-tertiary">gpuSeconds</code> for this call, <code class="text-tertiary">totalGpuSeconds</code> for your account, and <code class="text-tertiary">requestCount</code>.</p>
-      <p class="mt-stack-sm text-on-surface-variant">Usage includes the selected GPU (<code class="text-tertiary">T4</code> or <code class="text-tertiary">A10</code>), its seconds unit, and <code class="text-tertiary">measurement: "inference"</code>. A completed model call is metered even if the model rejects its input.</p>
+      <p class="mt-stack-sm text-on-surface-variant">Usage includes the GPU type and count, its seconds unit, and <code class="text-tertiary">measurement: "inference"</code>. GPU seconds equal measured inference time times GPU count. A completed model call is metered even if the model rejects its input. A cold Xor app may return <code class="text-tertiary">503 model_starting</code>; retry after the <code class="text-tertiary">Retry-After</code> interval.</p>
     </section>
 
     <section class="mt-stack-lg">
       <h2 class="text-headline-md font-semibold">Read your usage</h2>
       <pre class="bg-surface-container-low border border-outline-variant p-gutter mt-stack-md overflow-x-auto text-code-sm"><code>curl "https://genaicommunity.ai/v1/models/usage?model=mys%2Flaya-typed-decisions-GGUF" \
   -H "Authorization: Bearer $COMMUNITY_API_TOKEN"</code></pre>
-      <p class="mt-stack-sm text-on-surface-variant">Replace the model query value with <code class="text-tertiary">mys%2Flaya-multilingual-GGUF</code> or <code class="text-tertiary">HopitAI%2Fhopper</code> for separate totals. GPU seconds measure elapsed inference time inside the allocated GPU container. Startup, time waiting outside the container, and idle time are excluded. This meter does not measure GPU utilization or billed usage. Your totals belong to your member account, so they stay the same when you renew your token.</p>
+      <p class="mt-stack-sm text-on-surface-variant">Replace the model query value with <code class="text-tertiary">mys%2Flaya-multilingual-GGUF</code>, <code class="text-tertiary">HopitAI%2Fhopper</code>, or <code class="text-tertiary">juspay%2Fxor</code> for separate totals. GPU seconds measure elapsed inference time inside the allocated GPU container. Startup, time waiting outside the container, and idle time are excluded. This meter does not measure GPU utilization or billed usage. Your totals belong to your member account, so they stay the same when you renew your token.</p>
     </section>
 
     <section class="mt-stack-lg border-t border-outline-variant pt-stack-md">
