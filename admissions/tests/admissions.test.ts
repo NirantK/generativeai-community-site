@@ -48,6 +48,10 @@ describe("member model API", () => {
       model: "mys/laya-multilingual-GGUF", state: {message: "Hallo"},
       questions: {greeting:{type:"noul",instructions:"Ist das eine Begrüßung?"}},
     })).status).toBe(401);
+    expect((await gateway("/api/v1/models/infer", "POST", {Origin:"https://genaicommunity.ai"}, {
+      model: "HopitAI/hopper", state: "A duplicate invoice charge.",
+      questions: {billing:{type:"noul",instructions:"Is this a billing issue?"}},
+    })).status).toBe(401);
     const owner = await account();
     await owner.agent.consent();
     const { token } = await owner.agent.token();
@@ -65,7 +69,8 @@ describe("member model API", () => {
       const modelList = await (await gateway("/api/v1/models", "GET", headers)).json() as any;
       expect(modelList.models.map((model:any) => model.name)).toContain("mys/laya-typed-decisions-GGUF");
       expect(modelList.models.map((model:any) => model.name)).toContain("mys/laya-multilingual-GGUF");
-      expect(modelList.models).toHaveLength(2);
+      expect(modelList.models.map((model:any) => model.name)).toContain("HopitAI/hopper");
+      expect(modelList.models).toHaveLength(3);
       expect(modelList.models[0].sourceUrl).toBe("https://huggingface.co/mys/laya-typed-decisions-GGUF");
       expect(modelList.models[0].upstreamUrl).toBe("https://huggingface.co/convaiinnovations/laya-typed-decisions");
       expect(modelList.models[1].sourceUrl).toBe("https://huggingface.co/mys/laya-multilingual-GGUF");
@@ -99,6 +104,18 @@ describe("member model API", () => {
       expect(multilingualUsage.usage).toEqual({gpu:"T4",unit:"T4 seconds",measurement:"inference",requestCount:1,gpuSeconds:0.125432});
       const typedUsageAgain = await (await gateway("/api/v1/models/usage?model=mys%2Flaya-typed-decisions-GGUF", "GET", headers)).json() as any;
       expect(typedUsageAgain.usage).toEqual({gpu:"T4",unit:"T4 seconds",measurement:"inference",requestCount:1,gpuSeconds:0.125432});
+      const hopperRequest = {
+        model: "HopitAI/hopper", state: "The invoice was charged twice.",
+        questions: {billing: {type:"choice", instructions:"Which issue is this?", criteria:{billing:"Billing issue",other:"Other issue"}}},
+      };
+      expect((await gateway("/api/v1/models/infer", "POST", headers, {...hopperRequest, questions:{a:hopperRequest.questions.billing,b:hopperRequest.questions.billing}})).status).toBe(422);
+      expect((await gateway("/api/v1/models/infer", "POST", headers, {model:"HopitAI/hopper",state:"x",questions:{rating:{type:"score",instructions:"Rate",criteria:{"0":"bad","1":"good"}}}})).status).toBe(422);
+      const hopper = await gateway("/api/v1/models/infer", "POST", headers, hopperRequest);
+      expect(hopper.status).toBe(200);
+      expect((await hopper.json() as any).usage).toEqual({gpu:"A10",unit:"A10 seconds",measurement:"inference",gpuSeconds:0.125432,totalGpuSeconds:0.125432,requestCount:1});
+      expect(fetchMock.mock.calls[2][0]).toBe("https://scaledfocus--genaicommunity-hopper-hopper.us-east.modal.direct/v1/decide");
+      const hopperUsage = await (await gateway("/api/v1/models/usage?model=HopitAI%2Fhopper", "GET", headers)).json() as any;
+      expect(hopperUsage.usage).toEqual({gpu:"A10",unit:"A10 seconds",measurement:"inference",requestCount:1,gpuSeconds:0.125432});
       expect((await gateway("/api/v1/models/usage?model=unknown", "GET", headers)).status).toBe(404);
     } finally {
       fetchMock.mockRestore();

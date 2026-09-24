@@ -99,11 +99,13 @@ The application token is also the model usage token. Approved members do not
 need a separate credential or another acceptance. With the same bearer token:
 - GET /api/v1/models to list all available models and source links.
 - POST /api/v1/models/infer with JSON containing model, state, and questions.
-  Select mys/laya-typed-decisions-GGUF or mys/laya-multilingual-GGUF.
+  Select mys/laya-typed-decisions-GGUF, mys/laya-multilingual-GGUF, or HopitAI/hopper.
+  Hopper accepts exactly one typed question per call.
 - Read usage.gpuSeconds and usage.totalGpuSeconds in the inference response.
 - GET /api/v1/models/usage?model=mys%2Flaya-multilingual-GGUF to read the
   multilingual account total without running the model. Each model has its own total.
-T4 seconds measure elapsed inference inside the GPU container, not a bill.
+GET /api/v1/models/usage?model=HopitAI%2Fhopper reads Hopper's separate A10 total.
+GPU seconds measure elapsed inference inside the selected GPU container, not a bill.
 Use /models for examples and original model source links.</pre>
       <p>
         <a href="/openapi.json">OpenAPI specification</a> ·{" "}

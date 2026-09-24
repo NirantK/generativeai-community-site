@@ -31,8 +31,10 @@ The A10 rows below are *paired*, so comparisons are within each host rather than
 | --- | ---: | ---: | ---: | ---: | ---: |
 | BF16 | 65.2 / 517 ms | 63.9 / 673 ms | 0.155 / 0.184 | 0.0394 | 0 |
 | Q8_0 | 55.1 / 468 ms | 68.9 / 732 ms | 0.136 / 0.196 | 0.0714 | 0 |
+| BF16, BF16-rounded logits | 56.2 / 470 ms | 64.1 / 712 ms | 0.136 / 0.192 | 0.0607 | 1 |
+| Q8_0, BF16-rounded logits | 53.5 / 471 ms | 69.1 / 739 ms | 0.135 / 0.199 | 0.0777 | 2 |
 
-The BF16 long-prompt subset's worst probability error was 0.0275; its near-tie subset's was 0.0325. Q8_0's were 0.0250 and 0.0409. All exceed `1e-3`, despite no observed top-answer flips. L4 candidate fidelity also failed: worst errors 0.0335 (BF16) and 0.0775 (Q8_0); T4 errors were 0.0303 (BF16) and 0.0718 (Q8_0). The difference is larger than numerical noise acceptable to the benchmark and needs investigation before any GGUF could be served.
+The BF16 long-prompt subset's worst probability error was 0.0275; its near-tie subset's was 0.0325. Q8_0's were 0.0250 and 0.0409. All exceed `1e-3`, despite no observed top-answer flips in the unrounded runs. A follow-up tested rounding GGUF logits to BF16 before softmax, matching the upstream readout's precision; that made fidelity and latency worse and introduced non-tie flips. L4 candidate fidelity also failed: worst errors 0.0335 (BF16) and 0.0775 (Q8_0); T4 errors were 0.0303 (BF16) and 0.0718 (Q8_0). The difference is larger than numerical noise acceptable to the benchmark and needs investigation before any GGUF could be served.
 
 ## Cost and scale-to-zero
 
@@ -44,4 +46,8 @@ Fresh Modal A10 function invocations took **85.8 s upstream** (78.6 s model init
 
 The corrected private Volume artifacts are `hopper-bf16-no-mtp.gguf` (8,424,393,056 bytes, SHA-256 `87fd10ecc6d31c87b7ea24db9c2b5befb35bda5bde7e8cb89feafbb0d98661d9`) and `hopper-q8_0-no-mtp.gguf` (4,482,402,656 bytes, SHA-256 `4101b11af977f577b2b361efb716e6bee85d6cfd64fbbe1514d983f406fc390a`). Full per-item JSON is stored locally under ignored `results/`; scripts and comparison tests are tracked. The user authorized the `nirantk` Hugging Face namespace, but the validated-export condition was not met, so nothing was uploaded.
 
-No member-API registration or site rollout was part of this optimization phase.
+## Inference fallback verification, 2026-09-24
+
+Because the GGUF release gate failed, the pinned upstream runtime was deployed as a separate protected scale-to-zero A10 Modal app, `genaicommunity-hopper`. Its startup log on an actual A10 reported `fast-kernel check passed`; the chunk gated-delta-rule and causal-conv1d kernels ran. A protected synthetic choice call returned `billing` with calibrated probability 0.95950 and `X-GPU-Seconds: 0.059748`; a protected yes/no call also returned a valid calibrated probability. A credential-free request to the same Modal endpoint returned HTTP 401. The initial cold-start probes returned unmetered HTTP 503 until the model was ready, as expected. These smoke tests establish serving correctness and access control at Modal, not member-API publication or a new latency distribution.
+
+The member API, OpenAPI, and site changes are tested locally and must publish through the existing GitHub CI/CD pipeline before live approved-member inference can be claimed.

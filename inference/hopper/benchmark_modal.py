@@ -154,13 +154,15 @@ def run_native_benchmark(variant: str, gpu: str):
     import subprocess
     from native_score import NativeDecider
 
-    if variant not in ("bf16", "q8_0"):
-        raise ValueError("variant must be bf16 or q8_0")
-    model_path = f"/artifacts/hopper-{variant}-no-mtp.gguf"
+    if variant not in ("bf16", "q8_0", "bf16_round", "q8_0_round"):
+        raise ValueError("unsupported GGUF variant")
+    model_variant = variant.removesuffix("_round")
+    model_path = f"/artifacts/hopper-{model_variant}-no-mtp.gguf"
     if not Path(model_path).is_file():
         raise FileNotFoundError(model_path)
     started = time.perf_counter()
-    decider = NativeDecider(model_path, "/opt/hopper-native-score", "/opt/hopper/hopper_decisions/maps/hopper.json")
+    decider = NativeDecider(model_path, "/opt/hopper-native-score", "/opt/hopper/hopper_decisions/maps/hopper.json",
+                            round_logits_bf16=variant.endswith("_round"))
     # First real task pays any runtime graph initialization before timed items.
     first = next(tasks())[1]
     decider.score(first)
@@ -265,8 +267,9 @@ def paired_benchmark(variant: str):
     from hopper_decisions.model import Decider
     from native_score import NativeDecider
 
-    if variant not in ("bf16", "q8_0"):
+    if variant not in ("bf16", "q8_0", "bf16_round", "q8_0_round"):
         raise ValueError(variant)
+    model_variant = variant.removesuffix("_round")
     started = time.perf_counter()
     decider = Decider(adapter=adapter_path())
     ref_startup = time.perf_counter() - started
@@ -281,8 +284,9 @@ def paired_benchmark(variant: str):
     gc.collect()
     torch.cuda.empty_cache()
     started = time.perf_counter()
-    native = NativeDecider(f"/artifacts/hopper-{variant}-no-mtp.gguf", "/opt/hopper-native-score",
-                           "/opt/hopper/hopper_decisions/maps/hopper.json")
+    native = NativeDecider(f"/artifacts/hopper-{model_variant}-no-mtp.gguf", "/opt/hopper-native-score",
+                           "/opt/hopper/hopper_decisions/maps/hopper.json",
+                           round_logits_bf16=variant.endswith("_round"))
     native.score(next(tasks())[1])
     native_startup = time.perf_counter() - started
     candidate_rows = []
@@ -317,11 +321,11 @@ def main(variant: str = "reference", gpu: str = "A10"):
         if gpu != "A10":
             raise ValueError("reference benchmark is pinned to A10")
         result = reference_benchmark.remote()
-    elif variant in ("bf16", "q8_0"):
+    elif variant in ("bf16", "q8_0", "bf16_round", "q8_0_round"):
         candidates = {"A10": native_benchmark_a10, "T4": native_benchmark_t4,
                       "L4": native_benchmark_l4}
         result = candidates[gpu].remote(variant)
-    elif variant in ("paired-bf16", "paired-q8_0"):
+    elif variant in ("paired-bf16", "paired-q8_0", "paired-bf16_round", "paired-q8_0_round"):
         if gpu != "A10":
             raise ValueError("paired benchmark is A10-only")
         result = paired_benchmark.remote(variant.removeprefix("paired-"))

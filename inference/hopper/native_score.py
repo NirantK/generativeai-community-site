@@ -17,9 +17,12 @@ from hopper_decisions.model import BASE, REVISION
 from hopper_decisions.prompt import chat_ids, letter_token_ids, messages, option_lines
 
 
-def probabilities(logits: list[float], labels: list[str]) -> dict[str, float]:
+def probabilities(logits: list[float], labels: list[str], round_bf16: bool = False) -> dict[str, float]:
     if len(logits) != len(labels) or not logits or not all(math.isfinite(v) for v in logits):
         raise ValueError("invalid native logits")
+    if round_bf16:
+        import torch
+        logits = torch.tensor(logits, dtype=torch.bfloat16).float().tolist()
     peak = max(logits)
     values = [math.exp(value - peak) for value in logits]
     total = sum(values)
@@ -27,13 +30,15 @@ def probabilities(logits: list[float], labels: list[str]) -> dict[str, float]:
 
 
 class NativeDecider:
-    def __init__(self, model_path: str, binary: str, calibration_path: str, name: str = "hopper"):
+    def __init__(self, model_path: str, binary: str, calibration_path: str, name: str = "hopper",
+                 round_logits_bf16: bool = False):
         from transformers import AutoTokenizer
 
         self.tokenizer = AutoTokenizer.from_pretrained(BASE, revision=REVISION)
         self.letters = letter_token_ids(self.tokenizer)
         self.mapping = calibration.read(calibration_path)
         self.name = name
+        self.round_logits_bf16 = round_logits_bf16
         self.process = subprocess.Popen(
             [binary, model_path], stdin=subprocess.PIPE, stdout=subprocess.PIPE,
             text=True, bufsize=1,
@@ -60,7 +65,7 @@ class NativeDecider:
             raise RuntimeError(f"native scorer failed: {native_line or self.process.poll()}")
         native = json.loads(native_line)
         t2 = time.perf_counter()
-        raw = probabilities(native["logits"], labels)
+        raw = probabilities(native["logits"], labels, self.round_logits_bf16)
         calibrated = calibration.apply(self.mapping, example, raw)
         reply = request.response(key, example["kind"], calibrated, self.name, len(ids))
         t3 = time.perf_counter()
