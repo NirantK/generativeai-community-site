@@ -1,4 +1,50 @@
-# Laya models on Modal
+# Community models on Modal
+
+## Xor
+
+`xor_modal.py` serves the checksum-pinned `juspay/xor` BF16 checkpoint with its
+released Python decision wrapper and pinned SGLang image. It is a separate,
+protected Modal app. The wrapper preserves Xor's option-order averaging and
+per-question probability calibration. `xor_metered_proxy.py` serializes calls,
+checks decoded images and token budget before inference, and reports elapsed
+container inference time in `X-GPU-Seconds`.
+
+From this repository root, using the `scaledfocus` Modal workspace:
+
+```sh
+uv sync --frozen
+uv run modal run inference/xor_modal.py::hydrate
+uv run modal deploy inference/xor_modal.py
+uv run modal curl https://scaledfocus--genaicommunity-xor-xor.us-east.modal.direct/health
+uv run python inference/smoke_xor.py --endpoint https://scaledfocus--genaicommunity-xor-xor.us-east.modal.direct --maximum
+uv run python inference/benchmark_xor.py --endpoint https://scaledfocus--genaicommunity-xor-xor.us-east.modal.direct --output /tmp/xor-reference.json
+```
+
+Hydration downloads only the pinned release files into a persistent Modal
+volume and verifies all published SHA-256 hashes. Deployment defaults to the
+validated production configuration: one A100-80GB GPU without CUDA graph
+capture, which retains 11.31% sampled peak VRAM headroom under the maximum
+smoke suite. For a sequential
+experiment, set `XOR_GPU=RTX-PRO-6000:2` for the BF16 reference or
+`XOR_GPU=RTX-PRO-6000` for the single-RTX candidate. Single-GPU runs use a
+16,384-token context and prefill budget. Compare a full candidate run with
+`uv run python inference/compare_xor.py /tmp/xor-reference.json /tmp/xor-candidate.json --reference-fixtures /tmp/reference-fixtures.json --candidate-fixtures /tmp/candidate-fixtures.json`.
+Restore the chosen GPU configuration with a final deployment and update the
+model registry's GPU type and count before publishing the site. Use current
+Modal GPU, CPU, and memory rates to bound GPU experiments at $25, reserving
+$5 for final validation. Keep zero warm containers; the longer readiness
+window gives clients time to retry after Xor's multi-minute cold start.
+
+The private admission Worker is the only public model gateway. It authenticates
+approved members and records allocated GPU-seconds (elapsed inference time
+times GPU count) per model and member. The Modal endpoint uses the existing
+workspace proxy token and should never be made unauthenticated.
+
+To roll back, remove Xor from the model registry and catalog, publish the
+site/Worker through CI, and stop `genaicommunity-xor` in Modal. Leave ledger
+rows intact.
+
+## Laya
 
 `laya_gguf_modal.py` serves Typed Decisions and `laya_multilingual_gguf_modal.py` serves the full Multilingual checkpoint as separate protected Modal apps. Each uses a pinned F16 GGUF and pinned `ggmlc` runtime on at most one NVIDIA T4. The F16 checkpoints preserve the published weights; quantization would not reduce the GPU's hourly rate. The runtime is built for the T4's sm75 architecture because the upstream release does not publish an sm75 binary. Each model file is verified against its Hugging Face SHA-256 during the image build.
 

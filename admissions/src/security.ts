@@ -61,7 +61,7 @@ export function csrf(req: Request, site: string): void {
       "Open the application in your browser and try again.",
     );
 }
-export async function body(req: Request): Promise<unknown> {
+export async function body(req: Request, maxBytes = 20000): Promise<unknown> {
   if (!req.headers.get("content-type")?.startsWith("application/json"))
     throw new ApiError(415, "content_type", "Send application/json.");
   const reader = req.body?.getReader();
@@ -72,7 +72,7 @@ export async function body(req: Request): Promise<unknown> {
     const { done, value } = await reader.read();
     if (done) break;
     size += value.length;
-    if (size > 20000) {
+    if (size > maxBytes) {
       await reader.cancel();
       throw new ApiError(413, "body_size", "Application is too large.");
     }
