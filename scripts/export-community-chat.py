@@ -17,9 +17,13 @@ CLI = os.environ.get('WACLI_BIN', '/opt/homebrew/bin/wacli')
 STORE = os.environ.get('WACLI_STORE', '/Users/nirantk/.wacli-codex')
 SOURCE = '120363049558306142@g.us'
 TITLE = 'The GenerativeAI Group'
+JOBS_SOURCE = '120363323644237261@g.us'
+JOBS_TITLE = 'Job Posts & Talent'
 # The published legacy archive ends here. Its IDs differ from WhatsApp IDs.
 # Preserve it; never guess cross-source matches or re-import overlapping history.
 CUTOVER = datetime.fromisoformat('2026-09-17T00:01:16+00:00')
+JOBS_CUTOVER = datetime.fromtimestamp(0, timezone.utc)
+GROUPS = ((SOURCE, TITLE, CUTOVER), (JOBS_SOURCE, JOBS_TITLE, JOBS_CUTOVER))
 LIMIT = 1000000
 
 
@@ -42,16 +46,18 @@ def call(*args, timeout=90):
     return result.stdout
 
 
-def normalize(messages):
+def normalize(messages, source=SOURCE, cutover=CUTOVER):
     selected = {}
     overlap = 0
     for raw in messages:
-        if raw.get('ChatJID') != SOURCE or raw.get('ChatName') != TITLE:
+        # wacli's cached ChatName can be stale or even a participant name.
+        # The explicit WhatsApp JID is the source identity; the title is display metadata.
+        if raw.get('ChatJID') != source:
             raise ValueError('Source identity mismatch')
         at = datetime.fromisoformat(raw['Timestamp'].replace('Z', '+00:00'))
         if at.tzinfo is None:
             raise ValueError('Missing timestamp timezone')
-        if at <= CUTOVER:
+        if at <= cutover:
             overlap += 1
             continue
         if not raw.get('MsgID'):
@@ -85,28 +91,34 @@ def main():
         raise RuntimeError('wacli is not authenticated')
     if args.sync:
         call('sync', '--once', '--idle-exit', '15s', '--max-reconnect', '45s', '--presence-mode', 'quiet', timeout=900)
-    payload = json.loads(call('messages', 'export', '--chat', SOURCE, '--limit', str(LIMIT), '--json'))
-    if not payload.get('success'):
-        raise RuntimeError('Export failed')
-    raw = payload['data']['messages']
-    if not raw or len(raw) >= LIMIT:
-        raise ValueError('Empty or potentially capped export; investigate before importing')
-    messages, overlap = normalize(raw)
-    dates = sorted(m['timestamp'] for m in messages)
-    coverage = {
-        'title': TITLE, 'sourceRef': SOURCE, 'provider': 'wacli',
-        'exportedAt': datetime.now(timezone.utc).isoformat(),
-        'cachedRecords': len(raw), 'messages': len(messages), 'overlapSkipped': overlap,
-        'cutover': CUTOVER.isoformat(), 'oldest': dates[0] if dates else None,
-        'newest': dates[-1] if dates else None,
-        'limitation': 'Available wacli cache only; not proof of complete WhatsApp history. Legacy archive is preserved.',
-    }
-    data = args.output_dir / 'messages.json'
-    write(data, messages)
-    write(args.output_dir / 'coverage.json', coverage)
-    note = 'Historical archive begins 2024-11-17. Updates use wacli after 2026-09-17T00:01:16Z. Available synced text may be incomplete.'
-    write(args.output_dir / 'manifest.json', {'groups': [{'sourceRef': SOURCE, 'title': TITLE, 'file': str(data.resolve()), 'coverageNote': note}]})
-    print(json.dumps(coverage))
+    coverages, manifest = [], []
+    for index, (source, title, cutover) in enumerate(GROUPS):
+        payload = json.loads(call('messages', 'export', '--chat', source, '--limit', str(LIMIT), '--json'))
+        if not payload.get('success'):
+            raise RuntimeError('Export failed')
+        raw = payload['data']['messages']
+        if not raw or len(raw) >= LIMIT:
+            raise ValueError('Empty or potentially capped export; investigate before importing')
+        messages, overlap = normalize(raw, source, cutover)
+        dates = sorted(m['timestamp'] for m in messages)
+        coverage = {
+            'title': title, 'sourceRef': source, 'provider': 'wacli',
+            'exportedAt': datetime.now(timezone.utc).isoformat(),
+            'cachedRecords': len(raw), 'messages': len(messages), 'overlapSkipped': overlap,
+            'cutover': cutover.isoformat(), 'oldest': dates[0] if dates else None,
+            'newest': dates[-1] if dates else None,
+            'limitation': 'Available wacli cache only; not proof of complete WhatsApp history.',
+        }
+        data = args.output_dir / f'messages-{index}.json'
+        write(data, messages)
+        note = f'Available wacli text after {cutover.isoformat()} may be incomplete.'
+        if source == SOURCE:
+            note = 'Historical archive begins 2024-11-17. ' + note
+        manifest.append({'sourceRef': source, 'title': title, 'file': str(data.resolve()), 'coverageNote': note})
+        coverages.append(coverage)
+    write(args.output_dir / 'coverage.json', coverages)
+    write(args.output_dir / 'manifest.json', {'groups': manifest})
+    print(json.dumps(coverages))
 
 
 if __name__ == '__main__':

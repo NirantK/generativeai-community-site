@@ -2,10 +2,14 @@ import { Container } from '@cloudflare/containers';
 import { WorkflowEntrypoint, type WorkflowEvent, type WorkflowStep } from 'cloudflare:workers';
 const GROUP='80a506e83ca3ccc963bfbbc5493b124e85e5a87d7e074835728a1d78a9b38fca';
 const SOURCE='120363049558306142@g.us';
+const JOBS_GROUP='ab58449e10d8bf6a4e74b68ef82e6232186039fb9f003e0735dc0ebfd12cc985';
+const JOBS_SOURCE='120363323644237261@g.us';
+const GROUPS=[{id:GROUP,source:SOURCE,title:'The GenerativeAI Group',cutover:Date.parse('2026-09-17T00:01:16Z')},{id:JOBS_GROUP,source:JOBS_SOURCE,title:'Job Posts & Talent',cutover:0}] as const;
 const DAY=86400000;
 // Retain the original preflight instance identity: Containers reserves this slot even after stop.
 type Row={id:string;group_id:string;source_id:string;posted_at:number;author:string;body:string;hidden:number};
-type Export={rows:Row[];coverage:{sourceRef:string;provider:string;cachedRecords:number;messages:number;cutover:string;oldest:string|null;newest:string|null}};
+type Coverage={sourceRef:string;provider:string;cachedRecords:number;messages:number;cutover:string;oldest:string|null;newest:string|null};
+type Export={rows:Row[];coverage:Coverage[]};
 async function digest(value:string){return Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(value))),b=>b.toString(16).padStart(2,'0')).join('');}
 
 async function checkpointBytes(response:Response){
@@ -82,13 +86,22 @@ export class WhatsAppContainer extends Container<Env> {
    restored=true;
    await this.env.STATE.put('session/recovery-required',String(Date.now()));
    const response=await this.containerFetch('http://container/sync',{method:'POST'});
-   if(!response.ok)throw new Error('wacli-sync-failed');
+   if(!response.ok){
+    const detail=await response.json<{error?:string}>().catch(()=>({error:'unknown'}));
+    const code=typeof detail.error==='string' && /^[a-z-]+$/.test(detail.error)?detail.error:'unknown';
+    throw new Error(`wacli-sync-failed:${code}`);
+   }
    const size=Number(response.headers.get('Content-Length'));
    if(!size || size>20_000_000)throw new Error('invalid-export-size');
    const data=await response.json<Export>();
-   if(data.coverage.sourceRef!==SOURCE || data.coverage.provider!=='wacli' || data.coverage.cachedRecords<=0 || data.coverage.cachedRecords>=1_000_000 || !Array.isArray(data.rows))throw new Error('invalid-export');
+   if(!Array.isArray(data.coverage)||data.coverage.length!==GROUPS.length||!Array.isArray(data.rows))throw new Error('invalid-export');
+   for(const group of GROUPS){
+    const coverage=data.coverage.find(c=>c.sourceRef===group.source);
+    if(!coverage||coverage.provider!=='wacli'||coverage.cachedRecords<=0||coverage.cachedRecords>=1_000_000||data.coverage.filter(c=>c.sourceRef===group.source).length!==1)throw new Error('invalid-export-coverage');
+   }
    for(const r of data.rows){
-    if(r.group_id!==GROUP || !r.source_id.startsWith('wacli:') || r.id!==await digest(SOURCE+'\0'+r.source_id) || ![0,1].includes(r.hidden) || typeof r.body!=='string' || typeof r.author!=='string' || r.body.length>30000 || r.author.length>200 || (!r.hidden && (!Number.isSafeInteger(r.posted_at)||r.posted_at<=Date.parse('2026-09-17T00:01:16Z')||r.posted_at>Date.now()+DAY)))throw new Error('invalid-export-row');
+    const group=GROUPS.find(g=>g.id===r.group_id);
+    if(!group || !r.source_id.startsWith('wacli:') || r.id!==await digest(group.source+'\0'+r.source_id) || ![0,1].includes(r.hidden) || typeof r.body!=='string' || typeof r.author!=='string' || r.body.length>30000 || r.author.length>200 || (!r.hidden && (!Number.isSafeInteger(r.posted_at)||r.posted_at<=group.cutover||r.posted_at>Date.now()+DAY)))throw new Error('invalid-export-row');
    }
    // Persist sanitized export before session advancement, so a later D1 failure is recoverable.
    await this.env.STATE.put('pending/export.json',JSON.stringify(data));
@@ -103,14 +116,19 @@ export class WhatsAppContainer extends Container<Env> {
  }
 }
 async function metrics(db:D1Database){
- const counts=await db.prepare('SELECT count(*) total,sum(hidden=0) visible,min(CASE WHEN hidden=0 THEN posted_at END) oldest,max(CASE WHEN hidden=0 THEN posted_at END) newest FROM chat_messages WHERE group_id=?').bind(GROUP).first<{total:number;visible:number;oldest:number|null;newest:number|null}>();
- const integrity=await db.prepare('SELECT count(*) missing FROM chat_messages m LEFT JOIN chat_search s ON s.rowid=m.rowid WHERE m.group_id=? AND m.hidden=0 AND (s.rowid IS NULL OR s.body != m.body OR s.author != m.author)').bind(GROUP).first<{missing:number}>();
- const hidden=await db.prepare('SELECT count(*) exposed FROM chat_search s JOIN chat_messages m ON m.rowid=s.rowid WHERE m.group_id=? AND m.hidden=1').bind(GROUP).first<{exposed:number}>();
- if(integrity?.missing!==0||hidden?.exposed!==0)throw new Error('search-index-verification-failed');
- return counts;
+ const result:Record<string,{total:number;visible:number;oldest:number|null;newest:number|null}|null>={};
+ for(const group of GROUPS){
+  const counts=await db.prepare('SELECT count(*) total,sum(hidden=0) visible,min(CASE WHEN hidden=0 THEN posted_at END) oldest,max(CASE WHEN hidden=0 THEN posted_at END) newest FROM chat_messages WHERE group_id=?').bind(group.id).first<{total:number;visible:number;oldest:number|null;newest:number|null}>();
+  const integrity=await db.prepare('SELECT count(*) missing FROM chat_messages m LEFT JOIN chat_search s ON s.rowid=m.rowid WHERE m.group_id=? AND m.hidden=0 AND (s.rowid IS NULL OR s.body != m.body OR s.author != m.author)').bind(group.id).first<{missing:number}>();
+  const hidden=await db.prepare('SELECT count(*) exposed FROM chat_search s JOIN chat_messages m ON m.rowid=s.rowid WHERE m.group_id=? AND m.hidden=1').bind(group.id).first<{exposed:number}>();
+  if(integrity?.missing!==0||hidden?.exposed!==0)throw new Error('search-index-verification-failed');
+  result[group.id]=counts;
+ }
+ return result;
 }
-export class ChatSyncWorkflow extends WorkflowEntrypoint<Env,{force?:boolean;preflight?:boolean;recover?:boolean;storageTest?:boolean}> {
- async run(event:WorkflowEvent<{force?:boolean;preflight?:boolean;recover?:boolean;storageTest?:boolean}>,step:WorkflowStep){
+type SyncParams={force?:boolean;preflight?:boolean;recover?:boolean;storageTest?:boolean};
+export class ChatSyncWorkflow extends WorkflowEntrypoint<Env,SyncParams> {
+ async run(event:WorkflowEvent<SyncParams>,step:WorkflowStep){
   if(event.payload.storageTest)return step.do('cloud-r2-checkpoint-test',()=>storagePreflight(this.env.STATE));
   if(event.payload.recover){
    const instance=this.env.WACLI.getByName('preflight');
@@ -142,21 +160,25 @@ export class ChatSyncWorkflow extends WorkflowEntrypoint<Env,{force?:boolean;pre
     const data=await object.json<Export>();
     const hash=await digest(JSON.stringify(data.rows));
     const before=await metrics(this.env.DB);
-    const group=await this.env.DB.prepare('SELECT published FROM chat_groups WHERE id=? AND source_ref=?').bind(GROUP,SOURCE).first();
-    if(!group)throw new Error('archive-group-missing');
+    const primary=await this.env.DB.prepare('SELECT published FROM chat_groups WHERE id=? AND source_ref=?').bind(GROUP,SOURCE).first();
+    if(!primary)throw new Error('archive-group-missing');
+    const jobs=GROUPS[1];
+    await this.env.DB.prepare('INSERT INTO chat_groups(id,title,source_ref,imported_at,coverage_note) VALUES(?,?,?,?,?) ON CONFLICT(id) DO NOTHING').bind(jobs.id,jobs.title,jobs.source,Date.now(),'Available wacli text may be incomplete.').run();
+    if(!await this.env.DB.prepare('SELECT id FROM chat_groups WHERE id=? AND source_ref=?').bind(jobs.id,jobs.source).first())throw new Error('jobs-group-identity-mismatch');
     if(hash!==previous?.digest){
      for(let offset=0;offset<data.rows.length;offset+=20){
       const statements:D1PreparedStatement[]=[];
       for(const r of data.rows.slice(offset,offset+20)){
        statements.push(this.env.DB.prepare('DELETE FROM chat_search WHERE rowid=(SELECT rowid FROM chat_messages WHERE id=?)').bind(r.id));
-       statements.push(this.env.DB.prepare(`INSERT INTO chat_messages(id,group_id,source_id,posted_at,author,body,hidden) VALUES(?,?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET posted_at=CASE WHEN excluded.hidden=1 THEN chat_messages.posted_at ELSE excluded.posted_at END,author=CASE WHEN excluded.hidden=1 THEN '' WHEN chat_messages.hidden=0 THEN excluded.author ELSE chat_messages.author END,body=CASE WHEN excluded.hidden=1 THEN '' WHEN chat_messages.hidden=0 THEN excluded.body ELSE chat_messages.body END,hidden=MAX(chat_messages.hidden,excluded.hidden)`).bind(r.id,GROUP,r.source_id,r.posted_at,r.author,r.body,r.hidden));
+       statements.push(this.env.DB.prepare(`INSERT INTO chat_messages(id,group_id,source_id,posted_at,author,body,hidden) VALUES(?,?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET posted_at=CASE WHEN excluded.hidden=1 THEN chat_messages.posted_at ELSE excluded.posted_at END,author=CASE WHEN excluded.hidden=1 THEN '' WHEN chat_messages.hidden=0 THEN excluded.author ELSE chat_messages.author END,body=CASE WHEN excluded.hidden=1 THEN '' WHEN chat_messages.hidden=0 THEN excluded.body ELSE chat_messages.body END,hidden=MAX(chat_messages.hidden,excluded.hidden)`).bind(r.id,r.group_id,r.source_id,r.posted_at,r.author,r.body,r.hidden));
        statements.push(this.env.DB.prepare('INSERT INTO chat_search(rowid,body,author) SELECT rowid,body,author FROM chat_messages WHERE id=? AND hidden=0').bind(r.id));
       }
       await this.env.DB.batch(statements);
      }
     }
     const after=await metrics(this.env.DB);
-    await this.env.DB.prepare('UPDATE chat_groups SET imported_at=? WHERE id=?').bind(Date.now(),GROUP).run();
+    if((after[jobs.id]?.visible??0)<1)throw new Error('jobs-group-empty');
+    for(const group of GROUPS)await this.env.DB.prepare('UPDATE chat_groups SET imported_at=? WHERE id=?').bind(Date.now(),group.id).run();
     const result={status:hash===previous?.digest?'unchanged':'synced',at:Date.now(),digest:hash,records:data.rows.length,before,after,coverage:data.coverage};
     await this.env.STATE.put('last-success.json',JSON.stringify(result));
     await this.env.STATE.delete('pending/export.json');

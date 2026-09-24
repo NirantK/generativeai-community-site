@@ -28,16 +28,24 @@ class Handler(BaseHTTPRequestHandler):
     restore(self.rfile.read(size),STORE);return self.reply(200,{'ok':True})
    if self.path=='/checkpoint':return self.reply(200,checkpoint(STORE),'application/octet-stream')
    if self.path!='/sync':return self.reply(404,{})
+   stage='export'
    with tempfile.TemporaryDirectory(dir='/data') as tmp:
     run=subprocess.run(['python3','/app/scripts/export-community-chat.py','--sync','--output-dir',tmp],capture_output=True,timeout=940)
-    if run.returncode:raise RuntimeError('sync failed')
+    if run.returncode:
+     marker=run.stderr.decode('utf-8','replace')
+     if 'Export failed: ValueError' in marker:stage='source-validation'
+     elif 'Export failed: RuntimeError' in marker:stage='source-command'
+     raise RuntimeError('sync failed')
+    stage='import'
     p=Path(tmp);sql,_=importer().build(json.loads((p/'manifest.json').read_text()))
     db=sqlite3.connect(':memory:');db.row_factory=sqlite3.Row;db.executescript(Path('/app/admissions/migrations/0005_chat_archive.sql').read_text());db.executescript(sql)
+    stage='serialize'
     rows=[dict(r) for r in db.execute('SELECT id,group_id,source_id,posted_at,author,body,hidden FROM chat_messages ORDER BY id')]
     result={'rows':rows,'coverage':json.loads((p/'coverage.json').read_text())}
     body=json.dumps(result).encode()
     if len(body)>20_000_000:raise ValueError('export too large')
     self.reply(200,body)
-  except Exception:self.reply(503,{'error':'could-not-sync'})
+  except subprocess.TimeoutExpired:self.reply(503,{'error':'source-timeout'})
+  except Exception:self.reply(503,{'error':stage+'-failed' if 'stage' in locals() else 'request-failed'})
   finally:LOCK.release()
 ThreadingHTTPServer(('0.0.0.0',8080),Handler).serve_forever()
