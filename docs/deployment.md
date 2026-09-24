@@ -82,9 +82,10 @@ Agents use the browser for LinkedIn sign-in, consent, and token issuance, then u
 non-browser clients before the application validates a token (Cloudflare Error 1010).
 The 22 September incident was confirmed in Cloudflare traffic logs as a BIC block.
 
-Keep any BIC exception restricted to HTTPS, the exact production hostname,
-`/api/v1/*`, and an `Authorization: Bearer` header. Token validation, managed WAF,
-and rate limits must remain active. A saved rule is not proof that the API works.
+Keep the BIC exception restricted to HTTPS, the exact production and staging
+hostnames, `/api/v1/*` and `/v1/*`, and an `Authorization: Bearer` header. It
+skips only BIC; token validation, other WAF checks, and rate limits remain
+active. A saved rule is not proof that the API works.
 
 Run `python3 scripts/check-application-api.py` and enter an existing application
 token at the hidden prompt. The script performs only GET, uses Python urllib's
@@ -124,6 +125,12 @@ Incident evidence (22 September 2026, UTC):
   the stream worked. This locates the residual block before Pages execution; the
   exact Cloudflare internal cause is not yet established.
 
-The direct route removes the Pages ingress hop. Verify the original urllib client
-with an existing valid token after rollout; a deployment or Trace simulation alone
-is not a successful end-to-end test.
+The direct route removes the Pages ingress hop. On 24 September 2026, the owner
+approved expanding the existing BIC-only skip rule to both hostnames and both API
+prefixes, with the bearer-header requirement retained. After propagation, urllib
+requests carrying an invalid bearer token returned application JSON `401` (rather
+than Cloudflare `1010`) for `/api/v1/application`, `/api/v1/models`,
+`/api/v1/models/usage`, `/v1/models`, `/v1/models/usage`, and `/v1/systemone`
+on production and staging. This verifies edge passage and token rejection; an
+existing valid member token is still required for an authenticated end-to-end
+inference and usage check.

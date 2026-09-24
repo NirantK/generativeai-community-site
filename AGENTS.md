@@ -1,5 +1,9 @@
 # GenerativeAI Community repository
 
+## Tool preference
+
+Prefer APIs for this repository's work. If browser automation is needed, use Rustwright next and the Codex in-app browser last. Never use the Dia browser for this work.
+
 ## Modal CLI
 
 The Modal CLI is pinned in `pyproject.toml` and `uv.lock`. Run `uv sync --frozen` after cloning, then use `uv run modal <command>` from the repository root. Check the installed CLI with `uv run modal --help`.
