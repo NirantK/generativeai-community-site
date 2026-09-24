@@ -5,6 +5,7 @@ dist/
 
 # dependencies
 node_modules/
+.venv/
 
 # logs
 npm-debug.log*
@@ -36,3 +37,6 @@ playwright-report/
 
 # Python import-tool caches
 __pycache__/
+
+# Generated Hopper benchmark recordings (contain public task text and timings)
+inference/hopper/results/

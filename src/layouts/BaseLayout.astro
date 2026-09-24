@@ -31,9 +31,12 @@ const ogImage = `${siteUrl}/og.png`;
     <meta name="description" content={description} />
     <meta name="theme-color" content="#131313" />
     <link rel="canonical" href={canonical} />
-    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
-    <link rel="alternate icon" href="/favicon.ico" />
-    <link rel="apple-touch-icon" href="/favicon.svg" />
+    <link rel="service-desc" type="application/vnd.oai.openapi+json" href="/openapi.json" title="GenerativeAI Community API" />
+    <link rel="help" href="/api-instructions" title="AI agent application workflow" />
+    <link rel="alternate" type="text/plain" href="/llms.txt" title="Instructions for visiting AI agents" />
+    <link rel="icon" href="/favicon.svg?v=g-mark-2" type="image/svg+xml" />
+    <link rel="alternate icon" href="/favicon.ico?v=g-mark-2" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png?v=g-mark-2" />
 
     <meta property="og:title" content={fullTitle} />
     <meta property="og:description" content={description} />

@@ -6,7 +6,8 @@ const draft = {
     email: "builder@example.com",
     emailVerified: true,
   },
-  consent: "admissions-v1",
+  consent: "admissions-v2",
+  consentCurrent: true,
   status: "draft",
   application: null,
   delivery: { status: "pending" },
@@ -24,6 +25,8 @@ test("LinkedIn is the only sign-in option", async ({ page }, info) => {
   await expect(
     page.getByRole("link", { name: "Sign in with LinkedIn", exact: true }),
   ).toHaveAttribute("href", "/auth/linkedin");
+  await expect(page.locator("#agent-api-guidance")).toBeVisible();
+  await expect(page.locator("#agent-api-guidance")).toContainText("After sign-in, continue with the bearer-token API");
   const results = await new AxeBuilder({ page })
     .withTags(["wcag2a", "wcag2aa"])
     .analyze();
@@ -91,24 +94,81 @@ test("verified applicant submits a short application and sees saved status", asy
   ).toBeVisible();
   expect(submitted).toBe(true);
 });
-test("token is shown once and removed on revocation", async ({ page }) => {
-  await page.route("**/api/v1/application", (r) => r.fulfill({ json: draft }));
-  await page.route("**/api/application-token", (r) =>
-    r.fulfill({
-      json:
-        r.request().method() === "POST"
-          ? { token: "test-only-token", expiresAt: Date.now() + 86400000 }
-          : { revoked: true },
-    }),
-  );
+test("token regeneration replaces the snippet and persists its button label", async ({ page }) => {
+  let issued = 0;
+  await page.route("**/api/v1/application", r => r.fulfill({ json: { ...draft, tokenActive: issued > 0 } }));
+  await page.route("**/api/application-token", r => {
+    expect(r.request().method()).toBe("POST");
+    issued++;
+    return r.fulfill({ json: { token: `test-token-${issued}` } });
+  });
   await page.goto("/apply");
-  await expect(page.locator("#agent-section")).toHaveAttribute("open", "");
-  await page
-    .getByRole("button", { name: "Generate application token" })
-    .click();
-  await expect(page.locator("#token-value")).toHaveText("test-only-token");
-  await page.getByRole("button", { name: "Revoke token", exact: true }).click();
+  await page.getByRole("button", { name: "Generate token", exact: true }).click();
+  await expect(page.locator("#token-snippet")).toContainText("Authorization: Bearer test-token-1");
+  await expect(page.locator("#token-snippet")).toContainText("/api/v1/application");
+  await expect(page.getByRole("button", { name: "Revoke token" })).toHaveCount(0);
+  await expect(page.locator("#token-next-step")).toHaveCount(0);
+  await expect(page.getByRole("link", { name: "Continue to agent instructions" })).toHaveAttribute("href", "/api-instructions");
+  await page.getByRole("button", { name: "Regenerate token", exact: true }).click();
+  await expect(page.locator("#token-snippet")).toContainText("test-token-2");
+  await expect(page.locator("#token-snippet")).not.toContainText("test-token-1");
+  await page.reload();
+  await expect(page.getByRole("button", { name: "Regenerate token", exact: true })).toBeEnabled();
   await expect(page.locator("#token-output")).toBeHidden();
+});
+
+test("approved member with old consent can generate a token without accepting again", async ({ page }) => {
+  await page.route("**/api/v1/application", route => route.fulfill({
+    json: { ...draft, consent: "admissions-v1", consentCurrent: false, status: "approved", application: { role: "AI engineer" } },
+  }));
+  await page.route("**/api/application-token", route => route.fulfill({
+    json: { token: "test-only-approved-token", expiresAt: Date.now() + 30 * 86400000 },
+  }));
+  await page.goto("/apply");
+  await expect(page.locator("#consent-section")).toBeHidden();
+  const button = page.getByRole("button", { name: "Generate token", exact: true });
+  await expect(button).toBeEnabled();
+  await button.click();
+  await expect(page.locator("#token-snippet")).toContainText("test-only-approved-token");
+});
+
+test("token generation shows local progress and a local failure message", async ({ page }) => {
+  await page.route("**/api/v1/application", route => route.fulfill({ json: draft }));
+  let release!: () => void;
+  const waiting = new Promise<void>(resolve => { release = resolve; });
+  await page.route("**/api/application-token", async route => {
+    await waiting;
+    await route.fulfill({ status: 503, json: { error: { message: "Token service is temporarily unavailable." } } });
+  });
+  await page.goto("/apply");
+  const button = page.getByRole("button", { name: "Generate token", exact: true });
+  await expect(button).toBeEnabled();
+  await button.click();
+  await expect(page.locator("#token-status")).toContainText("Creating your token");
+  await expect(button).toBeDisabled();
+  release();
+  await expect(page.locator("#token-status")).toContainText("Token service is temporarily unavailable.");
+  await expect(button).toBeEnabled();
+});
+
+test("visiting agents can discover the API workflow before signing in", async ({ page, request }) => {
+  await page.goto("/api-instructions");
+  await expect(page.locator('link[rel="service-desc"]')).toHaveAttribute("href", "/openapi.json");
+  await expect(page.locator("#agent-instructions")).toContainText("After sign-in, continue via the API");
+  await expect(page.locator("#agent-instructions")).toContainText("SAME Idempotency-Key");
+  const response = await request.get("/llms.txt");
+  expect(response.ok()).toBe(true);
+  const instructions = await response.text();
+  expect(instructions).toContain("Continue through the API after LinkedIn sign-in");
+  expect(instructions).toContain("The application token is also the model API token");
+  expect(instructions).toContain("GET /api/v1/models");
+  expect(instructions).toContain("mys/laya-typed-decisions-GGUF");
+  expect(instructions).toContain("mys/laya-multilingual-GGUF");
+  expect(instructions).toContain("HopitAI/hopper");
+  await page.goto("/models");
+  await expect(page.getByText("mys/laya-typed-decisions-GGUF", { exact: true })).toBeVisible();
+  await expect(page.getByText("mys/laya-multilingual-GGUF", { exact: true })).toBeVisible();
+  await expect(page.getByText("HopitAI/hopper", { exact: true })).toBeVisible();
 });
 test("outage is not misrepresented as signed out", async ({ page }) => {
   await page.route("**/api/v1/application", (r) =>

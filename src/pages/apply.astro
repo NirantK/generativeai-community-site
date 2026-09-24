@@ -46,6 +46,19 @@ const fields = [
       project, and we’ll review your application. Students and independent
       builders are welcome.
     </p>
+    <section id="agent-api-guidance" aria-labelledby="agent-api-heading">
+      <h2 id="agent-api-heading">Applying with an AI agent?</h2>
+      <p>
+        Sign in with LinkedIn, save consent if you’re applying, and generate an application token below.
+        Your agent should then use that token to apply through our API.
+      </p>
+      <p class="help">
+        Agents visiting in a browser: use the browser for LinkedIn sign-in, consent,
+        and token generation. After sign-in, continue with the bearer-token API;
+        leave the application form for people applying manually.
+      </p>
+      <p><a href="/api-instructions">Read the agent workflow</a> · <a href="/openapi.json">API contract</a></p>
+    </section>
     <p id="message" class="notice" role="status" aria-live="polite">
       Checking your sign-in…
     </p>
@@ -82,9 +95,16 @@ const fields = [
         <h2>Your email</h2>
         <p class="help">
           Your LinkedIn email receives a copy of your application and, after approval, your invitation.
+          Check your spam or junk folder if either email doesn’t arrive.
         </p>
         <p id="email-status" class="help"></p>
         <a id="refresh-linkedin" href="/auth/linkedin" hidden>Refresh LinkedIn sign-in</a>
+      </section>
+      <section id="enrichment-section" hidden>
+        <h2>Profile enrichment</h2>
+        <p id="enrichment-status" class="help" role="status"></p>
+        <p id="enrichment-details" hidden></p>
+        <p class="help">These details come from Crustdata. Your own application answers remain yours to review and submit.</p>
       </section>
       <section id="consent-section">
         <h2>Before you apply</h2>
@@ -96,7 +116,7 @@ const fields = [
               <a href="/#whatsapp-community-rules">community rules</a> and the{" "}
               <a href="/terms-and-conditions">Terms &amp; Conditions</a> and{" "}
               <a href="/privacy-policy">Privacy Policy</a>. I
-              consent to AI-assisted assessment of my application and email
+              consent to AI-assisted assessment, Crustdata professional profile lookup, and email
               about my application and invitation.
             </span>
           </label>
@@ -128,37 +148,19 @@ const fields = [
       </section>
       <span id="agent-token" class="anchor-target" aria-hidden="true"></span>
       <details id="agent-section" open>
-        <summary>Generate a token for your AI agent</summary>
-        <p>
-          Use Codex or another agent to prepare and submit your application, or
-          search Past Chats after you’re approved. Save consent above, then
-          generate a token for your agent.
-        </p>
-        <p class="help">
-          The token lasts 24 hours and allows one application submission plus
-          status checks, eligible appeals, approved-member chat search, and bug reports of up to 200 words. Replacing it immediately revokes the old token. It
-          cannot change your account or email.
-        </p>
+        <summary>Your API token</summary>
+        <p class="help">Use the same token for your application and member APIs. Tokens last 30 days. Regenerating immediately invalidates all previous tokens.</p>
         <div class="actions">
-          <button id="issue-token" type="button">
-            Generate application token
-          </button>
-          <button id="revoke-token" type="button">
-            Revoke token
-          </button>
+          <button id="issue-token" type="button" disabled>Generate token</button>
         </div>
+        <p id="token-status" class="help" role="status" aria-live="polite"></p>
         <div id="token-output" hidden>
-          <p class="notice">
-            Copy this token now. It is shown only once. Share it only with the
-            agent you want to submit your application.
-          </p>
-          <pre id="token-value"></pre>
-          <button id="copy-token" type="button">
-            Copy token
-          </button>
+          <p class="notice">Copy this snippet now. The token is shown only once.</p>
+          <pre id="token-snippet"></pre>
+          <button id="copy-token" type="button">Copy snippet</button>
         </div>
         <p>
-          <a href="/api-instructions">Read agent instructions</a> ·{" "}
+          <a href="/api-instructions">Continue to agent instructions</a> ·{" "}
           <a href="/openapi.json">OpenAPI specification</a>
         </p>
       </details>
@@ -200,8 +202,7 @@ const fields = [
             </button>
           </div>
           <p class="help">
-            Applications are final once submitted. Clear matches are approved
-            automatically; other applications receive a human review.
+            Applications are final once submitted. If you have an ICML, NeurIPS, or ACL main-track paper, include its exact title, venue, and year so we can verify it. Clear matches are approved automatically; other applications receive a human review.
           </p>
         </form>
       </section>

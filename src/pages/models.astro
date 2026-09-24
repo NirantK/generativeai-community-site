@@ -1,0 +1,85 @@
+---
+import BaseLayout from "../layouts/BaseLayout.astro";
+
+const example = `curl https://genaicommunity.ai/api/v1/models/infer \\
+  -H "Authorization: Bearer $COMMUNITY_API_TOKEN" \\
+  -H "Content-Type: application/json" \\
+  -d '{
+    "model": "mys/laya-typed-decisions-GGUF",
+    "state": {"message": "I was charged twice for the same invoice."},
+    "questions": {
+      "billing": {
+        "type": "noul",
+        "instructions": "Is this a billing issue?"
+      }
+    }
+  }'`;
+---
+
+<BaseLayout title="Model API" description="Member API for Laya and Hopper typed decisions, with per-request GPU usage metering." sourcePath="src/pages/models.astro">
+  <article class="max-w-[72ch]">
+    <h1 class="text-display-lg leading-[1.1] tracking-[-0.04em] font-bold mt-stack-md">Community model API</h1>
+    <p class="text-on-surface-variant text-lg mt-stack-md">Use Laya Typed Decisions, Laya Multilingual, or Hopper in your own tools. The API is open to every approved member and reports usage in the selected GPU's seconds after each call.</p>
+
+    <section class="mt-stack-lg border border-outline-variant bg-surface-container-low p-gutter">
+      <h2 class="text-headline-md font-semibold">Available models</h2>
+      <p class="font-mono text-tertiary mt-stack-sm break-all">mys/laya-typed-decisions-GGUF</p>
+      <p class="mt-stack-sm text-on-surface-variant">Laya specializes in decisions about invoices, security incidents, customer service, and agent traces. This checkpoint supports English only.</p>
+      <p class="mt-stack-md text-on-surface-variant">Source: <a class="text-primary underline underline-offset-4" href="https://huggingface.co/mys/laya-typed-decisions-GGUF">GGUF weights by mys</a> · <a class="text-primary underline underline-offset-4" href="https://huggingface.co/convaiinnovations/laya-typed-decisions">original Laya checkpoint by Convai Innovations</a> · <a class="text-primary underline underline-offset-4" href="https://github.com/monatis/ggmlc/tree/v0.9.2/examples/laya">ggmlc runtime</a>. The weights use the Apache-2.0 license.</p>
+      <p class="font-mono text-tertiary mt-stack-md break-all">mys/laya-multilingual-GGUF</p>
+      <p class="mt-stack-sm text-on-surface-variant">The full multilingual F16 checkpoint for typed choices, scores, and yes/no decisions across languages. It runs as a separate protected T4 app and has its own usage total.</p>
+      <p class="mt-stack-sm text-on-surface-variant">The upstream model ships uncalibrated and is weak on zero-shot typed-decisions benchmarks. Validate its answers on your language and workflow before treating probabilities as thresholds.</p>
+      <p class="mt-stack-md text-on-surface-variant">Source: <a class="text-primary underline underline-offset-4" href="https://huggingface.co/mys/laya-multilingual-GGUF">GGUF weights by mys</a> · <a class="text-primary underline underline-offset-4" href="https://huggingface.co/convaiinnovations/laya-multilingual">original Laya checkpoint by Convai Innovations</a> · <a class="text-primary underline underline-offset-4" href="https://github.com/monatis/ggmlc/tree/v0.9.2/examples/laya">ggmlc runtime</a>. The weights are Apache-2.0 licensed.</p>
+      <p class="font-mono text-tertiary mt-stack-md break-all">HopitAI/hopper</p>
+      <p class="mt-stack-sm text-on-surface-variant">Calibrated one-pass typed decisions on a separate protected A10 app. This uses Hopper's pinned BF16 fast-kernel runtime: the experimental BF16 and Q8_0 GGUF ports failed fidelity and p95 latency checks, so no Hopper GGUF was published.</p>
+      <p class="mt-stack-sm text-on-surface-variant">Hopper accepts exactly one typed question per call. For choices, provide a criteria map of option labels to descriptions; for scores, provide an array of level descriptions. Yes/no questions may omit criteria.</p>
+      <p class="mt-stack-md text-on-surface-variant">Source: <a class="text-primary underline underline-offset-4" href="https://huggingface.co/HopitAI/hopper">Hopper adapter</a> · <a class="text-primary underline underline-offset-4" href="https://github.com/hopit-ai/hopper/tree/v1.1.0">Hopper v1.1.0 runtime</a>. Apache-2.0 licensed.</p>
+      <p class="mt-stack-md text-on-surface-variant">Use the Hugging Face repository path above as the model name in inference and usage requests.</p>
+    </section>
+
+    <div class="border-y border-outline-variant mt-stack-lg py-stack-md grid sm:grid-cols-3 gap-stack-md">
+      <div><p class="font-mono text-label-caps uppercase text-on-surface-variant">Catalog</p><p class="font-mono text-tertiary mt-2">3 models</p></div>
+      <div><p class="font-mono text-label-caps uppercase text-on-surface-variant">Runtime</p><p class="mt-2">GGUF T4 or fast-kernel BF16 A10</p></div>
+      <div><p class="font-mono text-label-caps uppercase text-on-surface-variant">Meter</p><p class="mt-2">Selected GPU seconds</p></div>
+    </div>
+
+    <section class="mt-stack-lg">
+      <h2 class="text-headline-md font-semibold">Get access</h2>
+      <p class="mt-stack-sm text-on-surface-variant">Sign in with LinkedIn on <a class="text-primary underline underline-offset-4" href="/apply">Apply</a>. Once approved, generate your application token there. Use the same token for model requests, sent as <code class="text-tertiary">Authorization: Bearer</code>. New tokens last 30 days. Existing tokens keep their original expiry. Regenerating your token revokes the previous one. Keep the token out of source code, logs, and URLs.</p>
+    </section>
+
+    <section class="mt-stack-lg">
+      <h2 class="text-headline-md font-semibold">List models</h2>
+      <p class="mt-stack-sm text-on-surface-variant"><code class="text-tertiary">GET /api/v1/models</code> returns every available model with its exact name, source links, runtime, license, and GPU. Use your application token to call it.</p>
+      <pre class="bg-surface-container-low border border-outline-variant p-gutter mt-stack-md overflow-x-auto text-code-sm"><code>curl https://genaicommunity.ai/api/v1/models \
+  -H "Authorization: Bearer $COMMUNITY_API_TOKEN"</code></pre>
+    </section>
+
+    <section class="mt-stack-lg">
+      <h2 class="text-headline-md font-semibold">Make a decision</h2>
+      <p class="mt-stack-sm text-on-surface-variant">Send the state you want evaluated and a map of typed questions. The required <code class="text-tertiary">model</code> field selects which model to call.</p>
+      <pre class="bg-surface-container-low border border-outline-variant p-gutter mt-stack-md overflow-x-auto text-code-sm text-on-surface"><code>{example}</code></pre>
+      <p class="mt-stack-md text-on-surface-variant">For multilingual input, use the same request with <code class="text-tertiary">"model": "mys/laya-multilingual-GGUF"</code> and put your text and question instructions in the desired language.</p>
+      <p class="mt-stack-sm text-on-surface-variant">For Hopper, set <code class="text-tertiary">"model": "HopitAI/hopper"</code> and send one question. Its answer uses the same <code class="text-tertiary">result.answers</code> structure.</p>
+      <p class="mt-stack-sm text-on-surface-variant">The response includes <code class="text-tertiary">result</code> with the model’s answers. It also reports usage for this call in <code class="text-tertiary">usage.gpuSeconds</code>, your total in <code class="text-tertiary">usage.totalGpuSeconds</code>, and the number of calls in <code class="text-tertiary">usage.requestCount</code>.</p>
+      <p class="mt-stack-sm text-on-surface-variant">Usage includes the selected GPU (<code class="text-tertiary">T4</code> or <code class="text-tertiary">A10</code>), its seconds unit, and <code class="text-tertiary">measurement: "inference"</code>. A completed model call is metered even if the model rejects its input.</p>
+    </section>
+
+    <section class="mt-stack-lg">
+      <h2 class="text-headline-md font-semibold">Read your usage</h2>
+      <pre class="bg-surface-container-low border border-outline-variant p-gutter mt-stack-md overflow-x-auto text-code-sm"><code>curl "https://genaicommunity.ai/api/v1/models/usage?model=mys%2Flaya-typed-decisions-GGUF" \
+  -H "Authorization: Bearer $COMMUNITY_API_TOKEN"</code></pre>
+      <p class="mt-stack-sm text-on-surface-variant">Replace the model query value with <code class="text-tertiary">mys%2Flaya-multilingual-GGUF</code> or <code class="text-tertiary">HopitAI%2Fhopper</code> for separate totals. GPU seconds measure elapsed inference time inside the allocated GPU container. Startup, time waiting outside the container, and idle time are excluded. This meter does not measure GPU utilization or billed usage. Your totals belong to your member account, so they stay the same when you renew your token.</p>
+    </section>
+
+    <section class="mt-stack-lg border-t border-outline-variant pt-stack-md">
+      <h2 class="text-headline-md font-semibold">Endpoints</h2>
+      <dl class="mt-stack-md divide-y divide-outline-variant border-y border-outline-variant">
+        <div class="py-3 sm:grid sm:grid-cols-[260px_1fr] gap-gutter"><dt class="font-mono text-code-sm text-tertiary">GET /api/v1/models</dt><dd class="text-on-surface-variant">List models currently available to members.</dd></div>
+        <div class="py-3 sm:grid sm:grid-cols-[260px_1fr] gap-gutter"><dt class="font-mono text-code-sm text-tertiary">POST /api/v1/models/infer</dt><dd class="text-on-surface-variant">Run typed decisions and return usage for this call and your account total.</dd></div>
+        <div class="py-3 sm:grid sm:grid-cols-[260px_1fr] gap-gutter"><dt class="font-mono text-code-sm text-tertiary">GET /api/v1/models/usage</dt><dd class="text-on-surface-variant">Get your total usage for a model.</dd></div>
+      </dl>
+      <p class="mt-stack-md"><a class="text-primary underline underline-offset-4" href="/openapi.json">Full OpenAPI specification</a></p>
+    </section>
+  </article>
+</BaseLayout>

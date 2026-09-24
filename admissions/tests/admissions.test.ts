@@ -20,6 +20,7 @@ import migration from "../migrations/0001_admissions.sql?raw";
 import appealMigration from "../migrations/0004_appeal_index.sql?raw";
 import adminMigration from "../migrations/0003_administrators.sql?raw";
 import bugMigration from "../migrations/0002_bug_reports.sql?raw";
+import modelMigration from "../migrations/0007_model_usage.sql?raw";
 const sample = {
   linkedinUrl: "https://www.linkedin.com/in/test-builder/",
   whatsapp: "+14155552671",
@@ -34,10 +35,93 @@ const sample = {
     "I want to share evaluation methods and learn from other builders.",
 };
 beforeAll(async () => {
-  for (const query of (migration + bugMigration + adminMigration + appealMigration + archiveMigration + listingMigration)
+  for (const query of (migration + bugMigration + adminMigration + appealMigration + archiveMigration + listingMigration + modelMigration)
     .split(";")
     .filter((s) => s.trim()))
     await env.INDEX.prepare(query).run();
+});
+
+describe("member model API", () => {
+  it("requires an approved member and records measured GPU seconds under the account", async () => {
+    expect((await gateway("/api/v1/models", "GET")).status).toBe(401);
+    expect((await gateway("/api/v1/models/infer", "POST", {Origin:"https://genaicommunity.ai"}, {
+      model: "mys/laya-multilingual-GGUF", state: {message: "Hallo"},
+      questions: {greeting:{type:"noul",instructions:"Ist das eine Begrüßung?"}},
+    })).status).toBe(401);
+    expect((await gateway("/api/v1/models/infer", "POST", {Origin:"https://genaicommunity.ai"}, {
+      model: "HopitAI/hopper", state: "A duplicate invoice charge.",
+      questions: {billing:{type:"noul",instructions:"Is this a billing issue?"}},
+    })).status).toBe(401);
+    const owner = await account();
+    await owner.agent.consent();
+    const { token } = await owner.agent.token();
+    const headers = { Authorization: `Bearer ${token}` };
+    expect((await gateway("/api/v1/models", "GET", headers)).status).toBe(403);
+    await runInDurableObject(owner.agent, async instance => {
+      instance.setState({ ...instance.state, status: "approved" });
+    });
+    const previous = env.MODAL_PROXY_TOKEN;
+    env.MODAL_PROXY_TOKEN = "test-proxy-token";
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockImplementation(async () => new Response(JSON.stringify({answers:{billing:{noul:true}}}), {
+      status: 200, headers: {"X-GPU-Seconds":"0.125432", "Content-Type":"application/json"},
+    }));
+    try {
+      const modelList = await (await gateway("/api/v1/models", "GET", headers)).json() as any;
+      expect(modelList.models.map((model:any) => model.name)).toContain("mys/laya-typed-decisions-GGUF");
+      expect(modelList.models.map((model:any) => model.name)).toContain("mys/laya-multilingual-GGUF");
+      expect(modelList.models.map((model:any) => model.name)).toContain("HopitAI/hopper");
+      expect(modelList.models).toHaveLength(3);
+      expect(modelList.models[0].sourceUrl).toBe("https://huggingface.co/mys/laya-typed-decisions-GGUF");
+      expect(modelList.models[0].upstreamUrl).toBe("https://huggingface.co/convaiinnovations/laya-typed-decisions");
+      expect(modelList.models[1].sourceUrl).toBe("https://huggingface.co/mys/laya-multilingual-GGUF");
+      expect(modelList.models[1].upstreamUrl).toBe("https://huggingface.co/convaiinnovations/laya-multilingual");
+      const request = {
+        model: "mys/laya-typed-decisions-GGUF",
+        state: {message:"Charged twice"},
+        questions: {billing:{type:"noul",instructions:"Is this about billing?"}},
+      };
+      const response = await gateway("/api/v1/models/infer", "POST", headers, request);
+      expect(response.status).toBe(200);
+      const data = await response.json() as any;
+      expect(data.model).toBe(request.model);
+      expect(data.result.answers.billing.noul).toBe(true);
+      expect(data.usage).toEqual({gpu:"T4",unit:"T4 seconds",measurement:"inference",gpuSeconds:0.125432,totalGpuSeconds:0.125432,requestCount:1});
+      expect(fetchMock).toHaveBeenCalledOnce();
+      expect((fetchMock.mock.calls[0][1] as RequestInit).headers).toMatchObject({Authorization:"Bearer test-proxy-token"});
+      const usage = await (await gateway("/api/v1/models/usage?model=mys%2Flaya-typed-decisions-GGUF", "GET", headers)).json() as any;
+      expect(usage.usage).toEqual({gpu:"T4",unit:"T4 seconds",measurement:"inference",requestCount:1,gpuSeconds:0.125432});
+      const multilingual = await gateway("/api/v1/models/infer", "POST", headers, {
+        model: "mys/laya-multilingual-GGUF",
+        state: {message: "Me cobraron dos veces por la misma factura."},
+        questions: {billing:{type:"noul",instructions:"¿Es un problema de facturación?"}},
+      });
+      expect(multilingual.status).toBe(200);
+      const multilingualData = await multilingual.json() as any;
+      expect(multilingualData.model).toBe("mys/laya-multilingual-GGUF");
+      expect(multilingualData.usage).toEqual({gpu:"T4",unit:"T4 seconds",measurement:"inference",gpuSeconds:0.125432,totalGpuSeconds:0.125432,requestCount:1});
+      expect(fetchMock.mock.calls[1][0]).toBe("https://scaledfocus--genaicommunity-laya-multilingual-gguf-laya.us-east.modal.direct/v1/decide");
+      const multilingualUsage = await (await gateway("/api/v1/models/usage?model=mys%2Flaya-multilingual-GGUF", "GET", headers)).json() as any;
+      expect(multilingualUsage.usage).toEqual({gpu:"T4",unit:"T4 seconds",measurement:"inference",requestCount:1,gpuSeconds:0.125432});
+      const typedUsageAgain = await (await gateway("/api/v1/models/usage?model=mys%2Flaya-typed-decisions-GGUF", "GET", headers)).json() as any;
+      expect(typedUsageAgain.usage).toEqual({gpu:"T4",unit:"T4 seconds",measurement:"inference",requestCount:1,gpuSeconds:0.125432});
+      const hopperRequest = {
+        model: "HopitAI/hopper", state: "The invoice was charged twice.",
+        questions: {billing: {type:"choice", instructions:"Which issue is this?", criteria:{billing:"Billing issue",other:"Other issue"}}},
+      };
+      expect((await gateway("/api/v1/models/infer", "POST", headers, {...hopperRequest, questions:{a:hopperRequest.questions.billing,b:hopperRequest.questions.billing}})).status).toBe(422);
+      expect((await gateway("/api/v1/models/infer", "POST", headers, {model:"HopitAI/hopper",state:"x",questions:{rating:{type:"score",instructions:"Rate",criteria:{"0":"bad","1":"good"}}}})).status).toBe(422);
+      const hopper = await gateway("/api/v1/models/infer", "POST", headers, hopperRequest);
+      expect(hopper.status).toBe(200);
+      expect((await hopper.json() as any).usage).toEqual({gpu:"A10",unit:"A10 seconds",measurement:"inference",gpuSeconds:0.125432,totalGpuSeconds:0.125432,requestCount:1});
+      expect(fetchMock.mock.calls[2][0]).toBe("https://scaledfocus--genaicommunity-hopper-hopper.us-east.modal.direct/v1/decide");
+      const hopperUsage = await (await gateway("/api/v1/models/usage?model=HopitAI%2Fhopper", "GET", headers)).json() as any;
+      expect(hopperUsage.usage).toEqual({gpu:"A10",unit:"A10 seconds",measurement:"inference",requestCount:1,gpuSeconds:0.125432});
+      expect((await gateway("/api/v1/models/usage?model=unknown", "GET", headers)).status).toBe(404);
+    } finally {
+      fetchMock.mockRestore();
+      env.MODAL_PROXY_TOKEN = previous;
+    }
+  });
 });
 async function account(
   verified = true,
@@ -201,6 +285,17 @@ describe("real Worker and Durable Object security", () => {
       "email_unverified",
     );
   });
+  it("lets an approved member with prior consent generate a token", async () => {
+    const { agent } = await account();
+    await runInDurableObject(agent, async instance => {
+      instance.setState({ ...instance.state, consent: "admissions-v1", status: "approved", application: sample });
+    });
+    const state = await agent.publicState();
+    expect(state.consent).toBe("admissions-v1");
+    expect(state.consentCurrent).toBe(false);
+    const { token } = await agent.token();
+    expect(await agent.authorizeToken(await digest(token))).toBe(true);
+  });
   it("replaces and revokes token hashes without storing the raw token", async () => {
     const { agent } = await account();
     await agent.consent();
@@ -211,6 +306,19 @@ describe("real Worker and Durable Object security", () => {
     expect(JSON.stringify(await agent.inspect())).not.toContain(second.token);
     await agent.revoke();
     expect(await agent.authorizeToken(await digest(second.token))).toBe(false);
+  });
+  it("issues application tokens for 30 days", async () => {
+    const { agent } = await account();
+    await agent.consent();
+    const issuedAt = Date.now();
+    const { token, expiresAt } = await agent.token();
+    const expectedLifetime = 30 * 24 * 60 * 60 * 1000;
+    expect(expiresAt).toBeGreaterThanOrEqual(issuedAt + expectedLifetime);
+    expect(expiresAt).toBeLessThanOrEqual(Date.now() + expectedLifetime);
+    const stored = await env.INDEX.prepare(
+      "SELECT expires_at FROM tokens WHERE hash=?",
+    ).bind(await digest(token)).first<{ expires_at: number }>();
+    expect(stored?.expires_at).toBe(expiresAt);
   });
   it("expires tokens and refuses them on browser/admin endpoints", async () => {
     const { agent } = await account();
@@ -435,6 +543,33 @@ describe("submission recovery and approval decisions", () => {
       await instance.assess();
     });
     expect((await other.agent.inspect()).status).toBe("review");
+  });
+  it("shows enrichment state to the applicant without exposing lookup internals", async () => {
+    const { agent } = await account();
+    await agent.consent();
+    const state = await agent.setEnrichmentUrl("https://www.linkedin.com/in/builder");
+    expect(state.enrichment).toMatchObject({ status: "pending", source: "linkedin" });
+    expect(state.enrichment).not.toHaveProperty("lookupValue");
+    await agent.enrich();
+    expect((await agent.publicState()).enrichment.status).toBe("unavailable");
+  });
+  it("passes completed enrichment to the application review model", async () => {
+    const { agent } = await account();
+    await runInDurableObject(agent, async (instance) => {
+      instance.setState({ ...instance.state, application: sample, status: "submitted",
+        enrichment: { status: "matched", source: "linkedin", lookupValue: sample.linkedinUrl,
+          data: { name: "Test applicant", title: "Researcher", location: null,
+            company: "Example AI", school: null, degree: null }, updatedAt: Date.now() } });
+      const run = vi.spyOn(instance["env"].AI, "run").mockResolvedValue({
+        response: JSON.stringify({ relevant: false, concrete: false, contribution: false,
+          uncertain: true, reasons: "Needs review", evidence: [sample.project], paper: null }),
+      });
+      await instance.assess();
+      const request = run.mock.calls.at(-1)![1] as { messages: Array<{ role: string; content: string }> };
+      const supplied = JSON.parse(request.messages.find((message) => message.role === "user")!.content);
+      expect(supplied.externalEnrichment).toMatchObject({ name: "Test applicant", company: "Example AI" });
+      expect(supplied.application).toMatchObject({ role: sample.role, project: sample.project, contribution: sample.contribution, motivation: sample.motivation });
+    });
   });
   it("accepts structured JSON model output and only reassesses undecided review cases", async () => {
     const { agent } = await account();

@@ -52,6 +52,8 @@ email ledger. D1 stores hashed sessions, token lookups, one-use OAuth state, rat
 counters and an administrator listing projection. Decisions always read Agent state.
 Do not use the projection as authorization or approval truth.
 
+After current browser consent, Crustdata enrichment is queued from a verified email and refreshed when the applicant enters a LinkedIn URL. The URL takes precedence. Results are matched on the exact identifier, high confidence, and the signed-in name; only a small professional summary is stored and shown to the applicant. An unavailable or unmatched lookup does not block submission. The assessment receives enrichment as untrusted background context, never as proof of personal contribution. The API key is a Worker secret and is not returned to the browser.
+
 A serialized mutation queue protects concurrent token issuance, submission, decisions
 and email attempts. A deterministic workflow ID plus scheduled redispatch recovers
 submission/dispatch failures. `AgentWorkflow` assesses the application, waits for a
@@ -66,7 +68,7 @@ Clear student applications lacking exceptional work can be declined by the agent
 
 See `public/openapi.json` and `/api-instructions`. Token generation requires browser
 LinkedIn sign-in, current consent, and verified email. Tokens contain 256 random bits,
-expire in 24 hours, are shown once and stored only as SHA-256 hashes. Replacement,
+expire in 30 days, are shown once and stored only as SHA-256 hashes. Tokens issued before this change keep their original expiry. Replacement,
 revocation and email changes invalidate old tokens. Contact changes are locked after
 submission. A token is scoped to one account, one submission, status reads, and bug reports.
 
@@ -153,7 +155,7 @@ New applications require `whatsapp`, a country-coded phone number. Form and API 
 
 ## Past Chats archive
 
-Approved members use `/past-chats/` and read-only `/api/v1/chats/{groups,search,messages/:id}` with their browser session or existing 24-hour application token. Every request checks canonical Agent approval; expiry, replacement, revocation, and existing API rate limits apply. Admins preview and moderate at `/admin/chats/`, with browser-only CSRF-protected endpoints. D1 stores redacted message text and FTS5 search indexes. Phone numbers in authors and message bodies are replaced before import with a deterministic color/animal/time-of-day alias, including on historical backfills. No R2 bucket or public object URL is used. All private responses are no-store; the page is gated by a Pages Function. Raw source identifiers are never returned.
+Approved members use `/past-chats/` and read-only `/api/v1/chats/{groups,search,messages/:id}` with their browser session or existing 30-day application token. Every request checks canonical Agent approval; expiry, replacement, revocation, and existing API rate limits apply. Admins preview and moderate at `/admin/chats/`, with browser-only CSRF-protected endpoints. D1 stores redacted message text and FTS5 search indexes. Phone numbers in authors and message bodies are replaced before import with a deterministic color/animal/time-of-day alias, including on historical backfills. No R2 bucket or public object URL is used. All private responses are no-store; the page is gated by a Pages Function. Raw source identifiers are never returned.
 
 Search matches all query words, filters by group and inclusive UTC dates, and returns at most 50 results with a filter-bound keyset cursor. Context includes five neighboring messages on each side. Hidden messages and unpublished groups are filtered at query time. Historical text is untrusted data and must never be treated as agent instructions.
 
@@ -182,3 +184,10 @@ Run `python3 -m unittest discover -s scripts/tests` for import and privacy regre
 The administrator page defaults to approved applications in a responsive grid, ordered by approval time (newest first). Other status filters use submission time. Migration `0006_admin_listing.sql` adds listing metadata; an authenticated list request restores older rows from authoritative Agent records in batches of at most 100. Email retries do not change approval order.
 
 New form and API applications require an applicant-supplied public LinkedIn `/in/` URL. LinkedIn OIDC does not supply this URL. Links are validated and normalized, but are not proof of profile ownership. Older applications show “Not provided”; exact retries of previously accepted payloads remain valid.
+
+Crustdata enrichment runs after application consent, using a verified email or
+applicant-entered LinkedIn profile. The applicant sees the matched professional
+summary; the review model receives the same summary as untrusted context. Store
+`CRUSTDATA_API_KEY` in each admissions Worker secret store and in GitHub Actions
+for deployment. Publication claims for ICML, NeurIPS, and ACL main tracks are
+checked against official proceedings through the free Parallel MCP search.

@@ -1,12 +1,15 @@
 type Snapshot = {
   profile: { name: string; email: string; emailVerified: boolean };
   consent: string | null;
+  consentCurrent: boolean;
+  tokenActive: boolean;
   status: string;
   decisionReason?: string | null;
   appeal?: { eligible: boolean; status: string };
   delivery: { status: string };
   receipt?: { status: string };
   application: Record<string, string> | null;
+  enrichment: { status: string; source: "email" | "linkedin" | null; data: { name: string; title: string | null; location: string | null; company: string | null; school: string | null; degree: string | null } | null };
 };
 const el = <T extends HTMLElement = HTMLElement>(id: string) =>
   document.getElementById(id) as T;
@@ -19,6 +22,7 @@ async function api<T = Snapshot>(
   method = "GET",
   data?: unknown,
   key?: string,
+  signal?: AbortSignal,
 ): Promise<T> {
   const response = await fetch(path, {
     method,
@@ -28,6 +32,7 @@ async function api<T = Snapshot>(
       ...(key ? { "Idempotency-Key": key } : {}),
     },
     body: data ? JSON.stringify(data) : undefined,
+    signal,
   });
   if (!response.headers.get("content-type")?.includes("application/json")) {
     throw new Error(
@@ -59,6 +64,9 @@ async function api<T = Snapshot>(
 export function initApplication() {
   let submissionKey = crypto.randomUUID();
   let appealKey = crypto.randomUUID();
+  let enrichmentPoll: number | undefined;
+  let issuingToken = false;
+  let canIssueToken = false;
   async function refresh() {
     try {
       const s: Snapshot = await api("/api/v1/application");
@@ -74,11 +82,29 @@ export function initApplication() {
         ? `LinkedIn email: ${s.profile.email}`
         : "LinkedIn did not provide an email. Add an email to your LinkedIn account and sign in again.";
       el("refresh-linkedin").hidden = s.profile.emailVerified;
-      el("consent-section").hidden = !!s.consent;
+      if (enrichmentPoll) window.clearTimeout(enrichmentPoll);
+      const enrichment = s.enrichment ?? { status: "idle", source: null, data: null };
+      el("enrichment-section").hidden = enrichment.status === "idle";
+      el("enrichment-status").textContent = enrichment.status === "pending"
+        ? "Looking up your professional profile…"
+        : enrichment.status === "matched" ? "We found this professional profile:"
+        : enrichment.status === "no_match" ? "No matching professional profile was found. You can still apply."
+        : "Profile lookup is unavailable. You can still apply.";
+      el("enrichment-details").textContent = enrichment.data
+        ? [["Name", enrichment.data.name], ["Role", enrichment.data.title],
+           ["Company", enrichment.data.company], ["Location", enrichment.data.location],
+           ["School", enrichment.data.school], ["Degree", enrichment.data.degree]]
+            .filter(([, value]) => !!value).map(([label, value]) => `${label}: ${value}`).join(" · ") : "";
+      if (enrichment.status === "pending") enrichmentPoll = window.setTimeout(() => void refresh(), 3000);
+      el("consent-section").hidden = s.status === "approved" || s.consentCurrent;
       el("form-section").hidden = !!s.application;
       el("status-section").hidden = !s.application;
-      const canSubmit = s.profile.emailVerified && !!s.consent;
-      el<HTMLButtonElement>("issue-token").disabled = !canSubmit;
+      const canSubmit = s.profile.emailVerified && s.consentCurrent;
+      canIssueToken = s.profile.emailVerified && (s.status === "approved" || s.consentCurrent);
+      if (!issuingToken) el("issue-token").textContent = s.tokenActive ? "Regenerate token" : "Generate token";
+      el<HTMLButtonElement>("issue-token").disabled = !canIssueToken || issuingToken;
+      if (!canIssueToken && !issuingToken)
+        el("token-status").textContent = "Save consent and verify your LinkedIn email above to enable token generation.";
       el<HTMLButtonElement>(
         "application-form",
       ).querySelector<HTMLButtonElement>("button[type=submit]")!.disabled =
@@ -105,7 +131,7 @@ export function initApplication() {
       } else
         notice(
           canSubmit
-            ? "Apply using an AI agent, or use the form below."
+            ? "Generate an application token below so your agent can apply through the API. You can also apply manually with the form."
             : "Save consent to continue. If LinkedIn did not confirm your email, refresh your LinkedIn sign-in.",
         );
     } catch (e) {
@@ -165,6 +191,14 @@ export function initApplication() {
     await refresh();
     notice("Appeal saved for administrator review.");
   });
+  el<HTMLInputElement>("linkedinUrl").addEventListener("change", async () => {
+    const linkedinUrl = el<HTMLInputElement>("linkedinUrl").value.trim();
+    if (!linkedinUrl) return;
+    try {
+      await api("/api/application-enrichment", "POST", { linkedinUrl });
+      await refresh();
+    } catch (e) { notice((e as Error).message, true); }
+  });
   form("application-form", async (d) => {
     await api(
       "/api/v1/application",
@@ -174,24 +208,45 @@ export function initApplication() {
     );
     await refresh();
   });
-  action("issue-token", async () => {
-    const result = await api<{ token: string }>(
-      "/api/application-token",
-      "POST",
-    );
-    el("token-output").hidden = false;
-    el("token-value").textContent = result.token;
-    notice("Application token created. Copy it before leaving this page.");
-  });
-  action("revoke-token", async () => {
-    await api("/api/application-token", "DELETE");
-    el("token-value").textContent = "";
-    el("token-output").hidden = true;
-    notice("Agent access revoked.");
+  el("issue-token").addEventListener("click", async () => {
+    if (issuingToken || !canIssueToken) return;
+    issuingToken = true;
+    const button = el<HTMLButtonElement>("issue-token");
+    const status = el("token-status");
+    button.disabled = true;
+    status.classList.remove("error");
+    status.textContent = "Creating your token…";
+    const slowMessage = window.setTimeout(() => {
+      status.textContent = "Still creating your token. Please keep this page open.";
+    }, 8000);
+    try {
+      const result = await api<{ token: string }>(
+        "/api/application-token", "POST", undefined, undefined,
+        AbortSignal.timeout(60000),
+      );
+      el("token-output").hidden = false;
+      el("token-snippet").textContent = `curl ${location.origin}/api/v1/application \\
+  -H "Authorization: Bearer ${result.token}"`;
+      button.textContent = "Regenerate token";
+      status.textContent = "Token created. Copy it now; it is shown only once.";
+      el("token-output").scrollIntoView({ block: "nearest" });
+      notice("Token created. Previous tokens are no longer valid.");
+    } catch (error) {
+      const message = (error as Error).name === "TimeoutError"
+        ? "Token creation timed out. It may have succeeded; generating again will replace any earlier token."
+        : (error as Error).message;
+      status.textContent = message;
+      status.classList.add("error");
+      notice(message, true);
+    } finally {
+      window.clearTimeout(slowMessage);
+      issuingToken = false;
+      button.disabled = !canIssueToken;
+    }
   });
   action("copy-token", async () => {
-    await navigator.clipboard.writeText(el("token-value").textContent ?? "");
-    notice("Token copied.");
+    await navigator.clipboard.writeText(el("token-snippet").textContent ?? "");
+    notice("Snippet copied.");
   });
   action("accept-admin", async () => {
     await api("/api/admin-invitation", "POST");

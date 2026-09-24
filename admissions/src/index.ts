@@ -4,6 +4,7 @@ import { getAgentByName } from "agents";
 import { createRemoteJWKSet, jwtVerify, errors } from "jose";
 import { z } from "zod";
 import { archiveRead, archiveAdmin } from "./chats";
+import { modelApi } from "./models";
 import {
   ApiError,
   body,
@@ -242,7 +243,7 @@ async function handle(req: Request, env: Env): Promise<Response> {
   }
   if (req.method !== "GET") {
     const apiBearer =
-      ["/api/v1/application", "/api/v1/appeal", "/api/v1/bug-report"].includes(path) &&
+      ["/api/v1/application", "/api/v1/appeal", "/api/v1/bug-report", "/api/v1/models/infer"].includes(path) &&
       req.headers.has("authorization");
     if (!apiBearer) csrf(req, env.SITE_URL);
   }
@@ -338,6 +339,7 @@ async function handle(req: Request, env: Env): Promise<Response> {
       const {
         profile,
         application,
+        enrichment,
         status,
         assessment,
         assessmentFailure,
@@ -353,6 +355,7 @@ async function handle(req: Request, env: Env): Promise<Response> {
       return json({
         profile,
         application,
+        enrichment,
         status,
         assessment,
         assessmentFailure,
@@ -407,6 +410,16 @@ async function handle(req: Request, env: Env): Promise<Response> {
     const state = await member.agent.publicState();
     if(state.status !== "approved") throw new ApiError(403,"membership_required","Past Chats is available to approved members only.");
     return archiveRead(req,env,path.slice("/api/v1/chats".length));
+  }
+  if (path === "/api/v1/models" || path.startsWith("/api/v1/models/")) {
+    const member = await authenticated(req, env);
+    if (!member.bearer)
+      throw new ApiError(403, "token_required", "Use a member API token from /apply.");
+    const state = await member.agent.publicState();
+    if (state.status !== "approved")
+      throw new ApiError(403, "membership_required", "Model access is available to approved members.");
+    if (req.method === "POST") await limit(env, `model:${member.id}`, 10);
+    return modelApi(req, env, member.id, path);
   }
   const browserOnly = !["/api/v1/application", "/api/v1/appeal", "/api/v1/bug-report"].includes(
     path,
@@ -540,6 +553,11 @@ async function handle(req: Request, env: Env): Promise<Response> {
       .strict()
       .parse(await body(req));
     return json(await auth.agent.consent());
+  }
+  if (path === "/api/application-enrichment" && req.method === "POST") {
+    await limit(env, `enrich:${auth.id}`, 5);
+    const data = z.object({ linkedinUrl: z.string().max(300) }).strict().parse(await body(req));
+    return json(await auth.agent.setEnrichmentUrl(data.linkedinUrl));
   }
   throw new ApiError(404, "not_found", "Endpoint not found.");
 }
