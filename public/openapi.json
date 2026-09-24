@@ -728,8 +728,8 @@
     "/api/v1/models/infer": {
       "post": {
         "operationId": "inferModel",
-        "summary": "Run a model and meter T4 inference seconds",
-        "description": "Requires an approved-member bearer token. The model field selects either mys/laya-typed-decisions-GGUF or mys/laya-multilingual-GGUF. A completed model call is recorded by member account and model; a cold-start 503 without a GPU measurement is retried internally. The per-call and model-specific cumulative seconds are returned in usage. GPU seconds measure wall-clock inference time inside the allocated T4 container, excluding cold start, external queue time, and idle time. A successful retry by the caller is a new metered call.",
+        "summary": "Run a model and meter inference seconds on its selected GPU",
+        "description": "Requires an approved-member bearer token. The model field selects mys/laya-typed-decisions-GGUF, mys/laya-multilingual-GGUF, or HopitAI/hopper. Hopper accepts exactly one typed question per call, with a criteria map for choice questions or a criteria array for score questions. A completed model call is recorded by member account and model; a cold-start 503 without a GPU measurement is retried internally. The per-call and model-specific cumulative seconds are returned in usage. GPU seconds measure wall-clock inference time inside the allocated T4 or A10 container, excluding cold start, external queue time, and idle time. A successful retry by the caller is a new metered call.",
         "requestBody": {
           "required": true,
           "content": {
@@ -1266,7 +1266,7 @@
           "sourceUrl": {
             "type": "string",
             "format": "uri",
-            "description": "GGUF weights repository."
+            "description": "Model weights or adapter repository."
           },
           "upstreamUrl": {
             "type": "string",
@@ -1295,7 +1295,7 @@
         "properties": {
           "model": {
             "type": "string",
-            "description": "Registered model name: mys/laya-typed-decisions-GGUF or mys/laya-multilingual-GGUF.",
+            "description": "Registered model name: mys/laya-typed-decisions-GGUF, mys/laya-multilingual-GGUF, or HopitAI/hopper.",
             "example": "mys/laya-multilingual-GGUF"
           },
           "state": {
@@ -1327,13 +1327,11 @@
                   "type": "string"
                 },
                 "criteria": {
-                  "type": "object",
-                  "additionalProperties": {
-                    "type": [
-                      "string",
-                      "null"
-                    ]
-                  }
+                  "description": "Choice and optional yes/no criteria use a map. Hopper score criteria use an array of level descriptions.",
+                  "oneOf": [
+                    {"type": "object", "additionalProperties": {"type": ["string", "null"]}},
+                    {"type": "array", "items": {"type": "string"}}
+                  ]
                 }
               }
             }

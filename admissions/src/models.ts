@@ -20,6 +20,15 @@ export const models = {
     endpoint: "https://scaledfocus--genaicommunity-laya-multilingual-gguf-laya.us-east.modal.direct/v1/decide",
     gpu: "T4",
   },
+  "HopitAI/hopper": {
+    description: "Calibrated one-pass typed decisions using Hopper's pinned fast-kernel BF16 runtime.",
+    sourceUrl: "https://huggingface.co/HopitAI/hopper",
+    upstreamUrl: "https://github.com/hopit-ai/hopper/tree/v1.1.0",
+    runtimeUrl: "https://github.com/hopit-ai/hopper/tree/v1.1.0",
+    license: "Apache-2.0",
+    endpoint: "https://scaledfocus--genaicommunity-hopper-hopper.us-east.modal.direct/v1/decide",
+    gpu: "A10",
+  },
 } as const;
 
 const requestSchema = z.object({
@@ -28,7 +37,7 @@ const requestSchema = z.object({
   questions: z.record(z.string().min(1).max(100), z.object({
     type: z.enum(["choice", "score", "noul"]),
     instructions: z.string().min(1).max(2000),
-    criteria: z.record(z.string(), z.string().nullable()).optional(),
+    criteria: z.union([z.record(z.string(), z.string().nullable()), z.array(z.string())]).optional(),
   }).passthrough()),
 }).strict();
 
@@ -53,6 +62,17 @@ async function infer(req: Request, env: Env, accountId: string) {
   const model = selectedModel(input.model);
   if (input.state === null || input.state === undefined || Object.keys(input.questions).length < 1 || Object.keys(input.questions).length > 16)
     throw new ApiError(422, "validation", "Supply a state and 1–16 typed questions.");
+  if (input.model === "HopitAI/hopper") {
+    if (Object.keys(input.questions).length !== 1)
+      throw new ApiError(422, "validation", "Hopper accepts exactly one question per request.");
+    const question = Object.values(input.questions)[0];
+    if (question.type === "score" && (!Array.isArray(question.criteria) || question.criteria.length < 2 || question.criteria.length > 26))
+      throw new ApiError(422, "validation", "Hopper scores require an array of 2–26 level descriptions.");
+    if (question.type === "choice" && (!question.criteria || Array.isArray(question.criteria) || Object.keys(question.criteria).length < 2 || Object.keys(question.criteria).length > 26))
+      throw new ApiError(422, "validation", "Hopper choices require a map of 2–26 option descriptions.");
+    if (question.type === "noul" && Array.isArray(question.criteria))
+      throw new ApiError(422, "validation", "Hopper yes/no criteria must be a map when supplied.");
+  }
   if (!env.MODAL_PROXY_TOKEN)
     throw new ApiError(503, "model_unavailable", "Model access is temporarily unavailable.");
 
@@ -60,7 +80,10 @@ async function infer(req: Request, env: Env, accountId: string) {
   let upstream: Response | undefined;
   // Modal can return 503 while a scaled-to-zero T4 starts. Those responses
   // have no GPU measurement and are safe to retry before the model is called.
-  for (let attempt = 0; attempt < 30; attempt++) {
+  // Hopper's first A10 activation includes fast-kernel compilation and can
+  // take longer than a Laya startup. Only unmetered platform 503s are retried.
+  const startupAttempts = input.model === "HopitAI/hopper" ? 75 : 30;
+  for (let attempt = 0; attempt < startupAttempts; attempt++) {
     try {
       upstream = await fetch(model.endpoint, {
         method: "POST",
@@ -76,7 +99,7 @@ async function infer(req: Request, env: Env, accountId: string) {
     }
     if (upstream.status !== 503 || upstream.headers.has("X-GPU-Seconds")) break;
     await upstream.body?.cancel();
-    if (attempt === 29) throw new ApiError(503, "model_starting", "The model is still starting. Try again shortly.");
+    if (attempt === startupAttempts - 1) throw new ApiError(503, "model_starting", "The model is still starting. Try again shortly.");
     await new Promise(resolve => setTimeout(resolve, 2000));
   }
   if (!upstream) throw new ApiError(503, "model_unavailable", "The model could not be reached.");
