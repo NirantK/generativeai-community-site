@@ -19,7 +19,7 @@ class HopperMemberProbeTests(unittest.TestCase):
         catalog = {"models": [{"name": "HopitAI/hopper"}]}
         inference = {
             "model": "HopitAI/hopper",
-            "result": {"answers": {"billing": {"type": "choice", "choice": "billing"}}},
+            "answers": {"billing": {"type": "choice", "choice": "billing"}},
             "usage": {"gpu": "A10", "gpuSeconds": 0.06},
         }
         before_hopper = {"requestCount": 2, "gpuSeconds": 0.20}
@@ -34,7 +34,7 @@ class HopperMemberProbeTests(unittest.TestCase):
         self.assertEqual(json.loads(output.getvalue())["result"], "verified")
         self.assertNotIn("secret-test-token", output.getvalue())
         self.assertEqual(call.call_count, 2)
-        self.assertEqual(call.call_args.args[0], "/infer")
+        self.assertEqual(call.call_args.args[0], "/v1/systemone")
         self.assertEqual(call.call_args.args[2]["model"], "HopitAI/hopper")
 
 

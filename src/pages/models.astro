@@ -1,7 +1,7 @@
 ---
 import BaseLayout from "../layouts/BaseLayout.astro";
 
-const example = `curl https://genaicommunity.ai/api/v1/models/infer \\
+const example = `curl https://genaicommunity.ai/v1/systemone \\
   -H "Authorization: Bearer $COMMUNITY_API_TOKEN" \\
   -H "Content-Type: application/json" \\
   -d '{
@@ -50,8 +50,8 @@ const example = `curl https://genaicommunity.ai/api/v1/models/infer \\
 
     <section class="mt-stack-lg">
       <h2 class="text-headline-md font-semibold">List models</h2>
-      <p class="mt-stack-sm text-on-surface-variant"><code class="text-tertiary">GET /api/v1/models</code> returns every available model with its exact name, source links, runtime, license, and GPU. Use your application token to call it.</p>
-      <pre class="bg-surface-container-low border border-outline-variant p-gutter mt-stack-md overflow-x-auto text-code-sm"><code>curl https://genaicommunity.ai/api/v1/models \
+      <p class="mt-stack-sm text-on-surface-variant"><code class="text-tertiary">GET /v1/models</code> returns every available model with its exact name, source links, runtime, license, and GPU. Use your application token to call it.</p>
+      <pre class="bg-surface-container-low border border-outline-variant p-gutter mt-stack-md overflow-x-auto text-code-sm"><code>curl https://genaicommunity.ai/v1/models \
   -H "Authorization: Bearer $COMMUNITY_API_TOKEN"</code></pre>
     </section>
 
@@ -60,14 +60,14 @@ const example = `curl https://genaicommunity.ai/api/v1/models/infer \\
       <p class="mt-stack-sm text-on-surface-variant">Send the state you want evaluated and a map of typed questions. The required <code class="text-tertiary">model</code> field selects which model to call.</p>
       <pre class="bg-surface-container-low border border-outline-variant p-gutter mt-stack-md overflow-x-auto text-code-sm text-on-surface"><code>{example}</code></pre>
       <p class="mt-stack-md text-on-surface-variant">For multilingual input, use the same request with <code class="text-tertiary">"model": "mys/laya-multilingual-GGUF"</code> and put your text and question instructions in the desired language.</p>
-      <p class="mt-stack-sm text-on-surface-variant">For Hopper, set <code class="text-tertiary">"model": "HopitAI/hopper"</code> and send one question. Its answer uses the same <code class="text-tertiary">result.answers</code> structure.</p>
-      <p class="mt-stack-sm text-on-surface-variant">The response includes <code class="text-tertiary">result</code> with the model’s answers. It also reports usage for this call in <code class="text-tertiary">usage.gpuSeconds</code>, your total in <code class="text-tertiary">usage.totalGpuSeconds</code>, and the number of calls in <code class="text-tertiary">usage.requestCount</code>.</p>
+      <p class="mt-stack-sm text-on-surface-variant">For Hopper, set <code class="text-tertiary">"model": "HopitAI/hopper"</code> and send one question. Its answer uses the same top-level <code class="text-tertiary">answers</code> structure.</p>
+      <p class="mt-stack-sm text-on-surface-variant">The response includes top-level <code class="text-tertiary">model</code>, <code class="text-tertiary">answers</code>, and <code class="text-tertiary">usage</code>, matching the SystemOne response convention. Usage includes <code class="text-tertiary">input_tokens</code> and <code class="text-tertiary">output_tokens</code> plus our GPU extensions: <code class="text-tertiary">gpuSeconds</code> for this call, <code class="text-tertiary">totalGpuSeconds</code> for your account, and <code class="text-tertiary">requestCount</code>.</p>
       <p class="mt-stack-sm text-on-surface-variant">Usage includes the selected GPU (<code class="text-tertiary">T4</code> or <code class="text-tertiary">A10</code>), its seconds unit, and <code class="text-tertiary">measurement: "inference"</code>. A completed model call is metered even if the model rejects its input.</p>
     </section>
 
     <section class="mt-stack-lg">
       <h2 class="text-headline-md font-semibold">Read your usage</h2>
-      <pre class="bg-surface-container-low border border-outline-variant p-gutter mt-stack-md overflow-x-auto text-code-sm"><code>curl "https://genaicommunity.ai/api/v1/models/usage?model=mys%2Flaya-typed-decisions-GGUF" \
+      <pre class="bg-surface-container-low border border-outline-variant p-gutter mt-stack-md overflow-x-auto text-code-sm"><code>curl "https://genaicommunity.ai/v1/models/usage?model=mys%2Flaya-typed-decisions-GGUF" \
   -H "Authorization: Bearer $COMMUNITY_API_TOKEN"</code></pre>
       <p class="mt-stack-sm text-on-surface-variant">Replace the model query value with <code class="text-tertiary">mys%2Flaya-multilingual-GGUF</code> or <code class="text-tertiary">HopitAI%2Fhopper</code> for separate totals. GPU seconds measure elapsed inference time inside the allocated GPU container. Startup, time waiting outside the container, and idle time are excluded. This meter does not measure GPU utilization or billed usage. Your totals belong to your member account, so they stay the same when you renew your token.</p>
     </section>
@@ -75,10 +75,11 @@ const example = `curl https://genaicommunity.ai/api/v1/models/infer \\
     <section class="mt-stack-lg border-t border-outline-variant pt-stack-md">
       <h2 class="text-headline-md font-semibold">Endpoints</h2>
       <dl class="mt-stack-md divide-y divide-outline-variant border-y border-outline-variant">
-        <div class="py-3 sm:grid sm:grid-cols-[260px_1fr] gap-gutter"><dt class="font-mono text-code-sm text-tertiary">GET /api/v1/models</dt><dd class="text-on-surface-variant">List models currently available to members.</dd></div>
-        <div class="py-3 sm:grid sm:grid-cols-[260px_1fr] gap-gutter"><dt class="font-mono text-code-sm text-tertiary">POST /api/v1/models/infer</dt><dd class="text-on-surface-variant">Run typed decisions and return usage for this call and your account total.</dd></div>
-        <div class="py-3 sm:grid sm:grid-cols-[260px_1fr] gap-gutter"><dt class="font-mono text-code-sm text-tertiary">GET /api/v1/models/usage</dt><dd class="text-on-surface-variant">Get your total usage for a model.</dd></div>
+        <div class="py-3 sm:grid sm:grid-cols-[260px_1fr] gap-gutter"><dt class="font-mono text-code-sm text-tertiary">GET /v1/models</dt><dd class="text-on-surface-variant">List models currently available to members.</dd></div>
+        <div class="py-3 sm:grid sm:grid-cols-[260px_1fr] gap-gutter"><dt class="font-mono text-code-sm text-tertiary">POST /v1/systemone</dt><dd class="text-on-surface-variant">Run typed decisions and return token and GPU usage.</dd></div>
+        <div class="py-3 sm:grid sm:grid-cols-[260px_1fr] gap-gutter"><dt class="font-mono text-code-sm text-tertiary">GET /v1/models/usage</dt><dd class="text-on-surface-variant">Get your total GPU usage for a model.</dd></div>
       </dl>
+      <p class="mt-stack-sm text-on-surface-variant">The older <code class="text-tertiary">/api/v1/models</code> routes remain available for existing integrations.</p>
       <p class="mt-stack-md"><a class="text-primary underline underline-offset-4" href="/openapi.json">Full OpenAPI specification</a></p>
     </section>
   </article>

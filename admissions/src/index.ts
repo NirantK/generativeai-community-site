@@ -243,7 +243,7 @@ async function handle(req: Request, env: Env): Promise<Response> {
   }
   if (req.method !== "GET") {
     const apiBearer =
-      ["/api/v1/application", "/api/v1/appeal", "/api/v1/bug-report", "/api/v1/models/infer"].includes(path) &&
+      ["/api/v1/application", "/api/v1/appeal", "/api/v1/bug-report", "/api/v1/models/infer", "/v1/systemone"].includes(path) &&
       req.headers.has("authorization");
     if (!apiBearer) csrf(req, env.SITE_URL);
   }
@@ -411,7 +411,8 @@ async function handle(req: Request, env: Env): Promise<Response> {
     if(state.status !== "approved") throw new ApiError(403,"membership_required","Past Chats is available to approved members only.");
     return archiveRead(req,env,path.slice("/api/v1/chats".length));
   }
-  if (path === "/api/v1/models" || path.startsWith("/api/v1/models/")) {
+  if (path === "/api/v1/models" || path.startsWith("/api/v1/models/") ||
+      path === "/v1/models" || path === "/v1/models/usage" || path === "/v1/systemone") {
     const member = await authenticated(req, env);
     if (!member.bearer)
       throw new ApiError(403, "token_required", "Use a member API token from /apply.");

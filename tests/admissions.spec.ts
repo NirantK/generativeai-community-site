@@ -161,7 +161,7 @@ test("visiting agents can discover the API workflow before signing in", async ({
   const instructions = await response.text();
   expect(instructions).toContain("Continue through the API after LinkedIn sign-in");
   expect(instructions).toContain("The application token is also the model API token");
-  expect(instructions).toContain("GET /api/v1/models");
+  expect(instructions).toContain("GET /v1/models");
   expect(instructions).toContain("mys/laya-typed-decisions-GGUF");
   expect(instructions).toContain("mys/laya-multilingual-GGUF");
   expect(instructions).toContain("HopitAI/hopper");
