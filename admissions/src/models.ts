@@ -115,8 +115,8 @@ async function infer(req: Request, env: Env, accountId: string, systemOne = fals
     ? { model: "xor", state: input.state, questions: input.questions, ...(images ? { images } : {}) }
     : { state: input.state, questions: input.questions });
   let upstream: Response | undefined;
-  // Modal can return 503 while a scaled-to-zero T4 starts. Those responses
-  // have no GPU measurement and are safe to retry before the model is called.
+  // Modal can return an empty 503, or its exact no-upstreams response, while
+  // a scaled-to-zero container starts. Neither reached the model.
   // Hopper's first A10 activation includes fast-kernel compilation and can
   // take longer than a Laya startup. Only unmetered platform 503s are retried.
   const startupAttempts = xor ? 3 : input.model === "HopitAI/hopper" ? 75 : 30;
@@ -134,10 +134,14 @@ async function infer(req: Request, env: Env, accountId: string, systemOne = fals
     } catch {
       throw new ApiError(503, "model_unavailable", "The model could not be reached. Try again.");
     }
-    const readinessFailure = upstream.status === 503 &&
+    const emptyReadiness = upstream.status === 503 &&
       upstream.headers.get("Content-Length") === "0" &&
-      !upstream.headers.has("Content-Type") &&
-      !upstream.headers.has("X-GPU-Seconds");
+      !upstream.headers.has("Content-Type");
+    const noUpstreams = xor && (upstream.status === 502 || upstream.status === 503) &&
+      !upstream.headers.has("X-GPU-Seconds") &&
+      (await upstream.clone().text()).trim() === '{"error":"no upstreams available"}';
+    const readinessFailure = !upstream.headers.has("X-GPU-Seconds") &&
+      (emptyReadiness || noUpstreams);
     if (!readinessFailure) break;
     await upstream.body?.cancel();
     if (attempt === startupAttempts - 1) {
