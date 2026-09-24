@@ -21,6 +21,6 @@ The live preflight and authenticated two-group sync passed on 2026-09-24. Schedu
 4. Keep runtime credentials out of the image, logs, and repository. Delete temporary local checkpoints after verification.
 5. Verify retention with `CLOUDFLARE_ACCOUNT_ID=076c525b59739562570401e48fc0651c npx wrangler r2 bucket lifecycle list genaicommunity-chat-sync-private --config chat-sync/wrangler.jsonc`. The `chat-sync-checkpoints-30-days` rule must be enabled with prefix `session/checkpoints/` and expiry of 30 days. Do not apply a bucket-wide expiry: it would remove the active session and sync state.
 
-Checkpoints created before the 2026-09-24 WAL fix may retain unrelated cached rows in the **private** R2 bucket. The retention rule expires these copies after 30 days; any earlier removal must target only verified pre-fix keys. New checkpoints close SQLite before archiving and pass a WAL-mode privacy test.
+On 2026-09-24, five checkpoint copies were found to contain unrelated cached chat rows and deleted after explicit owner approval. Five audited copies containing only the two intended groups were kept, along with `session/latest.tar.gz`. The retention rule expires immutable copies after 30 days. New checkpoints close SQLite before archiving and pass a WAL-mode privacy test.
 
 A failed/empty/capped source export causes `could-not-sync` and no import. Checkpoint restoration failure requires operator action. If WhatsApp revokes the session, it still requires pairing again; hosting does not remove WhatsApp authentication requirements.
