@@ -14,10 +14,15 @@ import urllib.request
 BASE = "https://genaicommunity.ai"
 HOPPER = "HopitAI/hopper"
 OTHER = ("mys/laya-typed-decisions-GGUF", "mys/laya-multilingual-GGUF")
+USER_AGENT = "genaicommunity-member-probe/1.0"
 
 
 def call(path, token, payload=None, timeout=30):
-    headers = {"Authorization": f"Bearer {token}", "Accept": "application/json"}
+    headers = {
+        "Authorization": f"Bearer {token}",
+        "Accept": "application/json",
+        "User-Agent": USER_AGENT,
+    }
     if payload is not None:
         headers.update({"Origin": "https://genaicommunity.ai", "Content-Type": "application/json"})
     req = urllib.request.Request(

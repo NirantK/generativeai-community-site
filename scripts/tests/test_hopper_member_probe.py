@@ -6,7 +6,7 @@ import io
 import json
 import pathlib
 import unittest
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
 MODULE_PATH = pathlib.Path(__file__).resolve().parents[1] / "check-hopper-member-api.py"
 SPEC = importlib.util.spec_from_file_location("check_hopper_member_api", MODULE_PATH)
@@ -15,6 +15,20 @@ SPEC.loader.exec_module(probe)
 
 
 class HopperMemberProbeTests(unittest.TestCase):
+    def test_requests_identify_the_probe_without_exposing_its_token(self):
+        response = Mock()
+        response.status = 401
+        response.read.return_value = b'{"error":{"code":"unauthorized"}}'
+        response.__enter__ = Mock(return_value=response)
+        response.__exit__ = Mock(return_value=None)
+        with patch.object(probe.urllib.request, "urlopen", return_value=response) as open_request:
+            status, _ = probe.call("/v1/models", "secret-test-token")
+        request = open_request.call_args.args[0]
+        self.assertEqual(status, 401)
+        self.assertEqual(request.get_header("User-agent"), probe.USER_AGENT)
+        self.assertEqual(request.get_header("Accept"), "application/json")
+        self.assertEqual(request.get_header("Authorization"), "Bearer secret-test-token")
+
     def test_one_decision_increments_only_hopper_usage(self):
         catalog = {"models": [{"name": "HopitAI/hopper"}]}
         inference = {

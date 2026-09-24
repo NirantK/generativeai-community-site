@@ -15,9 +15,13 @@ if not token:
     parser.error("An application token is required")
 request = urllib.request.Request(
     "https://genaicommunity.ai/api/v1/application",
-    headers={"Authorization": "Bearer " + token, "Accept": "application/json"},
+    headers={
+        "Authorization": "Bearer " + token,
+        "Accept": "application/json",
+        "User-Agent": "genaicommunity-application-probe/1.0",
+    },
 )
-# Keep urllib's default agent signature; never disguise this probe as a browser.
+# Identify this application explicitly; Cloudflare rejects urllib's default agent.
 try:
     response = urllib.request.urlopen(request, timeout=30)
 except urllib.error.HTTPError as error:

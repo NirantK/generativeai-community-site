@@ -49,6 +49,7 @@ const example = `curl https://genaicommunity.ai/v1/systemone \\
     <section class="mt-stack-lg">
       <h2 class="text-headline-md font-semibold">Get access</h2>
       <p class="mt-stack-sm text-on-surface-variant">Sign in with LinkedIn on <a class="text-primary underline underline-offset-4" href="/apply">Apply</a>. Once approved, generate your application token there. Use the same token for model requests, sent as <code class="text-tertiary">Authorization: Bearer</code>. New tokens last 30 days. Existing tokens keep their original expiry. Regenerating your token revokes the previous one. Keep the token out of source code, logs, and URLs.</p>
+      <p class="mt-stack-sm text-on-surface-variant">If you use Python <code class="text-tertiary">urllib</code>, send a descriptive <code class="text-tertiary">User-Agent</code> such as <code class="text-tertiary">my-app/1.0</code>. Cloudflare rejects the library's default <code class="text-tertiary">Python-urllib/...</code> signature before the API can check your token. Python <code class="text-tertiary">requests</code> already sends an accepted User-Agent by default.</p>
     </section>
 
     <section class="mt-stack-lg">
