@@ -2,7 +2,7 @@
   "openapi": "3.1.0",
   "info": {
     "title": "GenerativeAI Community application and member API",
-    "version": "1.6.0",
+    "version": "1.7.0",
     "description": "Generate a 30-day application token after LinkedIn sign-in at /apply. New applicants accept terms in the browser; approved members can use their existing approval without accepting again. Previously issued tokens keep their original expiry. One application per LinkedIn account. Tokens are not OAuth access tokens. Never expose tokens in logs or URLs. Approved members can also read the Past Chats archive with the same valid token. Approval is checked on every archive request. Approved members can use the metered model API with the same valid token. Model usage totals belong to the member account."
   },
   "servers": [
@@ -17,6 +17,44 @@
     }
   ],
   "paths": {
+    "/v1/models": {
+      "$ref": "#/paths/~1api~1v1~1models"
+    },
+    "/v1/models/usage": {
+      "$ref": "#/paths/~1api~1v1~1models~1usage"
+    },
+    "/v1/systemone": {
+      "post": {
+        "operationId": "systemOne",
+        "summary": "Answer typed questions with a selected model",
+        "description": "TypeSafe SystemOne-compatible path and response envelope. Send a model name returned by GET /v1/models. The response has top-level model, answers, and token usage; GPU usage is an extension. Hopper currently accepts exactly one question per request. Requires an approved-member bearer token.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/ModelInferenceRequest" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Named typed answers, token counts, and measured GPU usage",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/SystemOneResponse" }
+              }
+            }
+          },
+          "401": { "description": "Missing or expired token" },
+          "403": { "description": "Approved membership required" },
+          "404": { "description": "Unknown model" },
+          "422": { "description": "Invalid model request" },
+          "429": { "description": "Rate limit exceeded; honor Retry-After" },
+          "502": { "description": "Model or meter returned an invalid response" },
+          "503": { "description": "Model unavailable or still starting" }
+        }
+      }
+    },
     "/api/v1/application": {
       "get": {
         "operationId": "getApplication",
@@ -728,6 +766,7 @@
     "/api/v1/models/infer": {
       "post": {
         "operationId": "inferModel",
+        "deprecated": true,
         "summary": "Run a model and meter inference seconds on its selected GPU",
         "description": "Requires an approved-member bearer token. The model field selects mys/laya-typed-decisions-GGUF, mys/laya-multilingual-GGUF, or HopitAI/hopper. Hopper accepts exactly one typed question per call, with a criteria map for choice questions or a criteria array for score questions. A completed model call is recorded by member account and model; a cold-start 503 without a GPU measurement is retried internally. The per-call and model-specific cumulative seconds are returned in usage. GPU seconds measure wall-clock inference time inside the allocated T4 or A10 container, excluding cold start, external queue time, and idle time. A successful retry by the caller is a new metered call.",
         "requestBody": {
@@ -1378,7 +1417,7 @@
           }
         }
       },
-      "ModelInferenceResponse": {
+    "ModelInferenceResponse": {
         "type": "object",
         "required": [
           "id",
@@ -1390,7 +1429,29 @@
           "id": {
             "type": "string",
             "format": "uuid"
-          },
+    },
+    "SystemOneResponse": {
+      "type": "object",
+      "required": ["model", "answers", "usage"],
+      "properties": {
+        "model": { "type": "string", "description": "The selected registered model name." },
+        "answers": {
+          "type": "object",
+          "minProperties": 1,
+          "description": "Typed answers keyed by the names supplied in questions.",
+          "additionalProperties": { "type": "object" }
+        },
+        "usage": {
+          "allOf": [
+            { "$ref": "#/components/schemas/ModelUsage" },
+            { "type": "object", "required": ["input_tokens", "output_tokens"], "properties": {
+              "input_tokens": { "type": "integer", "minimum": 0 },
+              "output_tokens": { "type": "integer", "minimum": 0 }
+            }}
+          ]
+        }
+      }
+    },
           "model": {
             "type": "string"
           },

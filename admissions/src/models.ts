@@ -57,7 +57,7 @@ async function totals(env: Env, accountId: string, model: string) {
   };
 }
 
-async function infer(req: Request, env: Env, accountId: string) {
+async function infer(req: Request, env: Env, accountId: string, systemOne = false) {
   const input = requestSchema.parse(await body(req));
   const model = selectedModel(input.model);
   if (input.state === null || input.state === undefined || Object.keys(input.questions).length < 1 || Object.keys(input.questions).length > 16)
@@ -116,22 +116,38 @@ async function infer(req: Request, env: Env, accountId: string) {
     "INSERT INTO model_usage(id,account_id,model,gpu_microseconds,http_status,created_at) VALUES(?,?,?,?,?,?)",
   ).bind(id, accountId, input.model, microseconds, upstream.status, Date.now()).run();
   const total = await totals(env, accountId, input.model);
-  return json({
+  const legacy = {
     id, model: input.model, result,
     usage: { gpu: model.gpu, unit: `${model.gpu} seconds`, measurement: "inference", gpuSeconds: microseconds / 1_000_000, totalGpuSeconds: total.gpuSeconds, requestCount: total.requestCount },
     ...(!validJson ? { error: { code: "model_response", message: "The model returned an invalid response." } } : {}),
-  }, !validJson ? 502 : upstream.ok ? 200 : upstream.status >= 400 && upstream.status < 500 ? upstream.status : 502);
+  };
+  if (systemOne && upstream.ok) {
+    const native = result && typeof result === "object" ? result as Record<string, unknown> : null;
+    const tokens = native?.usage && typeof native.usage === "object" ? native.usage as Record<string, unknown> : null;
+    if (!native?.answers || typeof native.answers !== "object" || Array.isArray(native.answers) ||
+        Object.keys(native.answers).length === 0 || !tokens ||
+        typeof tokens.input_tokens !== "number" || !Number.isInteger(tokens.input_tokens) || tokens.input_tokens < 0 ||
+        typeof tokens.output_tokens !== "number" || !Number.isInteger(tokens.output_tokens) || tokens.output_tokens < 0)
+      throw new ApiError(502, "model_response", "The model returned an invalid SystemOne response.");
+    return json({
+      model: input.model,
+      answers: native.answers,
+      usage: { input_tokens: tokens.input_tokens, output_tokens: tokens.output_tokens, ...legacy.usage },
+    });
+  }
+  return json(legacy, !validJson ? 502 : upstream.ok ? 200 : upstream.status >= 400 && upstream.status < 500 ? upstream.status : 502);
 }
 
 export async function modelApi(req: Request, env: Env, accountId: string, path: string): Promise<Response> {
-  if (path === "/api/v1/models" && req.method === "GET")
+  if ((path === "/api/v1/models" || path === "/v1/models") && req.method === "GET")
     return json({ models: Object.entries(models).map(([name, model]) => ({ name, description: model.description, gpu: model.gpu, sourceUrl: model.sourceUrl, upstreamUrl: model.upstreamUrl, runtimeUrl: model.runtimeUrl, license: model.license })) });
-  if (path === "/api/v1/models/usage" && req.method === "GET") {
+  if ((path === "/api/v1/models/usage" || path === "/v1/models/usage") && req.method === "GET") {
     const name = new URL(req.url).searchParams.get("model");
     if (!name) throw new ApiError(400, "model_required", "Supply a model name.");
     const model = selectedModel(name);
     return json({ model: name, usage: { gpu: model.gpu, unit: `${model.gpu} seconds`, measurement: "inference", ...await totals(env, accountId, name) } });
   }
   if (path === "/api/v1/models/infer" && req.method === "POST") return infer(req, env, accountId);
+  if (path === "/v1/systemone" && req.method === "POST") return infer(req, env, accountId, true);
   throw new ApiError(404, "not_found", "Model endpoint not found.");
 }

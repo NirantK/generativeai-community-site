@@ -11,7 +11,7 @@ import sys
 import urllib.error
 import urllib.request
 
-BASE = "https://genaicommunity.ai/api/v1/models"
+BASE = "https://genaicommunity.ai"
 HOPPER = "HopitAI/hopper"
 OTHER = ("mys/laya-typed-decisions-GGUF", "mys/laya-multilingual-GGUF")
 
@@ -41,7 +41,7 @@ def call(path, token, payload=None, timeout=30):
 def usage(token, model):
     from urllib.parse import quote
 
-    status, result = call("/usage?model=" + quote(model, safe=""), token)
+    status, result = call("/v1/models/usage?model=" + quote(model, safe=""), token)
     if status != 200 or result.get("model") != model:
         raise RuntimeError(f"Usage check for {model} returned HTTP {status}")
     return result["usage"]
@@ -51,7 +51,7 @@ def main():
     token = getpass.getpass("Existing approved-member API token (hidden): ").strip()
     if not token:
         raise RuntimeError("No token entered")
-    status, catalog = call("", token)
+    status, catalog = call("/v1/models", token)
     if status != 200 or HOPPER not in {item.get("name") for item in catalog.get("models", [])}:
         raise RuntimeError(f"Approved-member model catalog failed: HTTP {status}")
     before = {model: usage(token, model) for model in (HOPPER, *OTHER)}
@@ -64,10 +64,10 @@ def main():
             "criteria": {"billing": "Duplicate billing charge", "other": "Unrelated issue"},
         }},
     }
-    status, result = call("/infer", token, payload, timeout=240)
+    status, result = call("/v1/systemone", token, payload, timeout=240)
     if status != 200 or result.get("model") != HOPPER:
         raise RuntimeError(f"Hopper inference failed: HTTP {status}")
-    answer = result.get("result", {}).get("answers", {}).get("billing", {})
+    answer = result.get("answers", {}).get("billing", {})
     meter = result.get("usage", {})
     if answer.get("type") != "choice" or answer.get("choice") != "billing":
         raise RuntimeError("Hopper did not return the expected synthetic choice")
