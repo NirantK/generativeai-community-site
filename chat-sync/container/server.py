@@ -17,13 +17,14 @@ class Handler(BaseHTTPRequestHandler):
   if not LOCK.acquire(False):return self.reply(409,{'error':'busy'})
   try:
    if self.path=='/selftest':
-    tests=subprocess.run(['python3','-m','unittest','discover','-s','/app/scripts/tests'],capture_output=True,timeout=60)
+    import_test=subprocess.run(['python3','-m','unittest','discover','-s','/app/scripts/tests','-p','test_chat_import.py'],capture_output=True,timeout=60)
+    export_test=subprocess.run(['python3','-m','unittest','discover','-s','/app/scripts/tests','-p','test_wacli_export.py'],capture_output=True,timeout=60)
     privacy=subprocess.run(['python3','-m','unittest','discover','-s','/app','-p','test_checkpoint.py'],capture_output=True,timeout=60)
     binary=subprocess.run(['/usr/local/bin/wacli','--help'],capture_output=True,timeout=10)
-    if tests.returncode:return self.reply(503,{'error':'exporter-selftest-failed'})
+    if import_test.returncode or export_test.returncode:return self.reply(503,{'error':'exporter-selftest-failed'})
     if privacy.returncode:return self.reply(503,{'error':'privacy-selftest-failed'})
     if binary.returncode:return self.reply(503,{'error':'wacli-binary-failed'})
-    return self.reply(200,{'passed':True,'tests':11,'wacli':True})
+    return self.reply(200,{'passed':True,'tests':15,'wacli':True})
    if self.path=='/restore':
     size=int(self.headers.get('Content-Length','0'))
     if size<=0 or size>30_000_000:raise ValueError('checkpoint size')
