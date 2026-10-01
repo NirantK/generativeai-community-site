@@ -46,6 +46,18 @@ export class WhatsAppContainer extends Container<Env> {
  async release(owner:string){
   await this.ctx.storage.transaction(async tx=>{if((await tx.get<{owner:string}>('lease'))?.owner===owner)await tx.delete('lease');});
  }
+ // Operator-only recovery for a Workflow verified terminated in Cloudflare.
+ async releaseTerminatedLease(owner:string){
+  if(!/^[a-zA-Z0-9_-]{8,120}$/.test(owner))throw new Error('invalid-lease-owner');
+  if(await this.env.STATE.head('session/recovery-required'))throw new Error('session-recovery-required');
+  if(this.ctx.container?.running)throw new Error('container-still-running');
+  return this.ctx.storage.transaction(async tx=>{
+   const lease=await tx.get<{owner:string;expires:number}>('lease');
+   if(!lease||lease.owner!==owner||lease.expires>Date.now()+50*60_000)throw new Error('lease-not-eligible');
+   await tx.delete('lease');
+   return {released:true};
+  });
+ }
  async preflight(){
   if(await this.env.STATE.head('session/recovery-required'))throw new Error('recover-session-before-preflight');
   try {
@@ -130,10 +142,11 @@ async function metrics(db:D1Database){
  }
  return result;
 }
-type SyncParams={force?:boolean;preflight?:boolean;recover?:boolean;storageTest?:boolean;backfillJobs?:boolean};
+type SyncParams={force?:boolean;preflight?:boolean;recover?:boolean;storageTest?:boolean;backfillJobs?:boolean;terminatedLeaseOwner?:string};
 export class ChatSyncWorkflow extends WorkflowEntrypoint<Env,SyncParams> {
  async run(event:WorkflowEvent<SyncParams>,step:WorkflowStep){
   if(event.payload.storageTest)return step.do('cloud-r2-checkpoint-test',()=>storagePreflight(this.env.STATE));
+  if(event.payload.terminatedLeaseOwner)return step.do('release-verified-terminated-lease',()=>this.env.WACLI.getByName('preflight').releaseTerminatedLease(event.payload.terminatedLeaseOwner!));
   if(event.payload.recover){
    const instance=this.env.WACLI.getByName('preflight');
    await instance.acquire(event.instanceId);
