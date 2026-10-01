@@ -1,18 +1,22 @@
 """Private checkpoint: session credential plus only the authorized, redacted cache."""
 import io,sqlite3,tarfile,tempfile,os,sys
+from contextlib import closing
 from pathlib import Path
 if len(Path(__file__).resolve().parents)>2:
  sys.path.insert(0,str(Path(__file__).resolve().parents[2]/'scripts'))
 sys.path.insert(0,'/app/scripts')
 from chat_privacy import redact_text
 SOURCE='120363049558306142@g.us'
+JOBS_SOURCE='120363323644237261@g.us'
 
 def checkpoint(store):
  with tempfile.TemporaryDirectory() as tmp:
   root=Path(tmp)
   # SQLite backup also captures a consistent WAL snapshot; never copy a live db file.
-  with sqlite3.connect(f'file:{store}/session.db?mode=ro',uri=True) as src,sqlite3.connect(root/'session.db') as dst:src.backup(dst)
-  with sqlite3.connect(f'file:{store}/wacli.db?mode=ro',uri=True) as src,sqlite3.connect(root/'wacli.db') as dst:
+  with closing(sqlite3.connect(f'file:{store}/session.db?mode=ro',uri=True)) as src,closing(sqlite3.connect(root/'session.db')) as dst:
+   src.backup(dst)
+   dst.commit()
+  with closing(sqlite3.connect(f'file:{store}/wacli.db?mode=ro',uri=True)) as src,closing(sqlite3.connect(root/'wacli.db')) as dst:
    src.backup(dst)
    dst.execute('PRAGMA secure_delete=ON')
    names=[r[0] for r in dst.execute("SELECT name FROM sqlite_master WHERE type='table'")]
@@ -20,8 +24,8 @@ def checkpoint(store):
     if name in ('schema_migrations','sqlite_sequence','messages','chats') or 'fts' in name or 'search' in name:continue
     if not name.replace('_','').isalnum():raise ValueError('Unexpected schema')
     dst.execute(f'DELETE FROM "{name}"')
-   dst.execute('DELETE FROM messages WHERE chat_jid != ?', (SOURCE,))
-   dst.execute('DELETE FROM chats WHERE jid != ?', (SOURCE,))
+   dst.execute('DELETE FROM messages WHERE chat_jid NOT IN (?,?)', (SOURCE,JOBS_SOURCE))
+   dst.execute('DELETE FROM chats WHERE jid NOT IN (?,?)', (SOURCE,JOBS_SOURCE))
    for rowid,text,display,name,caption in dst.execute('SELECT rowid,text,display_text,sender_name,media_caption FROM messages').fetchall():
     dst.execute('UPDATE messages SET text=?,display_text=?,sender_name=?,media_caption=? WHERE rowid=?',tuple(redact_text(x or '') for x in (text,display,name,caption))+(rowid,))
    dst.execute("UPDATE messages SET sender_jid='',quoted_sender_jid='',media_key=NULL,file_sha256=NULL,file_enc_sha256=NULL,direct_path=NULL,local_path=NULL,filename=NULL,buttons=NULL")
@@ -30,6 +34,7 @@ def checkpoint(store):
     if 'fts5' not in sql.lower():raise ValueError('Unexpected virtual table')
     dst.execute(f"INSERT INTO \"{name}\"(\"{name}\") VALUES('rebuild')")
    dst.commit();dst.execute('VACUUM')
+   # Close the WAL connection before archiving the .db file alone.
   out=io.BytesIO()
   with tarfile.open(fileobj=out,mode='w:gz') as tar:
    for name in ('session.db','wacli.db'):tar.add(root/name,arcname=name)

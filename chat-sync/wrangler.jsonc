@@ -7,7 +7,7 @@
  "workers_dev":false,
  "preview_urls":false,
  "observability":{"enabled":true},
- "vars":{"SYNC_ENABLED":"false"},
+ "vars":{"SYNC_ENABLED":"true"},
  "triggers":{"crons":["30 3 * * *"]},
  "containers":[{"class_name":"WhatsAppContainer","image":"./Dockerfile","image_build_context":"..","instance_type":"basic","max_instances":1}],
  "durable_objects":{"bindings":[{"name":"WACLI","class_name":"WhatsAppContainer"}]},
