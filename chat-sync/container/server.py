@@ -1,4 +1,4 @@
-import importlib.util,json,os,sqlite3,subprocess,tempfile,threading
+import importlib.util,json,os,re,sqlite3,subprocess,tempfile,threading
 from pathlib import Path
 from http.server import BaseHTTPRequestHandler,ThreadingHTTPServer
 from checkpoint import checkpoint,restore
@@ -39,8 +39,8 @@ class Handler(BaseHTTPRequestHandler):
     run=subprocess.run(command,capture_output=True,timeout=940)
     if run.returncode:
      marker=run.stderr.decode('utf-8','replace')
-     if 'Export failed: ValueError' in marker:stage='source-validation'
-     elif 'Export failed: RuntimeError' in marker:stage='source-command'
+     match=re.search(r'Export failed: (arguments|authentication|backfill|live-sync|export-primary|export-jobs|normalize-primary|normalize-jobs|complete):([A-Za-z]+)',marker)
+     if match:stage=match.group(1)+'-'+match.group(2).lower()
      raise RuntimeError('sync failed')
     stage='import'
     p=Path(tmp);sql,_=importer().build(json.loads((p/'manifest.json').read_text()))
