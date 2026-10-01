@@ -8,7 +8,7 @@ const GROUPS=[{id:GROUP,source:SOURCE,title:'The GenerativeAI Group',cutover:Dat
 const DAY=86400000;
 // Retain the original preflight instance identity: Containers reserves this slot even after stop.
 type Row={id:string;group_id:string;source_id:string;posted_at:number;author:string;body:string;hidden:number};
-type Coverage={sourceRef:string;provider:string;cachedRecords:number;messages:number;cutover:string;oldest:string|null;newest:string|null};
+type Coverage={sourceRef:string;provider:string;cachedRecords:number;messages:number;cutover:string;oldest:string|null;newest:string|null;publicationCounts?:{textCandidates:number;mediaOrReactions:number;emptyText:number;deleted:number}};
 type Export={rows:Row[];coverage:Coverage[]};
 async function digest(value:string){return Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(value))),b=>b.toString(16).padStart(2,'0')).join('');}
 
@@ -73,7 +73,7 @@ export class WhatsAppContainer extends Container<Env> {
   // Do not start or restore: only the existing container can hold the latest session.
   return this.saveCheckpoint();
  }
- async run(owner:string) {
+ async run(owner:string,backfillJobs=false) {
   if((await this.ctx.storage.get<{owner:string}>('lease'))?.owner!==owner)throw new Error('lease-required');
   let restored=false;
   try {
@@ -85,7 +85,7 @@ export class WhatsAppContainer extends Container<Env> {
    if(!restore.ok)throw new Error('session-restore-failed');
    restored=true;
    await this.env.STATE.put('session/recovery-required',String(Date.now()));
-   const response=await this.containerFetch('http://container/sync',{method:'POST'});
+   const response=await this.containerFetch(backfillJobs?'http://container/sync/backfill-jobs':'http://container/sync',{method:'POST'});
    if(!response.ok){
     const detail=await response.json<{error?:string}>().catch(()=>({error:'unknown'}));
     const code=typeof detail.error==='string' && /^[a-z-]+$/.test(detail.error)?detail.error:'unknown';
@@ -126,7 +126,7 @@ async function metrics(db:D1Database){
  }
  return result;
 }
-type SyncParams={force?:boolean;preflight?:boolean;recover?:boolean;storageTest?:boolean};
+type SyncParams={force?:boolean;preflight?:boolean;recover?:boolean;storageTest?:boolean;backfillJobs?:boolean};
 export class ChatSyncWorkflow extends WorkflowEntrypoint<Env,SyncParams> {
  async run(event:WorkflowEvent<SyncParams>,step:WorkflowStep){
   if(event.payload.storageTest)return step.do('cloud-r2-checkpoint-test',()=>storagePreflight(this.env.STATE));
@@ -144,6 +144,7 @@ export class ChatSyncWorkflow extends WorkflowEntrypoint<Env,SyncParams> {
    finally{await instance.release(event.instanceId);}
   }
   if(this.env.SYNC_ENABLED!=='true' && !event.payload.force)return {status:'paused'};
+  if(event.payload.backfillJobs && !event.payload.force)throw new Error('backfill-requires-explicit-force');
   const last=await this.env.STATE.get('last-success.json');
   const previous=last?await last.json<{at:number;digest:string}>():null;
   if(!event.payload.force && previous && Math.floor((Date.now()+19_800_000)/DAY)-Math.floor((previous.at+19_800_000)/DAY)<3)return {status:'not-due'};
@@ -152,7 +153,8 @@ export class ChatSyncWorkflow extends WorkflowEntrypoint<Env,SyncParams> {
   try {
    // Never overwrite an export awaiting import after a partial failure.
    const pending=await this.env.STATE.head('pending/export.json');
-   if(!pending)await step.do('sync-wacli',{retries:{limit:0,delay:'1 second'},timeout:'20 minutes'},()=>this.env.WACLI.getByName('preflight').run(owner));
+   if(pending && event.payload.backfillJobs)throw new Error('pending-export-must-be-imported-first');
+   if(!pending)await step.do('sync-wacli',{retries:{limit:0,delay:'1 second'},timeout:'20 minutes'},()=>this.env.WACLI.getByName('preflight').run(owner,!!event.payload.backfillJobs));
    return await step.do('import-and-verify',{retries:{limit:2,delay:'30 seconds'},timeout:'10 minutes'},async()=>{
     if(await this.env.STATE.head('session/recovery-required'))throw new Error('session-recovery-required');
     const object=await this.env.STATE.get('pending/export.json');

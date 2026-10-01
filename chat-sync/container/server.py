@@ -27,10 +27,12 @@ class Handler(BaseHTTPRequestHandler):
     if size<=0 or size>30_000_000:raise ValueError('checkpoint size')
     restore(self.rfile.read(size),STORE);return self.reply(200,{'ok':True})
    if self.path=='/checkpoint':return self.reply(200,checkpoint(STORE),'application/octet-stream')
-   if self.path!='/sync':return self.reply(404,{})
+   if self.path not in ('/sync','/sync/backfill-jobs'):return self.reply(404,{})
    stage='export'
    with tempfile.TemporaryDirectory(dir='/data') as tmp:
-    run=subprocess.run(['python3','/app/scripts/export-community-chat.py','--sync','--output-dir',tmp],capture_output=True,timeout=940)
+    command=['python3','/app/scripts/export-community-chat.py','--sync','--output-dir',tmp]
+    if self.path=='/sync/backfill-jobs':command.append('--backfill-jobs')
+    run=subprocess.run(command,capture_output=True,timeout=940)
     if run.returncode:
      marker=run.stderr.decode('utf-8','replace')
      if 'Export failed: ValueError' in marker:stage='source-validation'

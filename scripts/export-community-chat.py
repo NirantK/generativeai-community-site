@@ -77,10 +77,32 @@ def normalize(messages, source=SOURCE, cutover=CUTOVER):
     return list(selected.values()), overlap
 
 
+def publication_counts(messages):
+    """Report why cached records are not eligible for the text-only archive."""
+    counts = {'textCandidates': 0, 'mediaOrReactions': 0, 'emptyText': 0, 'deleted': 0}
+    for message in messages:
+        if message['is_deleted']:
+            counts['deleted'] += 1
+        elif message['type'] != 'TEXT':
+            counts['mediaOrReactions'] += 1
+        elif not message['text'].strip():
+            counts['emptyText'] += 1
+        else:
+            counts['textCandidates'] += 1
+    return counts
+
+
+def backfill_jobs():
+    # This is the sole permitted on-demand backfill target. Never fan out to other chats.
+    return call('history', 'backfill', '--chat', JOBS_SOURCE, '--count', '100',
+                '--requests', '1', '--wait', '90s', timeout=240)
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--output-dir', type=Path, required=True)
     parser.add_argument('--sync', action='store_true', help='Receive current WhatsApp messages before exporting')
+    parser.add_argument('--backfill-jobs', action='store_true', help='Request one bounded older-history batch for Job Posts & Talent')
     args = parser.parse_args()
     if args.output_dir.resolve().is_relative_to(Path(__file__).resolve().parents[1]):
         raise ValueError('Keep exports outside the repository')
@@ -89,8 +111,11 @@ def main():
     auth = json.loads(call('auth', 'status', '--json'))
     if not auth.get('success') or not auth.get('data', {}).get('authenticated'):
         raise RuntimeError('wacli is not authenticated')
+    if args.backfill_jobs:
+        backfill_jobs()
     if args.sync:
-        call('sync', '--once', '--idle-exit', '15s', '--max-reconnect', '45s', '--presence-mode', 'quiet', timeout=900)
+        call('sync', '--once', '--idle-exit', '15s', '--max-reconnect', '45s',
+             '--presence-mode', 'quiet', timeout=700 if args.backfill_jobs else 900)
     coverages, manifest = [], []
     for index, (source, title, cutover) in enumerate(GROUPS):
         payload = json.loads(call('messages', 'export', '--chat', source, '--limit', str(LIMIT), '--json'))
@@ -105,6 +130,7 @@ def main():
             'title': title, 'sourceRef': source, 'provider': 'wacli',
             'exportedAt': datetime.now(timezone.utc).isoformat(),
             'cachedRecords': len(raw), 'messages': len(messages), 'overlapSkipped': overlap,
+            'publicationCounts': publication_counts(messages),
             'cutover': cutover.isoformat(), 'oldest': dates[0] if dates else None,
             'newest': dates[-1] if dates else None,
             'limitation': 'Available wacli cache only; not proof of complete WhatsApp history.',
