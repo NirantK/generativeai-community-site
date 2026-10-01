@@ -20,7 +20,9 @@ class Handler(BaseHTTPRequestHandler):
     tests=subprocess.run(['python3','-m','unittest','discover','-s','/app/scripts/tests'],capture_output=True,timeout=60)
     privacy=subprocess.run(['python3','-m','unittest','discover','-s','/app','-p','test_checkpoint.py'],capture_output=True,timeout=60)
     binary=subprocess.run(['/usr/local/bin/wacli','--help'],capture_output=True,timeout=10)
-    if tests.returncode or privacy.returncode or binary.returncode:raise RuntimeError('selftest failed')
+    if tests.returncode:return self.reply(503,{'error':'exporter-selftest-failed'})
+    if privacy.returncode:return self.reply(503,{'error':'privacy-selftest-failed'})
+    if binary.returncode:return self.reply(503,{'error':'wacli-binary-failed'})
     return self.reply(200,{'passed':True,'tests':11,'wacli':True})
    if self.path=='/restore':
     size=int(self.headers.get('Content-Length','0'))

@@ -24,6 +24,11 @@ jobs:
       - run: npx tsc -p chat-sync/tsconfig.json
       - name: Build native Linux wacli image
         run: docker build -f chat-sync/Dockerfile -t genai-chat-sync .
+      - name: Run image self-tests
+        run: |
+          docker run --rm --entrypoint python3 genai-chat-sync -m unittest discover -s /app/scripts/tests
+          docker run --rm --entrypoint python3 genai-chat-sync -m unittest discover -s /app -p test_checkpoint.py
+          docker run --rm --entrypoint /usr/local/bin/wacli genai-chat-sync --help > /dev/null
   deploy:
     if: github.ref == 'refs/heads/main'
     needs: build

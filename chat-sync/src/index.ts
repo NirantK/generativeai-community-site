@@ -49,9 +49,13 @@ export class WhatsAppContainer extends Container<Env> {
  async preflight(){
   if(await this.env.STATE.head('session/recovery-required'))throw new Error('recover-session-before-preflight');
   try {
-   await this.startAndWaitForPorts();
-   const r=await this.containerFetch('http://container/selftest',{method:'POST'});
-   if(!r.ok)throw new Error('container-selftest-failed');
+  await this.startAndWaitForPorts();
+  const r=await this.containerFetch('http://container/selftest',{method:'POST'});
+   if(!r.ok){
+    const detail=await r.json<{error?:string}>().catch(()=>({error:'unknown'}));
+    const code=typeof detail.error==='string' && /^(exporter-selftest-failed|privacy-selftest-failed|wacli-binary-failed)$/.test(detail.error)?detail.error:'unknown';
+    throw new Error(`container-selftest-failed:${code}`);
+   }
    return await r.json<{passed:boolean;tests:number;wacli:boolean}>();
   }finally{try{await this.destroy();}catch{/* Preserve the startup failure when no container exists. */}}
  }
