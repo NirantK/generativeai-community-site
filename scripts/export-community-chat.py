@@ -94,11 +94,13 @@ def publication_counts(messages):
 
 def backfill_jobs():
     # This is the sole permitted on-demand backfill target. Never fan out to other chats.
-    return call('history', 'backfill', '--chat', JOBS_SOURCE, '--count', '100',
+    return call('history', 'backfill', '--chat', JOBS_SOURCE, '--count', '500',
                 '--requests', '1', '--wait', '90s', timeout=240)
 
 
 def main():
+    global PHASE
+    PHASE = 'arguments'
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--output-dir', type=Path, required=True)
     parser.add_argument('--sync', action='store_true', help='Receive current WhatsApp messages before exporting')
@@ -108,22 +110,27 @@ def main():
         raise ValueError('Keep exports outside the repository')
     args.output_dir.mkdir(mode=0o700, parents=True, exist_ok=True)
     args.output_dir.chmod(0o700)
+    PHASE = 'authentication'
     auth = json.loads(call('auth', 'status', '--json'))
     if not auth.get('success') or not auth.get('data', {}).get('authenticated'):
         raise RuntimeError('wacli is not authenticated')
     if args.backfill_jobs:
+        PHASE = 'backfill'
         backfill_jobs()
     if args.sync:
+        PHASE = 'live-sync'
         call('sync', '--once', '--idle-exit', '15s', '--max-reconnect', '45s',
              '--presence-mode', 'quiet', timeout=700 if args.backfill_jobs else 900)
     coverages, manifest = [], []
     for index, (source, title, cutover) in enumerate(GROUPS):
+        PHASE = 'export-primary' if source == SOURCE else 'export-jobs'
         payload = json.loads(call('messages', 'export', '--chat', source, '--limit', str(LIMIT), '--json'))
         if not payload.get('success'):
             raise RuntimeError('Export failed')
         raw = payload['data']['messages']
         if not raw or len(raw) >= LIMIT:
             raise ValueError('Empty or potentially capped export; investigate before importing')
+        PHASE = 'normalize-primary' if source == SOURCE else 'normalize-jobs'
         messages, overlap = normalize(raw, source, cutover)
         dates = sorted(m['timestamp'] for m in messages)
         coverage = {
@@ -144,6 +151,7 @@ def main():
         coverages.append(coverage)
     write(args.output_dir / 'coverage.json', coverages)
     write(args.output_dir / 'manifest.json', {'groups': manifest})
+    PHASE = 'complete'
     print(json.dumps(coverages))
 
 
@@ -151,5 +159,6 @@ if __name__ == '__main__':
     try:
         main()
     except Exception as error:
-        print('Export failed: ' + type(error).__name__, file=sys.stderr)
+        # Only a fixed phase and exception class leave the container; never print CLI output.
+        print('Export failed: ' + globals().get('PHASE', 'unknown') + ':' + type(error).__name__, file=sys.stderr)
         sys.exit(1)

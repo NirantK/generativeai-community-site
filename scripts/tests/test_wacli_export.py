@@ -48,4 +48,4 @@ class ExportTests(unittest.TestCase):
         with patch.object(exporter, 'call', return_value='') as call:
             exporter.backfill_jobs()
         call.assert_called_once_with('history','backfill','--chat',exporter.JOBS_SOURCE,
-                                     '--count','100','--requests','1','--wait','90s',timeout=240)
+                                     '--count','500','--requests','1','--wait','90s',timeout=240)
