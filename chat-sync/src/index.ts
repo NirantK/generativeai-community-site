@@ -89,7 +89,7 @@ export class WhatsAppContainer extends Container<Env> {
   // Do not start or restore: only the existing container can hold the latest session.
   return this.saveCheckpoint();
  }
- async run(owner:string,backfillJobs=false) {
+ async run(owner:string,backfillJobs=false,cachedOnly=false) {
   if((await this.ctx.storage.get<{owner:string}>('lease'))?.owner!==owner)throw new Error('lease-required');
   let restored=false;
   try {
@@ -101,7 +101,8 @@ export class WhatsAppContainer extends Container<Env> {
    if(!restore.ok)throw new Error('session-restore-failed');
    restored=true;
    await this.env.STATE.put('session/recovery-required',String(Date.now()));
-   const response=await this.containerFetch(backfillJobs?'http://container/sync/backfill-jobs':'http://container/sync',{method:'POST'});
+   const endpoint=backfillJobs?'http://container/sync/backfill-jobs':cachedOnly?'http://container/sync/cached-only':'http://container/sync';
+   const response=await this.containerFetch(endpoint,{method:'POST'});
    if(!response.ok){
     const detail=await response.json<{error?:string}>().catch(()=>({error:'unknown'}));
     const code=typeof detail.error==='string' && /^[a-z-]+$/.test(detail.error)?detail.error:'unknown';
@@ -142,7 +143,7 @@ async function metrics(db:D1Database){
  }
  return result;
 }
-type SyncParams={force?:boolean;preflight?:boolean;recover?:boolean;storageTest?:boolean;backfillJobs?:boolean;terminatedLeaseOwner?:string};
+type SyncParams={force?:boolean;preflight?:boolean;recover?:boolean;storageTest?:boolean;backfillJobs?:boolean;cachedOnly?:boolean;terminatedLeaseOwner?:string};
 export class ChatSyncWorkflow extends WorkflowEntrypoint<Env,SyncParams> {
  async run(event:WorkflowEvent<SyncParams>,step:WorkflowStep){
   if(event.payload.storageTest)return step.do('cloud-r2-checkpoint-test',()=>storagePreflight(this.env.STATE));
@@ -161,7 +162,8 @@ export class ChatSyncWorkflow extends WorkflowEntrypoint<Env,SyncParams> {
    finally{await instance.release(event.instanceId);}
   }
   if(this.env.SYNC_ENABLED!=='true' && !event.payload.force)return {status:'paused'};
-  if(event.payload.backfillJobs && !event.payload.force)throw new Error('backfill-requires-explicit-force');
+  if((event.payload.backfillJobs||event.payload.cachedOnly) && !event.payload.force)throw new Error('manual-sync-requires-explicit-force');
+  if(event.payload.backfillJobs && event.payload.cachedOnly)throw new Error('incompatible-sync-modes');
   const last=await this.env.STATE.get('last-success.json');
   const previous=last?await last.json<{at:number;digest:string}>():null;
   if(!event.payload.force && previous && Math.floor((Date.now()+19_800_000)/DAY)-Math.floor((previous.at+19_800_000)/DAY)<3)return {status:'not-due'};
@@ -171,7 +173,7 @@ export class ChatSyncWorkflow extends WorkflowEntrypoint<Env,SyncParams> {
    // Never overwrite an export awaiting import after a partial failure.
    const pending=await this.env.STATE.head('pending/export.json');
    if(pending && event.payload.backfillJobs)throw new Error('pending-export-must-be-imported-first');
-   if(!pending)await step.do('sync-wacli',{retries:{limit:0,delay:'1 second'},timeout:'20 minutes'},()=>this.env.WACLI.getByName('preflight').run(owner,!!event.payload.backfillJobs));
+   if(!pending)await step.do('sync-wacli',{retries:{limit:0,delay:'1 second'},timeout:'20 minutes'},()=>this.env.WACLI.getByName('preflight').run(owner,!!event.payload.backfillJobs,!!event.payload.cachedOnly));
    return await step.do('import-and-verify',{retries:{limit:2,delay:'30 seconds'},timeout:'10 minutes'},async()=>{
     if(await this.env.STATE.head('session/recovery-required'))throw new Error('session-recovery-required');
     const object=await this.env.STATE.get('pending/export.json');
