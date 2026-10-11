@@ -119,6 +119,21 @@ def seed_demos_anchor(value):
         db.execute("INSERT INTO chats(jid,kind,name) VALUES(?,'group',?) ON CONFLICT(jid) DO NOTHING", (DEMOS_SOURCE, DEMOS_TITLE))
         db.execute('INSERT INTO messages(chat_jid,chat_name,msg_id,ts,from_me) VALUES(?,?,?,?,?)', (DEMOS_SOURCE, DEMOS_TITLE, anchor['messageId'], anchor['timestamp'], int(anchor['fromMe'])))
 
+def bootstrap_demos(path):
+    payload = json.loads(Path(path).read_text())
+    if set(payload) != {'sourceRef','messages','anchorMessageId'} or payload['sourceRef'] != DEMOS_SOURCE or not isinstance(payload['messages'],list) or not 1 <= len(payload['messages']) <= 5000:
+        raise ValueError('Invalid demos cache')
+    with sqlite3.connect(Path(STORE) / 'wacli.db') as db:
+        db.execute("INSERT INTO chats(jid,kind,name) VALUES(?,'group',?) ON CONFLICT(jid) DO NOTHING", (DEMOS_SOURCE,DEMOS_TITLE))
+        for row in payload['messages']:
+            if set(row) != {'messageId','timestamp','fromMe','author','text'} or not isinstance(row['messageId'],str) or not re.fullmatch(r'[A-Za-z0-9_-]{8,200}',row['messageId']) or type(row['timestamp']) is not int or not 1420070400 <= row['timestamp'] < int(datetime.now(timezone.utc).timestamp()) or type(row['fromMe']) is not bool or not isinstance(row['author'],str) or len(row['author'])>200 or not isinstance(row['text'],str) or not 1 <= len(row['text']) <= 30000:
+                raise ValueError('Invalid demos cache row')
+            text,author=redact_text(row['text']),redact_text(row['author'])
+            db.execute("INSERT INTO messages(chat_jid,chat_name,msg_id,ts,from_me,sender_jid,sender_name,text,display_text) VALUES(?,?,?,?,?,'',?,?,?) ON CONFLICT(chat_jid,msg_id) DO NOTHING",(DEMOS_SOURCE,DEMOS_TITLE,row['messageId'],row['timestamp'],int(row['fromMe']),author,text,text))
+            # Fill the authentic empty metadata anchor only; never override cloud edits/deletions.
+            if row['messageId'] == payload['anchorMessageId']:
+                db.execute("UPDATE messages SET text=?,display_text=?,sender_name=? WHERE chat_jid=? AND msg_id=? AND ts=? AND from_me=? AND COALESCE(text,'')='' AND COALESCE(sender_jid,'')='' AND edited=0 AND revoked=0 AND deleted_for_me=0",(text,text,author,DEMOS_SOURCE,row['messageId'],row['timestamp'],int(row['fromMe'])))
+
 def backfill_demos():
     return call('history', 'backfill', '--chat', DEMOS_SOURCE, '--count', '500',
                 '--requests', '1', '--wait', '90s', timeout=240)
@@ -131,6 +146,7 @@ def main():
     parser.add_argument('--sync', action='store_true', help='Receive current WhatsApp messages before exporting')
     parser.add_argument('--backfill-jobs', action='store_true', help='Request one bounded older-history batch for Job Posts & Talent')
     parser.add_argument('--backfill-demos', action='store_true', help='Request one bounded older-history batch for Project Demos & Events')
+    parser.add_argument('--bootstrap-demos-file',type=Path,help='Operator-only sanitized authentic pre-cloud demos cache')
     parser.add_argument('--demos-anchor', help='Operator-only authentic metadata anchor for an empty demos cache')
     args = parser.parse_args()
     if args.demos_anchor and not args.backfill_demos:
@@ -146,9 +162,12 @@ def main():
     if not auth.get('success') or not auth.get('data', {}).get('authenticated'):
         raise RuntimeError('wacli is not authenticated')
     verified = None
-    if args.sync or args.backfill_demos:
+    if args.sync or args.backfill_demos or args.bootstrap_demos_file:
         PHASE = 'verify-demos'
         verified = verify_demos()
+    if args.bootstrap_demos_file:
+        PHASE = 'bootstrap-demos'
+        bootstrap_demos(args.bootstrap_demos_file)
     if args.backfill_demos:
         PHASE = 'backfill-demos'
         if args.demos_anchor:

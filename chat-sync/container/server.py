@@ -37,10 +37,15 @@ class Handler(BaseHTTPRequestHandler):
     if size<=0 or size>2000:raise ValueError('reply size')
     return self.reply(200,send_reply(STORE,json.loads(self.rfile.read(size))))
    if self.path=='/checkpoint':return self.reply(200,checkpoint(STORE),'application/octet-stream')
-   if self.path not in ('/sync','/sync/backfill-jobs','/sync/backfill-demos','/sync/cached-only'):return self.reply(404,{})
+   if self.path not in ('/sync','/sync/backfill-jobs','/sync/backfill-demos','/sync/cached-only','/sync/bootstrap-demos'):return self.reply(404,{})
    stage='export'
    with tempfile.TemporaryDirectory(dir='/data') as tmp:
     command=['python3','/app/scripts/export-community-chat.py','--output-dir',tmp]
+    if self.path=='/sync/bootstrap-demos':
+     size=int(self.headers.get('Content-Length','0'))
+     if size<=0 or size>2_000_000:raise ValueError('bootstrap size')
+     seed=Path(tmp)/'bootstrap.json';seed.write_bytes(self.rfile.read(size))
+     command.extend(['--bootstrap-demos-file',str(seed)])
     if self.path=='/sync':command.append('--sync')
     if self.path=='/sync/backfill-jobs':command.append('--backfill-jobs')
     if self.path=='/sync/backfill-demos':
@@ -52,7 +57,7 @@ class Handler(BaseHTTPRequestHandler):
     run=subprocess.run(command,capture_output=True,timeout=940)
     if run.returncode:
      marker=run.stderr.decode('utf-8','replace')
-     match=re.search(r'Export failed: (arguments|authentication|verify-demos|backfill|backfill-demos|live-sync|export-primary|export-jobs|export-demos|normalize-primary|normalize-jobs|normalize-demos|complete):([A-Za-z]+)',marker)
+     match=re.search(r'Export failed: (arguments|authentication|verify-demos|backfill|backfill-demos|bootstrap-demos|live-sync|export-primary|export-jobs|export-demos|normalize-primary|normalize-jobs|normalize-demos|complete):([A-Za-z]+)',marker)
      if match:stage=match.group(1)+'-'+match.group(2).lower()
      raise RuntimeError('sync failed')
     stage='import'
