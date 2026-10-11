@@ -47,7 +47,7 @@ async function trialPassed(db:D1Database,settings:Settings){
  const r=await db.prepare(`SELECT COUNT(*) total,SUM(d.choice=l.label) correct FROM chat_routing_decisions d JOIN chat_routing_labels l ON l.decision_id=d.id WHERE d.proposal=1`).first<{total:number;correct:number}>();
  return Date.now()-settings.trial_started_at>=7*86400000&&(r?.total??0)>=30&&(r?.correct??0)/(r?.total??1)>=0.95;
 }
-export async function classifyLive(env:Env,candidates:LiveCandidate[],send:(c:LiveCandidate,destination:RoutingChoice)=>Promise<{accepted:boolean;id?:string|null;uncertain?:boolean}>){
+export async function classifyLive(env:Env,candidates:LiveCandidate[],send:(c:LiveCandidate,destination:RoutingChoice)=>Promise<{accepted:boolean;id?:string|null;uncertain?:boolean}>,historical=false){
  const bank=await exampleBank(env.DB);
  let assessed=0,failed=0,sent=0;
  for(const candidate of candidates){
@@ -55,9 +55,9 @@ export async function classifyLive(env:Env,candidates:LiveCandidate[],send:(c:Li
   if(!group||group.id!==candidate.groupId||candidate.id!==await hash(candidate.source+'\0wacli:'+candidate.messageId)||!/^[a-f0-9]{64}$/.test(candidate.contentHash)||typeof candidate.text!=='string'||candidate.text.length>30000||typeof candidate.sanitizedText!=='string'||candidate.sanitizedText.length>30000||typeof candidate.sender!=='string'||candidate.sender.length>150)throw new Error('invalid-live-routing-candidate');
   const settings=await env.DB.prepare('SELECT * FROM chat_routing_settings WHERE id=1').first<Settings>();
   if(!settings)break;
-  const answer=await assess(env,candidate,candidate.postedAt<settings.trial_started_at,bank);
+  const answer=await assess(env,candidate,historical||candidate.postedAt<settings.trial_started_at,bank);
   if(!answer)continue;assessed++;
-  if(!answer.proposed||candidate.postedAt<settings.trial_started_at||candidate.postedAt<Date.now()-3600000||!candidate.sender)continue;
+  if(historical||!answer.proposed||candidate.postedAt<settings.trial_started_at||candidate.postedAt<Date.now()-3600000||!candidate.sender)continue;
   // Public replies are possible only with fresh, transient sender metadata. No queue stores it.
   const fresh=await env.DB.prepare('SELECT * FROM chat_routing_settings WHERE id=1').first<Settings>();
   if(!fresh||!await trialPassed(env.DB,fresh))continue;

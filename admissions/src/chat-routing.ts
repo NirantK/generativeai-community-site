@@ -46,7 +46,7 @@ export function selectReview(rows:ReviewRow[],limit=20){
   while(count<quota&&buckets.some(b=>b.length))for(const b of buckets){const row=b.shift();if(row&&count<quota&&add(row,reason))count++;}
  }
  pick(uncertain,8,'Near tie');pick(disagreement,6,'Group disagreement');
- pick([...rows].sort((a,b)=>a.created_at-b.created_at),4,'Diverse example');
+ pick([...rows].sort((a,b)=>a.postedAt-b.postedAt),4,'Diverse example');
  // Stable hash-like order changes as new rows arrive without trusting source labels.
  pick([...rows].sort((a,b)=>a.id.slice(-16).localeCompare(b.id.slice(-16))),2,'Audit sample');
  pick(rows,Math.max(0,limit-selected.length),'Additional example');

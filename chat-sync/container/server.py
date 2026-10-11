@@ -61,9 +61,10 @@ class Handler(BaseHTTPRequestHandler):
     stage='serialize'
     rows=[dict(r) for r in db.execute('SELECT id,group_id,source_id,posted_at,author,body,hidden FROM chat_messages ORDER BY id')]
     result={'rows':rows,'coverage':json.loads((p/'coverage.json').read_text())}
-    if self.path=='/sync':
+    if self.path in ('/sync','/sync/backfill-jobs','/sync/backfill-demos'):
      since=int(self.headers.get('X-Routing-Since','0'))
-     if since>0:result['routingCandidates'],result['routingOmitted']=candidates(STORE,rows,since)
+     if since>0:
+      result['routingCandidates'],result['routingOmitted']=candidates(STORE,rows,0 if self.path!='/sync' else since)
     body=json.dumps(result).encode()
     if len(body)>30_000_000:raise ValueError('export too large')
     self.reply(200,body)

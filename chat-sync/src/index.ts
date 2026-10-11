@@ -129,12 +129,12 @@ export class WhatsAppContainer extends Container<Env> {
    if(candidates.length>200)throw new Error('routing-candidate-limit');
    // Save only sanitized archive data. AI failure cannot lose an otherwise valid archive update.
    await this.env.STATE.put('pending/export.json',JSON.stringify(data));
-   if(settings && !backfillJobs && !backfillDemos && !cachedOnly){
-    try{await classifyLive(this.env,candidates,async(c,destination)=>{
+   if(settings && !cachedOnly){
+    try{await classifyLive(this.env,(backfillJobs||backfillDemos)?candidates.slice(0,30):candidates,async(c,destination)=>{
      const reply=await this.containerFetch('http://container/send-reply',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({source:c.source,messageId:c.messageId,sender:c.sender,destination})});
      if(!reply.ok)throw new Error('reply-outcome-uncertain');
      return reply.json<{accepted:boolean;id?:string|null;uncertain?:boolean}>();
-    });}catch{await this.env.STATE.put('routing/last-attempt.json',JSON.stringify({status:'could-not-classify',at:Date.now()}));}
+    },backfillJobs||backfillDemos);}catch{await this.env.STATE.put('routing/last-attempt.json',JSON.stringify({status:'could-not-classify',at:Date.now()}));}
    }
    return {records:data.rows.length};
   } finally {
