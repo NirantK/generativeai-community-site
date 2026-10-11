@@ -23,6 +23,9 @@ import adminMigration from "../migrations/0003_administrators.sql?raw";
 import bugMigration from "../migrations/0002_bug_reports.sql?raw";
 import modelMigration from "../migrations/0007_model_usage.sql?raw";
 import allocationMigration from "../migrations/0008_model_gpu_allocation.sql?raw";
+import routingMigration from "../migrations/0009_chat_routing.sql?raw";
+import { selectReview, type ReviewRow } from "../src/chat-routing";
+import { routingGroups, proposal, moveReply } from "../src/chat-routing-policy";
 const sample = {
   linkedinUrl: "https://www.linkedin.com/in/test-builder/",
   whatsapp: "+14155552671",
@@ -37,7 +40,7 @@ const sample = {
     "I want to share evaluation methods and learn from other builders.",
 };
 beforeAll(async () => {
-  for (const query of (migration + bugMigration + adminMigration + appealMigration + archiveMigration + listingMigration + modelMigration + allocationMigration)
+  for (const query of (migration + bugMigration + adminMigration + appealMigration + archiveMigration + listingMigration + modelMigration + allocationMigration + routingMigration)
     .split(";")
     .filter((s) => s.trim()))
     await env.INDEX.prepare(query).run();
@@ -1347,4 +1350,39 @@ describe("LinkedIn links and administrator grid metadata",()=>{
       expect((await gateway("/api/admin/applications?status=invalid","GET",headers)).status).toBe(422);
     } finally {env.ADMIN_EMAILS=previous;}
   });
+});
+
+
+describe("chat routing review",()=>{
+ it("abstains on weak or same-group choices and signs a precise destination",()=>{
+  const g=routingGroups[0];expect(proposal('jobs',g.id,{general:.02,jobs:.95,demos_events:.02,unclear:.01})).toBe(true);
+  expect(proposal('jobs',routingGroups[1].id,{general:.02,jobs:.95,demos_events:.02,unclear:.01})).toBe(false);
+  expect(proposal('jobs',g.id,{general:.4,jobs:.45,demos_events:.1,unclear:.05})).toBe(false);
+  expect(proposal('unclear',g.id,{unclear:1,general:0,jobs:0,demos_events:0})).toBe(false);
+  expect(moveReply('demos_events')).toBe("I'd love it if you could move this message to Project Demos & Events.\n\n- Sent by my agent");
+ });
+ it("deduplicates similar review messages and includes smaller source groups",()=>{
+  const rows=Array.from({length:45},(_,i)=>({id:String(i).padStart(64,'0')+':'+String(i).padStart(64,'0'),message_id:String(i).padStart(64,'0'),group_id:routingGroups[i%3].id,choice:'jobs',probabilities:JSON.stringify({general:.45,jobs:.5,demos_events:.04,unclear:.01}),confidence:.5,proposal:0,status:'assessed',historical:1,model:'clef',prompt_version:'v1',created_at:i,text:i<3?'Identical announcement for all groups':'Distinct '+['retrieval evaluation document search','hiring internship applications developer roles','event meetup demo product feedback'][i%3]+' '+String.fromCharCode(65+i)+' '+String.fromCharCode(80+i),author:'Test',postedAt:i})) as ReviewRow[];
+  const selected=selectReview(rows);expect(selected.length).toBeLessThanOrEqual(20);expect(selected.filter(s=>s.row.text.startsWith('Identical'))).toHaveLength(1);expect(new Set(selected.map(s=>s.row.group_id)).size).toBe(3);
+ });
+ it("gates the queue and labels by browser admin access, hides model answers until labeling, and locks trial replies",async()=>{
+  const owner=await account();await owner.agent.consent();const {token}=await owner.agent.token();const previous=env.ADMIN_EMAILS;env.ADMIN_EMAILS='applicant@example.com';
+  try{
+   const group=routingGroups[0],mid=await digest('routing-review-fixture'),hash=await digest('routing-review-content'),did=mid+':'+hash;
+   await env.INDEX.prepare('INSERT OR IGNORE INTO chat_groups(id,title,source_ref,imported_at,coverage_note) VALUES(?,?,?,?,?)').bind(group.id,group.title,group.source,1,'test').run();
+   await env.INDEX.prepare('INSERT INTO chat_messages(id,group_id,source_id,posted_at,author,body) VALUES(?,?,?,?,?,?)').bind(mid,group.id,'wacli:test-routing',1000,'Test','We are hiring a machine learning engineer. Apply with a CV.').run();
+   await env.INDEX.prepare("INSERT INTO chat_routing_decisions(id,message_id,content_hash,group_id,choice,probabilities,confidence,proposal,status,historical,model,prompt_version,created_at) VALUES(?,?,?,?,?,?,.95,1,'assessed',1,'clef','routing-2026-10-11-v1',?)").bind(did,mid,hash,group.id,'jobs',JSON.stringify({general:.02,jobs:.95,demos_events:.02,unclear:.01}),Date.now()).run();
+   const headers={Cookie:await browser(owner.id),Origin:'https://genaicommunity.ai'};
+   expect((await gateway('/api/admin/chat-routing/queue','GET',{Authorization:`Bearer ${token}`})).status).toBe(403);
+   const queue=await (await gateway('/api/admin/chat-routing/queue','GET',headers)).json() as any;expect(queue.cards.find((c:any)=>c.decisionId===did)).not.toHaveProperty('choice');expect(queue.cards[0]).not.toHaveProperty('probabilities');
+   const input={decisionId:did,label:'jobs',explanation:'This is a hiring invitation.'};
+   expect((await gateway('/api/admin/chat-routing/labels','POST',{Cookie:headers.Cookie},input)).status).toBe(403);
+   const labeled=await gateway('/api/admin/chat-routing/labels','POST',headers,input);expect(labeled.status).toBe(200);expect((await labeled.json() as any).modelChoice).toBe('jobs');
+   expect((await gateway('/api/admin/chat-routing/labels','POST',headers,input)).status).toBe(200);
+   expect((await gateway('/api/admin/chat-routing/labels','POST',headers,{...input,label:'general'})).status).toBe(409);
+   expect((await gateway('/api/admin/chat-routing/settings','POST',headers,{enabled:true,version:1})).status).toBe(409);
+   expect((await gateway('/api/admin/chat-routing/test','POST',headers,{sourceGroup:group.id,destination:'jobs'})).status).toBe(409);
+   expect((await env.INDEX.prepare('SELECT count(*) n FROM chat_routing_sends').first<any>())?.n).toBe(0);
+  }finally{env.ADMIN_EMAILS=previous;}
+ });
 });

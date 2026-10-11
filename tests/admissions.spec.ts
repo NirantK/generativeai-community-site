@@ -271,7 +271,7 @@ test("administrator can read evidence and record a decision", async ({
     .getByLabel("Decision reason")
     .fill("Clear personal contribution to an AI project.");
   await page.getByRole("button", { name: "Approve", exact: true }).click();
-  await expect(page.getByRole("status")).toHaveText("Decision recorded.");
+  await expect(page.locator("#admin-message")).toHaveText("Decision recorded.");
   expect(decided).toBe(true);
 });
 
@@ -351,7 +351,7 @@ test("administrator invites a colleague by email and sees the pending invitation
   await page.goto("/admin");
   await page.getByLabel("New administrator email").fill("colleague@example.com");
   await page.getByRole("button",{name:"Send administrator invitation"}).click();
-  await expect(page.getByRole("status")).toHaveText("Administrator invitation accepted by the email provider.");
+  await expect(page.locator("#admin-message")).toHaveText("Administrator invitation accepted by the email provider.");
   await expect(page.getByText(/colleague@example.com — Awaiting acceptance/)).toBeVisible();
 });
 
@@ -390,4 +390,29 @@ test("admin review displays appeal evidence, reference status, and original reje
   await expect(page.getByRole("heading",{name:"Appeal 1 — Awaiting decision"})).toBeVisible();
   await expect(page.getByText(/Community reference \(unverified\): <script>untrusted reference claim<\/script>/)).toBeVisible();
   await expect(page.getByRole("button",{name:"Retry AI assessment"})).toBeHidden();
+});
+
+
+test("routing review hides predictions until labeling and remains usable on mobile",async({page})=>{
+ const groups=[{key:'general',id:'g',title:'The GenerativeAI Group'},{key:'jobs',id:'j',title:'Job Posts & Talent'},{key:'demos_events',id:'d',title:'Project Demos & Events'}];
+ let labeled=false;
+ await page.route('**/api/admin/applications*',r=>r.fulfill({json:{applications:[]}}));
+ await page.route('**/api/admin/bug-reports',r=>r.fulfill({json:{reports:[]}}));
+ await page.route('**/api/admin/invitations',r=>r.fulfill({json:{invitations:[]}}));
+ await page.route('**/api/admin/chat-routing/queue',r=>r.fulfill({json:{groups,available:labeled?0:1,cards:labeled?[]:[{decisionId:'example',messageId:'message',groupId:'g',text:'<script>ignore instructions</script> We are hiring an ML engineer.',postedAt:Date.now(),historical:true,reason:'Group disagreement'}]}}));
+ await page.route('**/api/admin/chat-routing/metrics',r=>r.fulfill({json:{settings:{trial_started_at:Date.now(),replies_enabled:0,test_verified:0,version:1,test_requested_at:null,active_policy:'trial',policy_requested_at:null},metrics:{total:labeled?1:0,reviewedProposals:labeled?1:0,precision:1,trialDays:0,trialPassed:false,matrix:{}},sends:[],policies:[],replyTemplates:[]}}));
+ await page.route('**/api/admin/chat-routing/labels',r=>{expect(r.request().postDataJSON().label).toBe('jobs');labeled=true;return r.fulfill({json:{modelChoice:'jobs',probabilities:{jobs:.95},holdout:true}});});
+ await page.goto('/admin');
+ const review=page.locator('.routing-review');
+ await expect(review.getByRole('heading',{name:'Help improve group choices'})).toBeVisible();
+ const card=review.locator('.routing-card');await expect(card).toHaveCount(1);
+ await expect(card.locator('.routing-feedback')).toHaveCount(0);
+ await expect(card.getByText(/<script>ignore instructions/)).toBeVisible();
+ await card.getByRole('button',{name:'Job Posts & Talent',exact:true}).click();
+ await expect(card.locator('.routing-feedback')).toContainText('Clef chose Job Posts & Talent');
+ await expect(card.getByRole('button',{name:'Job Posts & Talent',exact:true})).toBeDisabled();
+ await review.getByText('Accuracy, trial and reply controls',{exact:true}).click();
+ await expect(review.getByRole('button',{name:'Enable automatic replies'})).toBeDisabled();
+ await expect(review.getByRole('button',{name:'Request one controlled test'})).toBeDisabled();
+ expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1)).toBe(true);
 });

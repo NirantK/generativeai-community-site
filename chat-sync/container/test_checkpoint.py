@@ -1,6 +1,6 @@
 import io,sqlite3,tarfile,tempfile,unittest
 from pathlib import Path
-from checkpoint import checkpoint,restore,SOURCE,JOBS_SOURCE
+from checkpoint import checkpoint,restore,SOURCE,JOBS_SOURCE,DEMOS_SOURCE
 class CheckpointTests(unittest.TestCase):
  def test_only_group_and_redacted_text_survive(self):
   with tempfile.TemporaryDirectory() as tmp:
@@ -9,17 +9,18 @@ class CheckpointTests(unittest.TestCase):
    with sqlite3.connect(store/'wacli.db') as c:
     c.execute('PRAGMA journal_mode=WAL')
     c.executescript('''CREATE TABLE chats(jid TEXT PRIMARY KEY);CREATE TABLE contacts(jid TEXT);CREATE TABLE messages(rowid INTEGER PRIMARY KEY,chat_jid TEXT,text TEXT,display_text TEXT,sender_name TEXT,media_caption TEXT,sender_jid TEXT,quoted_sender_jid TEXT,media_key BLOB,file_sha256 BLOB,file_enc_sha256 BLOB,direct_path TEXT,local_path TEXT,filename TEXT,buttons TEXT);CREATE VIRTUAL TABLE messages_fts USING fts5(text,content='messages',content_rowid='rowid');''')
-    c.executemany('INSERT INTO chats VALUES (?)',[(SOURCE,),(JOBS_SOURCE,),('private-other',)])
+    c.executemany('INSERT INTO chats VALUES (?)',[(SOURCE,),(JOBS_SOURCE,),(DEMOS_SOURCE,),('private-other',)])
     c.execute("INSERT INTO contacts VALUES ('private-contact')")
     c.execute('INSERT INTO messages(rowid,chat_jid,text,sender_name,sender_jid) VALUES(1,?,?,?,?)',(SOURCE,'Call +91 12345 67890','+91 12345 67890','+911234567890'))
     c.execute("INSERT INTO messages(rowid,chat_jid,text) VALUES(2,'private-other','DO NOT UPLOAD')")
     c.execute('INSERT INTO messages(rowid,chat_jid,text) VALUES(3,?,?)',(JOBS_SOURCE,'Talent opportunity'))
+    c.execute('INSERT INTO messages(rowid,chat_jid,text) VALUES(4,?,?)',(DEMOS_SOURCE,'Demo call +91 12345 67890'))
    restore(checkpoint(store),root/'restored')
    with sqlite3.connect(root/'restored'/'wacli.db') as c:
     self.assertEqual(c.execute('SELECT count(*) FROM contacts').fetchone()[0],0)
-    self.assertEqual(c.execute('SELECT text,sender_name,sender_jid FROM messages ORDER BY rowid').fetchall(),[('Call amber bear noon','amber bear noon',''),('Talent opportunity','','')])
-    self.assertEqual(c.execute('SELECT jid FROM chats ORDER BY jid').fetchall(),sorted([(SOURCE,),(JOBS_SOURCE,)]))
-    self.assertEqual(c.execute('SELECT count(*) FROM messages_fts WHERE messages_fts MATCH ?',('amber',)).fetchone()[0],1)
+    self.assertEqual(c.execute('SELECT text,sender_name,sender_jid FROM messages ORDER BY rowid').fetchall(),[('Call amber bear noon','amber bear noon',''),('Talent opportunity','',''),('Demo call amber bear noon','','')])
+    self.assertEqual(c.execute('SELECT jid FROM chats ORDER BY jid').fetchall(),sorted([(SOURCE,),(JOBS_SOURCE,),(DEMOS_SOURCE,)]))
+    self.assertEqual(c.execute('SELECT count(*) FROM messages_fts WHERE messages_fts MATCH ?',('amber',)).fetchone()[0],2)
    self.assertNotIn(b'DO NOT UPLOAD',(root/'restored'/'wacli.db').read_bytes())
    self.assertNotIn(b'12345',(root/'restored'/'wacli.db').read_bytes())
  def test_restore_rejects_unexpected_members(self):

@@ -1,3 +1,4 @@
+import { routingAdmin } from './chat-routing';
 export { AssessmentEvaluationWorkflow } from "./evaluation";
 import { WorkerEntrypoint } from "cloudflare:workers";
 import { getAgentByName } from "agents";
@@ -273,6 +274,7 @@ async function handle(req: Request, env: Env): Promise<Response> {
   }
   if (path.startsWith("/api/admin/")) {
     const auth = await admin(req, env);
+    if (path.startsWith("/api/admin/chat-routing/")) return routingAdmin(req, env, path.slice("/api/admin/chat-routing".length), auth.sub);
     if (path.startsWith("/api/admin/chats/")) return archiveAdmin(req, env, path.slice("/api/admin/chats".length), auth.sub);
     if (path === "/api/admin/access" && req.method === "GET") return json({ administrator: true });
     if (path === "/api/admin/invitations" && req.method === "GET") {
