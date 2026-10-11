@@ -20,7 +20,7 @@ class CheckpointTests(unittest.TestCase):
     self.assertEqual(c.execute('SELECT count(*) FROM contacts').fetchone()[0],0)
     self.assertEqual(c.execute('SELECT text,sender_name,sender_jid FROM messages ORDER BY rowid').fetchall(),[('Call amber bear noon','amber bear noon',''),('Talent opportunity','',''),('Demo call amber bear noon','','')])
     self.assertEqual(c.execute('SELECT jid FROM chats ORDER BY jid').fetchall(),sorted([(SOURCE,),(JOBS_SOURCE,),(DEMOS_SOURCE,)]))
-    self.assertEqual(c.execute('SELECT count(*) FROM messages_fts WHERE messages_fts MATCH ?',('amber',)).fetchone()[0],1)
+    self.assertEqual(c.execute('SELECT count(*) FROM messages_fts WHERE messages_fts MATCH ?',('amber',)).fetchone()[0],2)
    self.assertNotIn(b'DO NOT UPLOAD',(root/'restored'/'wacli.db').read_bytes())
    self.assertNotIn(b'12345',(root/'restored'/'wacli.db').read_bytes())
  def test_restore_rejects_unexpected_members(self):
