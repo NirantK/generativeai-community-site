@@ -16,7 +16,7 @@ class RoutingTests(unittest.TestCase):
   with tempfile.TemporaryDirectory() as tmp:
    p=Path(tmp);source,rows=self.fixture(p);items,omitted=candidates(p,rows,1000000)
    self.assertEqual([i['messageId'] for i in items],['fresh']);self.assertEqual(omitted,0)
-   self.assertIn('+91 12345 67890',items[0]['text']);self.assertEqual(items[0]['contentHash'],hashlib.sha256(rows[0]['body'].encode()).hexdigest())
+   self.assertIn('+91 12345 67890',items[0]['text']);self.assertEqual(items[0]['contentHash'],hashlib.sha256(items[0]['text'].encode()).hexdigest())
  def test_send_checks_source_and_uses_signed_quoted_reply(self):
   with tempfile.TemporaryDirectory() as tmp:
    p=Path(tmp);source,rows=self.fixture(p)

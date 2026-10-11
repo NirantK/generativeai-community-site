@@ -13,7 +13,7 @@ def candidates(store,rows,since):
    for raw in result:
     row=by_source.get((hashlib.sha256(source.encode()).hexdigest(),raw['msg_id']))
     if not row or not raw['text'] or len(raw['text'])>30000:continue
-    out.append({'id':row['id'],'groupId':row['group_id'],'source':source,'messageId':raw['msg_id'],'sender':raw['sender_jid'],'text':raw['text'],'contentHash':hashlib.sha256(row['body'].encode()).hexdigest(),'postedAt':row['posted_at']})
+    out.append({'id':row['id'],'groupId':row['group_id'],'source':source,'messageId':raw['msg_id'],'sender':raw['sender_jid'],'text':raw['text'],'contentHash':hashlib.sha256(raw['text'].encode()).hexdigest(),'postedAt':row['posted_at']})
  out.sort(key=lambda r:r['postedAt'],reverse=True)
  return out[:200],max(0,len(out)-200)
 def send_reply(store,data):
