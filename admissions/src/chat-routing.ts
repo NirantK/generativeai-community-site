@@ -101,7 +101,7 @@ export async function routingAdmin(req:Request,env:Env,suffix:string,actor:strin
  if(suffix==='/test'&&req.method==='POST'){
   const input=z.object({sourceGroup:z.string(),destination:z.enum(['general','jobs','demos_events']),cancel:z.boolean().default(false)}).strict().parse(await body(req));
   const source=routingGroups.find(g=>g.id===input.sourceGroup);
-  if(!source||source.key===input.destination)throw new ApiError(422,'destination','Select two different groups.');
+  if(!source||(!input.cancel&&source.key===input.destination))throw new ApiError(422,'destination','Select two different groups.');
   if(!input.cancel&&!(await routingMetrics(env.INDEX,settings)).trialPassed)throw new ApiError(409,'trial_required','Complete the reviewed trial before requesting a controlled test.');
   if(settings.test_requested_at&&!input.cancel)throw new ApiError(409,'test_pending','A controlled test is already waiting.');
   await env.INDEX.prepare('UPDATE chat_routing_settings SET test_source_group=?,test_destination=?,test_requested_by=?,test_requested_at=?,version=version+1 WHERE id=1').bind(input.cancel?null:source.id,input.cancel?null:input.destination,input.cancel?null:actor,input.cancel?null:Date.now()).run();
