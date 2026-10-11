@@ -6,6 +6,7 @@ const JOBS_GROUP='ab58449e10d8bf6a4e74b68ef82e6232186039fb9f003e0735dc0ebfd12cc9
 const JOBS_SOURCE='120363323644237261@g.us';
 const GROUPS=[{id:GROUP,source:SOURCE,title:'The GenerativeAI Group',cutover:Date.parse('2026-09-17T00:01:16Z')},{id:JOBS_GROUP,source:JOBS_SOURCE,title:'Job Posts & Talent',cutover:0}] as const;
 const DAY=86400000;
+const SYNC_INTERVAL=15*60_000;
 // Retain the original preflight instance identity: Containers reserves this slot even after stop.
 type Row={id:string;group_id:string;source_id:string;posted_at:number;author:string;body:string;hidden:number};
 type Coverage={sourceRef:string;provider:string;cachedRecords:number;messages:number;cutover:string;oldest:string|null;newest:string|null;publicationCounts?:{textCandidates:number;mediaOrReactions:number;emptyText:number;deleted:number}};
@@ -36,13 +37,15 @@ async function storagePreflight(bucket:R2Bucket){
 export class WhatsAppContainer extends Container<Env> {
  defaultPort=8080;
  sleepAfter='20m';
- async acquire(owner:string){
+ async tryAcquire(owner:string){
   return this.ctx.storage.transaction(async tx=>{
    const lease=await tx.get<{owner:string;expires:number}>('lease');
-   if(lease && lease.owner!==owner && lease.expires>Date.now())throw new Error('sync-already-running');
+   if(lease && lease.owner!==owner && lease.expires>Date.now())return false;
    await tx.put('lease',{owner,expires:Date.now()+60*60_000});
+   return true;
   });
  }
+ async acquire(owner:string){if(!await this.tryAcquire(owner))throw new Error('sync-already-running');}
  async release(owner:string){
   await this.ctx.storage.transaction(async tx=>{if((await tx.get<{owner:string}>('lease'))?.owner===owner)await tx.delete('lease');});
  }
@@ -166,9 +169,12 @@ export class ChatSyncWorkflow extends WorkflowEntrypoint<Env,SyncParams> {
   if(event.payload.backfillJobs && event.payload.cachedOnly)throw new Error('incompatible-sync-modes');
   const last=await this.env.STATE.get('last-success.json');
   const previous=last?await last.json<{at:number;digest:string}>():null;
-  if(!event.payload.force && previous && Math.floor((Date.now()+19_800_000)/DAY)-Math.floor((previous.at+19_800_000)/DAY)<3)return {status:'not-due'};
   const owner=event.instanceId;
-  await step.do('acquire-single-session',()=>this.env.WACLI.getByName('preflight').acquire(owner));
+  const acquired=await step.do('acquire-single-session',()=>this.env.WACLI.getByName('preflight').tryAcquire(owner));
+  if(!acquired){
+   if(event.payload.force)throw new Error('sync-already-running');
+   return {status:'already-running'};
+  }
   try {
    // Never overwrite an export awaiting import after a partial failure.
    const pending=await this.env.STATE.head('pending/export.json');
@@ -214,6 +220,6 @@ export class ChatSyncWorkflow extends WorkflowEntrypoint<Env,SyncParams> {
 export default {
  async fetch(){return new Response('Not found',{status:404});},
  async scheduled(event:ScheduledController,env:Env){
-  if(env.SYNC_ENABLED==='true')await env.SYNC.create({id:`scheduled-${Math.floor(event.scheduledTime/DAY)}`,params:{}});
+  if(env.SYNC_ENABLED==='true')await env.SYNC.create({id:`scheduled-${Math.floor(event.scheduledTime/SYNC_INTERVAL)}`,params:{}});
  }
 } satisfies ExportedHandler<Env>;
