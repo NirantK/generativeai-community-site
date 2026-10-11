@@ -7,11 +7,11 @@ export function searchTerms(query: string): string {
   if (!words.length || words.length > 12) throw new ApiError(422, "search_query", "Search with 1–12 words.");
   return words.map(word => `"${word}"`).join(" AND ");
 }
-function dateBound(value: string | null, end = false): number | null {
+function dateBound(value: string | null, end = false, ist = false): number | null {
   if (!value) return null;
   const date = Date.parse(value + "T00:00:00Z");
   if (!/^\d{4}-\d{2}-\d{2}$/.test(value) || !Number.isFinite(date) || new Date(date).toISOString().slice(0,10) !== value) throw new ApiError(422, "date_filter", "Use a valid YYYY-MM-DD date.");
-  return date + (end ? 86400000 : 0);
+  return date + (end ? 86400000 : 0) - (ist ? 19800000 : 0);
 }
 export async function archiveRead(req: Request, env: Env, suffix: string, administrator = false): Promise<Response> {
   if (req.method !== "GET") throw new ApiError(405, "method", "Chat archives are read-only.");
@@ -26,8 +26,10 @@ export async function archiveRead(req: Request, env: Env, suffix: string, admini
     if (query.length > 200) throw new ApiError(422,"search_query","Search text is limited to 200 characters.");
     const group = url.searchParams.get("group");
     if (group && !identifier.test(group)) throw new ApiError(422,"group","Invalid group identifier.");
-    const from = dateBound(url.searchParams.get("from"));
-    const to = dateBound(url.searchParams.get("to"),true);
+    const timezone = url.searchParams.get("timezone") ?? "UTC";
+    if (!["UTC", "Asia/Kolkata"].includes(timezone)) throw new ApiError(422,"timezone","Use UTC or Asia/Kolkata.");
+    const from = dateBound(url.searchParams.get("from"),false,timezone === "Asia/Kolkata");
+    const to = dateBound(url.searchParams.get("to"),true,timezone === "Asia/Kolkata");
     if (from !== null && to !== null && from >= to) throw new ApiError(422,"date_filter","The start date must be on or before the end date.");
     const limit = Number(url.searchParams.get("limit") ?? 20);
     if (!Number.isInteger(limit) || limit < 1 || limit > 50) throw new ApiError(422,"limit","Use a limit from 1 to 50.");

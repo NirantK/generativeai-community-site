@@ -98,6 +98,7 @@ import ChatRoutingReview from "../components/ChatRoutingReview.astro";
   </div>
 </BaseLayout>
 <script>
+  import { formatDateTime } from "../lib/dates";
   import type { RecordState } from "../../admissions/src/domain";
   const get = (id: string) => document.getElementById(id)!;
   let selected = "";
@@ -184,7 +185,7 @@ import ChatRoutingReview from "../components/ChatRoutingReview.astro";
         const evidence = document.createElement("p");
         evidence.style.whiteSpace = "pre-wrap";
         evidence.style.overflowWrap = "anywhere";
-        evidence.textContent = `Submitted: ${new Date(appeal.submittedAt).toLocaleString()}\nOriginal rejection: ${appeal.previousDecision.reason}\nWork link: ${appeal.evidence.proofUrl ?? "Not supplied"}\nProject explanation: ${appeal.evidence.explanation ?? "Not supplied"}\nCommunity reference (unverified): ${appeal.evidence.voucher ?? "Not supplied"}\n${appeal.resolution ? "Appeal decision: " + appeal.resolution.reason : "Verify the evidence or reference before deciding."}`;
+        evidence.textContent = `Submitted: ${formatDateTime(appeal.submittedAt)}\nOriginal rejection: ${appeal.previousDecision.reason}\nWork link: ${appeal.evidence.proofUrl ?? "Not supplied"}\nProject explanation: ${appeal.evidence.explanation ?? "Not supplied"}\nCommunity reference (unverified): ${appeal.evidence.voucher ?? "Not supplied"}\n${appeal.resolution ? "Appeal decision: " + appeal.resolution.reason : "Verify the evidence or reference before deciding."}`;
         container.append(heading, evidence);
       }
       get("audit-record").textContent = JSON.stringify(
@@ -200,7 +201,7 @@ import ChatRoutingReview from "../components/ChatRoutingReview.astro";
           receipt: record.receipt,
           history: record.history,
         },
-        null,
+        (key, value) => typeof value === "number" && (key === "at" || key.endsWith("At") || key.endsWith("_at")) ? formatDateTime(value) : value,
         2,
       );
       get("review").hidden = false;
@@ -250,7 +251,7 @@ import ChatRoutingReview from "../components/ChatRoutingReview.astro";
         item.appendChild(status);
         const date = document.createElement("p"); date.className = "help";
         const at = a.status === "approved" ? a.approved_at : a.submitted_at;
-        date.textContent = at ? `${a.status === "approved" ? "Approved" : "Applied"} ${new Date(at).toLocaleString(undefined,{dateStyle:"medium",timeStyle:"short"})}` : "Date unavailable";
+        date.textContent = at ? `${a.status === "approved" ? "Approved" : "Applied"} ${formatDateTime(at)}` : "Date unavailable";
         item.append(date, profileLink(a.linkedin_url));
         const actions = document.createElement("div"); actions.className = "card-actions"; actions.append(button);
         if (a.status === "review") {
@@ -280,7 +281,7 @@ import ChatRoutingReview from "../components/ChatRoutingReview.astro";
         const article = document.createElement("article");
         article.className = "review-item";
         const title = document.createElement("h3");
-        title.textContent = `${bug.name ?? "Applicant"} · ${new Date(bug.created_at).toLocaleString()}`;
+        title.textContent = `${bug.name ?? "Applicant"} · ${formatDateTime(bug.created_at)}`;
         const content = document.createElement("p");
         content.textContent = bug.report;
         content.style.whiteSpace = "pre-wrap";

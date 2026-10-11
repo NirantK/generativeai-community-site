@@ -8,7 +8,7 @@ test('members search, filter, paginate and read plain-text context',async({page}
   const url=new URL(route.request().url());
   if(url.pathname.endsWith('/groups'))return route.fulfill({json:{groups:[group]}});
   if(url.pathname.includes('/messages/'))return route.fulfill({json:{message,before:[],after:[]}});
-  if(url.searchParams.get('q')){expect(url.searchParams.get('q')).toBe('retrieval');expect(url.searchParams.get('group')).toBe(group.id);expect(url.searchParams.get('from')).toBe('2026-09-01');searched=true;}
+  if(url.searchParams.get('q')){expect(url.searchParams.get('q')).toBe('retrieval');expect(url.searchParams.get('group')).toBe(group.id);expect(url.searchParams.get('from')).toBe('2026-09-01');expect(url.searchParams.get('timezone')).toBe('Asia/Kolkata');searched=true;}
   return route.fulfill({json:{messages:[message],nextCursor:url.searchParams.has('cursor')?null:'next-page'}});
  });
  await page.goto('/past-chats');
@@ -16,7 +16,7 @@ test('members search, filter, paginate and read plain-text context',async({page}
  expect(await page.locator('#chat-results img').count()).toBe(0);
  await page.getByLabel('Search messages').fill('retrieval');
  await page.locator('#chat-group').selectOption(group.id);
- await page.locator('#chat-from').fill('2026-09-01');
+ await page.locator('#chat-from').fill('1 Sep 2026');
  await page.getByRole('button',{name:'Search chats'}).click();
  await expect.poll(()=>searched).toBe(true);
  await page.getByRole('button',{name:'Load more messages'}).click();

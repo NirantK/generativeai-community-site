@@ -23,10 +23,11 @@ const { administrator = false } = Astro.props;
     </div>
   </section>
   <section class="chat-search-section" aria-labelledby="chat-search-title">
-    <div class="chat-section-heading"><div><h2 id="chat-search-title">Search the archive</h2><p class="help">Search all words in your query. Results are private to approved members.</p></div><span class="chat-access-state" id="chat-access-state">Checking access…</span></div>
+    <div class="chat-section-heading"><div><h2 id="chat-search-title">Search the archive</h2><p class="help">Search all words in your query. Results are private to approved members. Dates and times use IST (UTC+05:30).</p></div><span class="chat-access-state" id="chat-access-state">Checking access…</span></div>
     <form id="chat-search">
       <label for="chat-query">Search messages</label><input id="chat-query" name="q" type="search" maxlength="200" placeholder="Try retrieval, voice agents, or evaluation" />
-      <div class="chat-filter-grid"><label for="chat-group">Group<select id="chat-group" name="group"><option value="">All groups</option></select></label><label for="chat-from">From<input id="chat-from" name="from" type="date" /></label><label for="chat-to">To<input id="chat-to" name="to" type="date" /></label></div>
+      <div class="chat-filter-grid"><label for="chat-group">Group<select id="chat-group" name="group"><option value="">All groups</option></select></label><label for="chat-from">From<input id="chat-from" name="from" type="text" placeholder="15 Sep 2026" aria-describedby="chat-date-help" /></label><label for="chat-to">To<input id="chat-to" name="to" type="text" placeholder="15 Sep 2026" aria-describedby="chat-date-help" /></label></div>
+      <p id="chat-date-help" class="help">Enter dates as 15 Sep 2026. Filters include the full day in IST.</p>
       <div class="actions"><button class="primary" type="submit">Search chats</button></div>
     </form>
     <p id="chat-status" role="status">Loading archive…</p>
