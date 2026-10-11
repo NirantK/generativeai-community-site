@@ -43,7 +43,12 @@ class Handler(BaseHTTPRequestHandler):
     command=['python3','/app/scripts/export-community-chat.py','--output-dir',tmp]
     if self.path=='/sync':command.append('--sync')
     if self.path=='/sync/backfill-jobs':command.append('--backfill-jobs')
-    if self.path=='/sync/backfill-demos':command.append('--backfill-demos')
+    if self.path=='/sync/backfill-demos':
+     command.append('--backfill-demos')
+     anchor=self.headers.get('X-Demos-Anchor')
+     if anchor:
+      if len(anchor)>1000:raise ValueError('anchor size')
+      command.extend(['--demos-anchor',anchor])
     run=subprocess.run(command,capture_output=True,timeout=940)
     if run.returncode:
      marker=run.stderr.decode('utf-8','replace')

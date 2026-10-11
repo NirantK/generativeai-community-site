@@ -91,7 +91,7 @@ export class WhatsAppContainer extends Container<Env> {
   // Do not start or restore: only the existing container can hold the latest session.
   return this.saveCheckpoint();
  }
- async run(owner:string,backfillJobs=false,cachedOnly=false,backfillDemos=false) {
+ async run(owner:string,backfillJobs=false,cachedOnly=false,backfillDemos=false,demosAnchor?:{messageId:string;timestamp:number;fromMe:boolean}) {
   if((await this.ctx.storage.get<{owner:string}>('lease'))?.owner!==owner)throw new Error('lease-required');
   let restored=false;
   try {
@@ -105,7 +105,7 @@ export class WhatsAppContainer extends Container<Env> {
    await this.env.STATE.put('session/recovery-required',String(Date.now()));
    const endpoint=backfillJobs?'http://container/sync/backfill-jobs':backfillDemos?'http://container/sync/backfill-demos':cachedOnly?'http://container/sync/cached-only':'http://container/sync';
    const settings=await this.env.DB.prepare('SELECT trial_started_at FROM chat_routing_settings WHERE id=1').first<{trial_started_at:number}>().catch(()=>null);
-   const response=await this.containerFetch(endpoint,{method:'POST',headers:{'X-Routing-Since':String(settings?.trial_started_at??0)}});
+   const response=await this.containerFetch(endpoint,{method:'POST',headers:{'X-Routing-Since':String(settings?.trial_started_at??0),...(demosAnchor?{'X-Demos-Anchor':JSON.stringify(demosAnchor)}:{})}});
    if(!response.ok){
     const detail=await response.json<{error?:string}>().catch(()=>({error:'unknown'}));
     const code=typeof detail.error==='string' && /^[a-z-]+$/.test(detail.error)?detail.error:'unknown';
@@ -157,10 +157,11 @@ async function metrics(db:D1Database){
  }
  return result;
 }
-type SyncParams={force?:boolean;preflight?:boolean;recover?:boolean;storageTest?:boolean;backfillJobs?:boolean;cachedOnly?:boolean;terminatedLeaseOwner?:string;backfillDemos?:boolean;seedRouting?:number;modelEvaluation?:boolean;evaluatePolicy?:boolean};
+type SyncParams={demosAnchor?:{messageId:string;timestamp:number;fromMe:boolean};force?:boolean;preflight?:boolean;recover?:boolean;storageTest?:boolean;backfillJobs?:boolean;cachedOnly?:boolean;terminatedLeaseOwner?:string;backfillDemos?:boolean;seedRouting?:number;modelEvaluation?:boolean;evaluatePolicy?:boolean};
 export class ChatSyncWorkflow extends WorkflowEntrypoint<Env,SyncParams> {
  async run(event:WorkflowEvent<SyncParams>,step:WorkflowStep){
   const params=event.payload ?? {};
+  if(params.demosAnchor&&(!params.force||!params.backfillDemos))throw new Error('anchor-requires-forced-demos-backfill');
   if(params.evaluatePolicy)return step.do('evaluate-reviewed-policy',{retries:{limit:0,delay:'1 second'},timeout:'20 minutes'},()=>evaluateReviewedPolicy(this.env));
   if(params.modelEvaluation)return step.do('cloud-clef-evaluation',{retries:{limit:0,delay:'1 second'},timeout:'10 minutes'},()=>modelEvaluation(this.env));
   if(params.seedRouting)return step.do('seed-historical-review',{retries:{limit:0,delay:'1 second'},timeout:'20 minutes'},()=>seedRouting(this.env,params.seedRouting));
@@ -194,7 +195,7 @@ export class ChatSyncWorkflow extends WorkflowEntrypoint<Env,SyncParams> {
    // Never overwrite an export awaiting import after a partial failure.
    const pending=await this.env.STATE.head('pending/export.json');
    if(pending && (params.backfillJobs||params.backfillDemos))throw new Error('pending-export-must-be-imported-first');
-   if(!pending)await step.do('sync-wacli',{retries:{limit:0,delay:'1 second'},timeout:'20 minutes'},()=>this.env.WACLI.getByName('preflight').run(owner,!!params.backfillJobs,!!params.cachedOnly,!!params.backfillDemos));
+   if(!pending)await step.do('sync-wacli',{retries:{limit:0,delay:'1 second'},timeout:'20 minutes'},()=>this.env.WACLI.getByName('preflight').run(owner,!!params.backfillJobs,!!params.cachedOnly,!!params.backfillDemos,params.demosAnchor));
    const result=await step.do('import-and-verify',{retries:{limit:2,delay:'30 seconds'},timeout:'10 minutes'},async()=>{
     if(await this.env.STATE.head('session/recovery-required'))throw new Error('session-recovery-required');
     const object=await this.env.STATE.get('pending/export.json');

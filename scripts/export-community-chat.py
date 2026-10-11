@@ -5,6 +5,8 @@ import html
 import json
 import os
 import subprocess
+import sqlite3
+import re
 import sys
 import tempfile
 from datetime import datetime, timezone
@@ -106,6 +108,17 @@ def verify_demos():
         raise ValueError('Live group identity mismatch')
     return {'sourceRef': DEMOS_SOURCE, 'title': DEMOS_TITLE}
 
+def seed_demos_anchor(value):
+    # Operator supplies authentic metadata from an existing cache, never text/sender/session keys.
+    anchor = json.loads(value)
+    if set(anchor) != {'messageId', 'timestamp', 'fromMe'} or not isinstance(anchor['messageId'], str) or not re.fullmatch(r'[A-Za-z0-9_-]{8,200}', anchor['messageId']) or type(anchor['timestamp']) is not int or not 1420070400 <= anchor['timestamp'] < int(datetime.now(timezone.utc).timestamp()) or type(anchor['fromMe']) is not bool:
+        raise ValueError('Invalid history anchor')
+    with sqlite3.connect(Path(STORE) / 'wacli.db') as db:
+        if db.execute('SELECT 1 FROM messages WHERE chat_jid=? LIMIT 1', (DEMOS_SOURCE,)).fetchone():
+            return
+        db.execute("INSERT INTO chats(jid,kind,name) VALUES(?,'group',?) ON CONFLICT(jid) DO NOTHING", (DEMOS_SOURCE, DEMOS_TITLE))
+        db.execute('INSERT INTO messages(chat_jid,chat_name,msg_id,ts,from_me) VALUES(?,?,?,?,?)', (DEMOS_SOURCE, DEMOS_TITLE, anchor['messageId'], anchor['timestamp'], int(anchor['fromMe'])))
+
 def backfill_demos():
     return call('history', 'backfill', '--chat', DEMOS_SOURCE, '--count', '500',
                 '--requests', '1', '--wait', '90s', timeout=240)
@@ -118,7 +131,10 @@ def main():
     parser.add_argument('--sync', action='store_true', help='Receive current WhatsApp messages before exporting')
     parser.add_argument('--backfill-jobs', action='store_true', help='Request one bounded older-history batch for Job Posts & Talent')
     parser.add_argument('--backfill-demos', action='store_true', help='Request one bounded older-history batch for Project Demos & Events')
+    parser.add_argument('--demos-anchor', help='Operator-only authentic metadata anchor for an empty demos cache')
     args = parser.parse_args()
+    if args.demos_anchor and not args.backfill_demos:
+        raise ValueError('Anchor requires demos backfill')
     if args.backfill_jobs and args.backfill_demos:
         raise ValueError('Select one backfill group')
     if args.output_dir.resolve().is_relative_to(Path(__file__).resolve().parents[1]):
@@ -135,6 +151,8 @@ def main():
         verified = verify_demos()
     if args.backfill_demos:
         PHASE = 'backfill-demos'
+        if args.demos_anchor:
+            seed_demos_anchor(args.demos_anchor)
         backfill_demos()
     if args.backfill_jobs:
         PHASE = 'backfill'

@@ -60,3 +60,16 @@ class ExportTests(unittest.TestCase):
         with patch.object(exporter,'call',return_value='') as call:
             exporter.backfill_demos()
         call.assert_called_once_with('history','backfill','--chat',exporter.DEMOS_SOURCE,'--count','500','--requests','1','--wait','90s',timeout=240)
+
+    def test_demos_bootstrap_preserves_only_authentic_anchor_metadata(self):
+        import tempfile,sqlite3,json
+        with tempfile.TemporaryDirectory() as tmp,patch.object(exporter,'STORE',tmp):
+            with sqlite3.connect(Path(tmp)/'wacli.db') as db:
+                db.executescript('CREATE TABLE chats(jid TEXT PRIMARY KEY,kind TEXT,name TEXT); CREATE TABLE messages(chat_jid TEXT,chat_name TEXT,msg_id TEXT,ts INTEGER,from_me INTEGER,text TEXT,sender_jid TEXT)')
+            anchor=json.dumps({'messageId':'AUTHENTIC123','timestamp':1789472025,'fromMe':False})
+            exporter.seed_demos_anchor(anchor)
+            exporter.seed_demos_anchor(anchor)
+            with sqlite3.connect(Path(tmp)/'wacli.db') as db:
+                self.assertEqual(db.execute('SELECT msg_id,ts,from_me,text,sender_jid FROM messages').fetchall(),[('AUTHENTIC123',1789472025,0,None,None)])
+            with self.assertRaises(ValueError):exporter.seed_demos_anchor(json.dumps({'messageId':'bad','timestamp':0,'fromMe':False}))
+            with self.assertRaises(ValueError):exporter.seed_demos_anchor(json.dumps({'messageId':'AUTHENTIC123','timestamp':1789472025,'fromMe':False,'text':'unwanted'}))
