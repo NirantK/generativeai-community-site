@@ -14,7 +14,7 @@ function format(value: Date | number | string, withTime: boolean): string {
   const date = new Date(value);
   if (!Number.isFinite(date.getTime())) return 'Date unavailable';
   const parts = Object.fromEntries(formatter.formatToParts(date).map(p => [p.type, p.value]));
-  const day = `${parts.day} ${months[Number(parts.month) - 1]} ${parts.year}`;
+  const day = `${Number(parts.day)} ${months[Number(parts.month) - 1]} ${parts.year}`;
   return withTime ? `${day}, ${parts.hour}:${parts.minute} IST` : day;
 }
 /** Convert a human date to the API's calendar-date wire format. */
