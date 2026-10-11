@@ -221,7 +221,12 @@ export class ChatSyncWorkflow extends WorkflowEntrypoint<Env,SyncParams> {
      }
     }
     const after=await metrics(this.env.DB);
-    for(const added of GROUPS.slice(1))if(data.coverage.find(c=>c.sourceRef===added.source)?.status!=='could-not-sync'&&(after[added.id]?.visible??0)<1)throw new Error('archive-group-empty');
+    for(const added of GROUPS.slice(1)){
+     const coverage=data.coverage.find(c=>c.sourceRef===added.source);
+     if(!coverage)throw new Error('archive-group-coverage-missing');
+     // A metadata-only history anchor is not published history. Do not block healthy groups.
+     if((after[added.id]?.visible??0)<1){coverage.status='could-not-sync';coverage.reason='no-publishable-text';}
+    }
     for(const group of GROUPS)if(data.coverage.find(c=>c.sourceRef===group.source)?.status!=='could-not-sync')await this.env.DB.prepare('UPDATE chat_groups SET imported_at=? WHERE id=?').bind(Date.now(),group.id).run();
     const failedGroups=data.coverage.filter(c=>c.status==='could-not-sync').map(c=>({sourceRef:c.sourceRef,reason:c.reason}));
     const result={status:failedGroups.length?'partial':hash===previous?.digest?'unchanged':'synced',failedGroups,at:Date.now(),digest:hash,records:data.rows.length,before,after,coverage:data.coverage};
