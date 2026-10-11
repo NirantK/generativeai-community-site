@@ -151,7 +151,8 @@ def main():
             raise RuntimeError('Export failed')
         raw = payload['data']['messages']
         if not raw or len(raw) >= LIMIT:
-            raise ValueError('Empty or potentially capped export; investigate before importing')
+            coverages.append({'title':title,'sourceRef':source,'provider':'wacli','status':'could-not-sync','reason':'empty-cache' if not raw else 'export-cap','cachedRecords':len(raw),'messages':0,'cutover':cutover.isoformat(),'oldest':None,'newest':None,'verifiedIdentity':verified if source==DEMOS_SOURCE else None})
+            continue
         PHASE = 'normalize-primary' if source == SOURCE else 'normalize-jobs' if source == JOBS_SOURCE else 'normalize-demos'
         messages, overlap = normalize(raw, source, cutover)
         dates = sorted(m['timestamp'] for m in messages)

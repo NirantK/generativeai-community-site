@@ -8,7 +8,7 @@ const GROUPS=routingGroups;
 const DAY=86400000;
 // Retain the original preflight instance identity: Containers reserves this slot even after stop.
 type Row={id:string;group_id:string;source_id:string;posted_at:number;author:string;body:string;hidden:number};
-type Coverage={sourceRef:string;provider:string;cachedRecords:number;messages:number;cutover:string;oldest:string|null;newest:string|null;publicationCounts?:{textCandidates:number;mediaOrReactions:number;emptyText:number;deleted:number};verifiedIdentity?:{sourceRef:string;title:string}|null};
+type Coverage={status?:string;reason?:string;sourceRef:string;provider:string;cachedRecords:number;messages:number;cutover:string;oldest:string|null;newest:string|null;publicationCounts?:{textCandidates:number;mediaOrReactions:number;emptyText:number;deleted:number};verifiedIdentity?:{sourceRef:string;title:string}|null};
 type Export={rows:Row[];coverage:Coverage[];routingCandidates?:LiveCandidate[];routingOmitted?:number};
 async function digest(value:string){return Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(value))),b=>b.toString(16).padStart(2,'0')).join('');}
 
@@ -117,11 +117,11 @@ export class WhatsAppContainer extends Container<Env> {
    if(!Array.isArray(data.coverage)||data.coverage.length!==GROUPS.length||!Array.isArray(data.rows))throw new Error('invalid-export');
    for(const group of GROUPS){
     const coverage=data.coverage.find(c=>c.sourceRef===group.source);
-    if(!coverage||coverage.provider!=='wacli'||coverage.cachedRecords<=0||coverage.cachedRecords>=1_000_000||data.coverage.filter(c=>c.sourceRef===group.source).length!==1)throw new Error('invalid-export-coverage');
+    if(!coverage||coverage.provider!=='wacli'||(coverage.status!=='could-not-sync'&&(coverage.cachedRecords<=0||coverage.cachedRecords>=1_000_000))||data.coverage.filter(c=>c.sourceRef===group.source).length!==1)throw new Error('invalid-export-coverage');
    }
    for(const r of data.rows){
     const group=GROUPS.find(g=>g.id===r.group_id);
-    if(!group || !r.source_id.startsWith('wacli:') || r.id!==await digest(group.source+'\0'+r.source_id) || ![0,1].includes(r.hidden) || typeof r.body!=='string' || typeof r.author!=='string' || r.body.length>30000 || r.author.length>200 || (!r.hidden && (!Number.isSafeInteger(r.posted_at)||r.posted_at<=group.cutover||r.posted_at>Date.now()+DAY)))throw new Error('invalid-export-row');
+    if(!group || data.coverage.find(c=>c.sourceRef===group.source)?.status==='could-not-sync' || !r.source_id.startsWith('wacli:') || r.id!==await digest(group.source+'\0'+r.source_id) || ![0,1].includes(r.hidden) || typeof r.body!=='string' || typeof r.author!=='string' || r.body.length>30000 || r.author.length>200 || (!r.hidden && (!Number.isSafeInteger(r.posted_at)||r.posted_at<=group.cutover||r.posted_at>Date.now()+DAY)))throw new Error('invalid-export-row');
    }
    // Original text and sender exist only in this method; never return them from a Workflow step.
    const candidates=data.routingCandidates??[];
@@ -220,14 +220,18 @@ export class ChatSyncWorkflow extends WorkflowEntrypoint<Env,SyncParams> {
      }
     }
     const after=await metrics(this.env.DB);
-    for(const added of GROUPS.slice(1))if((after[added.id]?.visible??0)<1)throw new Error('archive-group-empty');
-    for(const group of GROUPS)await this.env.DB.prepare('UPDATE chat_groups SET imported_at=? WHERE id=?').bind(Date.now(),group.id).run();
-    const result={status:hash===previous?.digest?'unchanged':'synced',at:Date.now(),digest:hash,records:data.rows.length,before,after,coverage:data.coverage};
+    for(const added of GROUPS.slice(1))if(data.coverage.find(c=>c.sourceRef===added.source)?.status!=='could-not-sync'&&(after[added.id]?.visible??0)<1)throw new Error('archive-group-empty');
+    for(const group of GROUPS)if(data.coverage.find(c=>c.sourceRef===group.source)?.status!=='could-not-sync')await this.env.DB.prepare('UPDATE chat_groups SET imported_at=? WHERE id=?').bind(Date.now(),group.id).run();
+    const failedGroups=data.coverage.filter(c=>c.status==='could-not-sync').map(c=>({sourceRef:c.sourceRef,reason:c.reason}));
+    const result={status:failedGroups.length?'partial':hash===previous?.digest?'unchanged':'synced',failedGroups,at:Date.now(),digest:hash,records:data.rows.length,before,after,coverage:data.coverage};
     for(const group of GROUPS){
+     const coverage=data.coverage.find(c=>c.sourceRef===group.source);
+     if(coverage?.status==='could-not-sync'){await this.env.STATE.put(`groups/${group.key}/last-attempt.json`,JSON.stringify({status:'could-not-sync',at:result.at,reason:coverage.reason}));continue;}
      const rows=data.rows.filter(r=>r.group_id===group.id);
      await this.env.STATE.put(`groups/${group.key}/last-success.json`,JSON.stringify({at:result.at,digest:await digest(JSON.stringify(rows)),counts:after[group.id],coverage:data.coverage.find(c=>c.sourceRef===group.source)}));
     }
-    await this.env.STATE.put('last-success.json',JSON.stringify(result));
+    if(!failedGroups.length)await this.env.STATE.put('last-success.json',JSON.stringify(result));
+    else await this.env.STATE.put('last-attempt.json',JSON.stringify({status:'could-not-sync',at:result.at,failedGroups}));
     await this.env.STATE.delete('pending/export.json');
     return result;
    });
