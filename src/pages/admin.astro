@@ -201,7 +201,7 @@ import ChatRoutingReview from "../components/ChatRoutingReview.astro";
           receipt: record.receipt,
           history: record.history,
         },
-        null,
+        (key, value) => typeof value === "number" && (key === "at" || key.endsWith("At") || key.endsWith("_at")) ? formatDateTime(value) : value,
         2,
       );
       get("review").hidden = false;
