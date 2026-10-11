@@ -4,7 +4,7 @@ The live preflight and authenticated two-group sync passed on 2026-09-24. Schedu
 
 ## Architecture
 
-- A Worker cron synchronizes every 15 minutes. A unique ID per scheduled slot prevents duplicate instances; a leased Durable Object skips overlapping runs without starting a second WhatsApp session. Failures retry on the next slot, while last-success advances only after verification.
+- A native Workflow schedule synchronizes every 15 minutes. The Worker has no Cron Trigger or public route. A leased Durable Object skips overlapping runs without starting a second WhatsApp session. Failures retry on the next slot, while last-success advances only after verification.
 - One leased Durable Object owns the WhatsApp session and starts a native Linux `wacli` 0.18.2 container. No public Worker route, workers.dev URL, or HTTP administrative endpoint is enabled.
 - Private R2 bucket `genaicommunity-chat-sync-private` stores the session credential, sanitized two-group cache, pending sanitized export, and non-content sync results. Never enable public access. Treat the session snapshot as a credential.
 - Cloudflare R2 lifecycle rule `chat-sync-checkpoints-30-days` expires immutable exports under `session/checkpoints/` after 30 days. Cloudflare processes expirations automatically, typically within 24 hours of expiry. The active `session/latest.tar.gz` is outside this prefix and must remain available for session restore. The default multipart-abort rule remains enabled.

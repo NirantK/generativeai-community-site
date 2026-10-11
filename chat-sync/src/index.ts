@@ -6,7 +6,6 @@ const JOBS_GROUP='ab58449e10d8bf6a4e74b68ef82e6232186039fb9f003e0735dc0ebfd12cc9
 const JOBS_SOURCE='120363323644237261@g.us';
 const GROUPS=[{id:GROUP,source:SOURCE,title:'The GenerativeAI Group',cutover:Date.parse('2026-09-17T00:01:16Z')},{id:JOBS_GROUP,source:JOBS_SOURCE,title:'Job Posts & Talent',cutover:0}] as const;
 const DAY=86400000;
-const SYNC_INTERVAL=15*60_000;
 // Retain the original preflight instance identity: Containers reserves this slot even after stop.
 type Row={id:string;group_id:string;source_id:string;posted_at:number;author:string;body:string;hidden:number};
 type Coverage={sourceRef:string;provider:string;cachedRecords:number;messages:number;cutover:string;oldest:string|null;newest:string|null;publicationCounts?:{textCandidates:number;mediaOrReactions:number;emptyText:number;deleted:number}};
@@ -149,37 +148,38 @@ async function metrics(db:D1Database){
 type SyncParams={force?:boolean;preflight?:boolean;recover?:boolean;storageTest?:boolean;backfillJobs?:boolean;cachedOnly?:boolean;terminatedLeaseOwner?:string};
 export class ChatSyncWorkflow extends WorkflowEntrypoint<Env,SyncParams> {
  async run(event:WorkflowEvent<SyncParams>,step:WorkflowStep){
-  if(event.payload.storageTest)return step.do('cloud-r2-checkpoint-test',()=>storagePreflight(this.env.STATE));
-  if(event.payload.terminatedLeaseOwner)return step.do('release-verified-terminated-lease',()=>this.env.WACLI.getByName('preflight').releaseTerminatedLease(event.payload.terminatedLeaseOwner!));
-  if(event.payload.recover){
+  const params=event.payload ?? {};
+  if(params.storageTest)return step.do('cloud-r2-checkpoint-test',()=>storagePreflight(this.env.STATE));
+  if(params.terminatedLeaseOwner)return step.do('release-verified-terminated-lease',()=>this.env.WACLI.getByName('preflight').releaseTerminatedLease(params.terminatedLeaseOwner!));
+  if(params.recover){
    const instance=this.env.WACLI.getByName('preflight');
    await instance.acquire(event.instanceId);
    try{return await step.do('recover-current-session',{retries:{limit:0,delay:'1 second'},timeout:'2 minutes'},()=>instance.recover(event.instanceId));}
    finally{await instance.release(event.instanceId);}
   }
 
-  if(event.payload.preflight){
+  if(params.preflight){
    const instance=this.env.WACLI.getByName('preflight');
    await instance.acquire(event.instanceId);
    try{return await step.do('cloud-container-preflight',()=>instance.preflight());}
    finally{await instance.release(event.instanceId);}
   }
-  if(this.env.SYNC_ENABLED!=='true' && !event.payload.force)return {status:'paused'};
-  if((event.payload.backfillJobs||event.payload.cachedOnly) && !event.payload.force)throw new Error('manual-sync-requires-explicit-force');
-  if(event.payload.backfillJobs && event.payload.cachedOnly)throw new Error('incompatible-sync-modes');
+  if(this.env.SYNC_ENABLED!=='true' && !params.force)return {status:'paused'};
+  if((params.backfillJobs||params.cachedOnly) && !params.force)throw new Error('manual-sync-requires-explicit-force');
+  if(params.backfillJobs && params.cachedOnly)throw new Error('incompatible-sync-modes');
   const last=await this.env.STATE.get('last-success.json');
   const previous=last?await last.json<{at:number;digest:string}>():null;
   const owner=event.instanceId;
   const acquired=await step.do('acquire-single-session',()=>this.env.WACLI.getByName('preflight').tryAcquire(owner));
   if(!acquired){
-   if(event.payload.force)throw new Error('sync-already-running');
+   if(params.force)throw new Error('sync-already-running');
    return {status:'already-running'};
   }
   try {
    // Never overwrite an export awaiting import after a partial failure.
    const pending=await this.env.STATE.head('pending/export.json');
-   if(pending && event.payload.backfillJobs)throw new Error('pending-export-must-be-imported-first');
-   if(!pending)await step.do('sync-wacli',{retries:{limit:0,delay:'1 second'},timeout:'20 minutes'},()=>this.env.WACLI.getByName('preflight').run(owner,!!event.payload.backfillJobs,!!event.payload.cachedOnly));
+   if(pending && params.backfillJobs)throw new Error('pending-export-must-be-imported-first');
+   if(!pending)await step.do('sync-wacli',{retries:{limit:0,delay:'1 second'},timeout:'20 minutes'},()=>this.env.WACLI.getByName('preflight').run(owner,!!params.backfillJobs,!!params.cachedOnly));
    return await step.do('import-and-verify',{retries:{limit:2,delay:'30 seconds'},timeout:'10 minutes'},async()=>{
     if(await this.env.STATE.head('session/recovery-required'))throw new Error('session-recovery-required');
     const object=await this.env.STATE.get('pending/export.json');
@@ -219,7 +219,4 @@ export class ChatSyncWorkflow extends WorkflowEntrypoint<Env,SyncParams> {
 }
 export default {
  async fetch(){return new Response('Not found',{status:404});},
- async scheduled(event:ScheduledController,env:Env){
-  if(env.SYNC_ENABLED==='true')await env.SYNC.create({id:`scheduled-${Math.floor(event.scheduledTime/SYNC_INTERVAL)}`,params:{}});
- }
 } satisfies ExportedHandler<Env>;
