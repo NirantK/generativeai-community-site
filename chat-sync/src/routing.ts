@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { choices, proposal, ROUTING_MODEL, ROUTING_POLICY, routingCriteria, routingGroups, routingInstructions, type RoutingChoice } from '../../admissions/src/chat-routing-policy';
-export type LiveCandidate={id:string;groupId:string;source:string;messageId:string;sender:string;text:string;contentHash:string;postedAt:number};
+export type LiveCandidate={id:string;groupId:string;source:string;messageId:string;sender:string;text:string;sanitizedText:string;contentHash:string;postedAt:number};
 type Example={id:string;text:string;label:string;explanation:string};
 type Settings={trial_started_at:number;replies_enabled:number;enabled_at:number|null;test_verified:number;test_source_group:string|null;test_destination:RoutingChoice|null;test_requested_by:string|null;test_requested_at:number|null};
 const schema=z.object({type:z.literal('choice'),choice:z.enum(choices as [RoutingChoice,...RoutingChoice[]]),probabilities:z.record(z.string(),z.number().finite().min(0).max(1)),confidence:z.number().finite().min(0).max(1)});
@@ -13,7 +13,7 @@ export function validateChoice(output:unknown){
 async function candidateBank(db:D1Database){
  const result:Example[]=[];
  for(const group of routingGroups){
-  const rows=await db.prepare(`SELECT d.id,m.body text,l.label,l.explanation FROM chat_routing_labels l JOIN chat_routing_decisions d ON d.id=l.decision_id JOIN chat_messages m ON m.id=d.message_id WHERE l.holdout=0 AND l.label=? AND m.hidden=0 ORDER BY l.created_at DESC LIMIT 3`).bind(group.key).all<Example>();
+  const rows=await db.prepare(`SELECT d.id,COALESCE(NULLIF(d.review_text,''),m.body) text,l.label,l.explanation FROM chat_routing_labels l JOIN chat_routing_decisions d ON d.id=l.decision_id JOIN chat_messages m ON m.id=d.message_id WHERE l.holdout=0 AND l.label=? AND m.hidden=0 ORDER BY l.created_at DESC LIMIT 3`).bind(group.key).all<Example>();
   result.push(...rows.results.map(r=>({...r,text:r.text.slice(0,3000)})));
  }
  return {examples:result,version:ROUTING_POLICY+':'+(await hash(JSON.stringify(result))).slice(0,16)};
@@ -29,9 +29,9 @@ export async function choose(ai:Ai,text:string,examples:Example[]=[]){
  const output=await ai.run(ROUTING_MODEL,{model:'clef',state:{message:text,reviewedExamples:examples.map(({text,label,explanation})=>({message:text,choice:label,explanation}))},questions:{routing:{type:'choice',instructions:routingInstructions,criteria:routingCriteria}}});
  return validateChoice(output);
 }
-async function assess(env:Env,input:{id:string;groupId:string;text:string;contentHash:string},historical:boolean,bank:Awaited<ReturnType<typeof exampleBank>>){
+async function assess(env:Env,input:{id:string;groupId:string;text:string;sanitizedText?:string;contentHash:string},historical:boolean,bank:Awaited<ReturnType<typeof exampleBank>>){
  const id=input.id+':'+input.contentHash;
- const claimed=await env.DB.prepare(`INSERT INTO chat_routing_decisions(id,message_id,content_hash,group_id,choice,status,historical,model,prompt_version,created_at) VALUES(?,?,?,?,'unclear','processing',?,?,?,?) ON CONFLICT(message_id,content_hash) DO NOTHING RETURNING id`).bind(id,input.id,input.contentHash,input.groupId,historical?1:0,ROUTING_MODEL,bank.version,Date.now()).first();
+ const claimed=await env.DB.prepare(`INSERT INTO chat_routing_decisions(id,message_id,content_hash,group_id,choice,status,historical,model,prompt_version,created_at,review_text) VALUES(?,?,?,?,'unclear','processing',?,?,?,?,?) ON CONFLICT(message_id,content_hash) DO NOTHING RETURNING id`).bind(id,input.id,input.contentHash,input.groupId,historical?1:0,ROUTING_MODEL,bank.version,Date.now(),input.sanitizedText??input.text).first();
  if(!claimed)return null;
  try{
   const answer=await choose(env.AI,input.text,bank.examples);
@@ -52,7 +52,7 @@ export async function classifyLive(env:Env,candidates:LiveCandidate[],send:(c:Li
  let assessed=0,failed=0,sent=0;
  for(const candidate of candidates){
   const group=routingGroups.find(g=>g.source===candidate.source);
-  if(!group||group.id!==candidate.groupId||candidate.id!==await hash(candidate.source+'\0wacli:'+candidate.messageId)||!/^[a-f0-9]{64}$/.test(candidate.contentHash)||typeof candidate.text!=='string'||candidate.text.length>30000||typeof candidate.sender!=='string'||candidate.sender.length>150)throw new Error('invalid-live-routing-candidate');
+  if(!group||group.id!==candidate.groupId||candidate.id!==await hash(candidate.source+'\0wacli:'+candidate.messageId)||!/^[a-f0-9]{64}$/.test(candidate.contentHash)||typeof candidate.text!=='string'||candidate.text.length>30000||typeof candidate.sanitizedText!=='string'||candidate.sanitizedText.length>30000||typeof candidate.sender!=='string'||candidate.sender.length>150)throw new Error('invalid-live-routing-candidate');
   const settings=await env.DB.prepare('SELECT * FROM chat_routing_settings WHERE id=1').first<Settings>();
   if(!settings)break;
   const answer=await assess(env,candidate,candidate.postedAt<settings.trial_started_at,bank);
@@ -107,7 +107,7 @@ export async function evaluateReviewedPolicy(env:Env){
  const settings=await env.DB.prepare('SELECT policy_requested_at FROM chat_routing_settings WHERE id=1').first<{policy_requested_at:number|null}>();
  if(!settings?.policy_requested_at)return {status:'not-requested'};
  const candidate=await candidateBank(env.DB),active=await exampleBank(env.DB);
- const cases=await env.DB.prepare(`SELECT m.body text,d.group_id groupId,l.label FROM chat_routing_labels l JOIN chat_routing_decisions d ON d.id=l.decision_id JOIN chat_messages m ON m.id=d.message_id WHERE l.holdout=1 AND m.hidden=0 ORDER BY substr(d.id,-16) LIMIT 60`).all<{text:string;groupId:string;label:RoutingChoice}>();
+ const cases=await env.DB.prepare(`SELECT COALESCE(NULLIF(d.review_text,''),m.body) text,d.group_id groupId,l.label FROM chat_routing_labels l JOIN chat_routing_decisions d ON d.id=l.decision_id JOIN chat_messages m ON m.id=d.message_id WHERE l.holdout=1 AND m.hidden=0 ORDER BY substr(d.id,-16) LIMIT 60`).all<{text:string;groupId:string;label:RoutingChoice}>();
  const coverage=routingGroups.every(g=>cases.results.some(c=>c.label===g.key));
  let baseline=0,correct=0,proposed=0,correctProposals=0,errors=0;
  const enough=cases.results.length>=12&&coverage&&candidate.examples.length>=6;

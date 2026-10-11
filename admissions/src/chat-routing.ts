@@ -56,7 +56,7 @@ const labelSchema=z.object({decisionId:z.string().regex(/^[a-f0-9]{64}:[a-f0-9]{
 export async function routingAdmin(req:Request,env:Env,suffix:string,actor:string){
  const settings=await routingSettings(env.INDEX);
  if(suffix==='/queue'&&req.method==='GET'){
-  const rows=await env.INDEX.prepare(`SELECT d.*,m.body text,m.author,m.posted_at postedAt FROM chat_routing_decisions d JOIN chat_messages m ON m.id=d.message_id LEFT JOIN chat_routing_labels l ON l.decision_id=d.id WHERE l.decision_id IS NULL AND m.hidden=0 AND d.status='assessed' AND NOT EXISTS(SELECT 1 FROM chat_routing_decisions newer WHERE newer.message_id=d.message_id AND newer.created_at>d.created_at) ORDER BY d.created_at DESC LIMIT 4000`).all<ReviewRow>();
+  const rows=await env.INDEX.prepare(`SELECT d.*,COALESCE(NULLIF(d.review_text,''),m.body) text,m.author,m.posted_at postedAt FROM chat_routing_decisions d JOIN chat_messages m ON m.id=d.message_id LEFT JOIN chat_routing_labels l ON l.decision_id=d.id WHERE l.decision_id IS NULL AND m.hidden=0 AND d.status='assessed' AND NOT EXISTS(SELECT 1 FROM chat_routing_decisions newer WHERE newer.message_id=d.message_id AND newer.created_at>d.created_at) ORDER BY d.created_at DESC LIMIT 4000`).all<ReviewRow>();
   const cards=selectReview(rows.results).map(({row,reason})=>({decisionId:row.id,messageId:row.message_id,groupId:row.group_id,text:row.text,author:row.author,postedAt:row.postedAt,historical:!!row.historical,reason}));
   return json({cards,groups:routingGroups.map(({key,id,title})=>({key,id,title})),available:rows.results.length});
  }

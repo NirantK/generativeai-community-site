@@ -1,5 +1,6 @@
 CREATE TABLE chat_routing_decisions (
  id TEXT PRIMARY KEY, message_id TEXT NOT NULL, content_hash TEXT NOT NULL,
+ review_text TEXT NOT NULL DEFAULT '',
  group_id TEXT NOT NULL, choice TEXT NOT NULL, probabilities TEXT NOT NULL DEFAULT '{}',
  confidence REAL NOT NULL DEFAULT 0, proposal INTEGER NOT NULL DEFAULT 0,
  status TEXT NOT NULL, historical INTEGER NOT NULL DEFAULT 1,
