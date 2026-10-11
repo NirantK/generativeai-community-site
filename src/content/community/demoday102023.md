@@ -1,6 +1,6 @@
 ---
-title: "Demo Day 10th October 2023"
-description: "Details of the demos presented on 10th October 2023"
+title: "Demo Day 10 Oct 2023"
+description: "Details of the demos presented on 10 Oct 2023"
 date: 2023-10-09T00:59:39+05:30
 lastmod: 2023-10-09T00:59:39+05:30
 draft: false
@@ -11,7 +11,7 @@ toc: true
 
 # Details of Demos
 
-Here is a list of all the teams/folks who presented a demo on the 7th October 2023, Microsoft Office, Bangalore. Thanks to Divya Tak, Soumyadeep Mukherjee for hosting a great event and Microsoft for sponsoring the venue.
+Here is a list of all the teams/folks who presented a demo on the 7 Oct 2023, Microsoft Office, Bangalore. Thanks to Divya Tak, Soumyadeep Mukherjee for hosting a great event and Microsoft for sponsoring the venue.
 
 1. **Sachin Dharashivkar : WebSentryAgent**
     - Email : [sachin.dharashivkar@gmail.com](mailto:sachin.dharashivkar@gmail.com)

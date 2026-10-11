@@ -1280,6 +1280,16 @@ describe("member chat archive",()=>{
     expect((await gateway("/api/v1/chats/search?q=%22%27","GET",owner.headers)).status).toBe(422);
     expect((await gateway("/api/v1/chats/search?from=2026-02-30","GET",owner.headers)).status).toBe(422);
   });
+  it("filters full IST days across UTC boundaries without changing default API dates",async()=>{
+    const owner=await member(), id=await group();
+    await message(id,"Before IST day",Date.parse("2026-09-14T18:29:59Z"));
+    const start=await message(id,"IST midnight",Date.parse("2026-09-14T18:30:00Z"));
+    const end=await message(id,"IST end",Date.parse("2026-09-15T18:29:59Z"));
+    await message(id,"After IST day",Date.parse("2026-09-15T18:30:00Z"));
+    const result=await (await gateway(`/api/v1/chats/search?group=${id}&from=2026-09-15&to=2026-09-15&timezone=Asia/Kolkata`,"GET",owner.headers)).json() as any;
+    expect(result.messages.map((m:any)=>m.id)).toEqual([end,start]);
+    expect((await gateway("/api/v1/chats/search?timezone=unsupported","GET",owner.headers)).status).toBe(422);
+  });
   it("never exposes unpublished groups and keeps context inside the selected group",async()=>{
     const owner=await member(), visible=await group(), privateGroup=await group(false);
     const first=await message(visible,"Visible earlier context",1000);

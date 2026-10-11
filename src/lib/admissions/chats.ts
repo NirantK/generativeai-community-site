@@ -1,10 +1,11 @@
+import { formatDateTime, formatDate, parseDateInput } from "../dates";
 type Chat = {id:string;groupTitle?:string;author:string;postedAt:number;text:string};
 type Group = {id:string;title:string;published:number;messageCount:number;firstMessageAt:number|null;lastMessageAt:number|null;importedAt:number;coverageNote:string};
 export function initChatArchive() {
   const el=(id:string)=>document.getElementById(id)!;
   const administrator=el("chat-archive").dataset.administrator === "true";
   const base=administrator ? "/api/admin/chats" : "/api/v1/chats";
-  let cursor:string|null=null, query=new URLSearchParams(), generation=0;
+  let cursor:string|null=null, query=new URLSearchParams({timezone:"Asia/Kolkata"}), generation=0;
   async function api<T>(path:string,method="GET",data?:unknown):Promise<T> {
     const response=await fetch(base+path,{method,headers:data?{"Content-Type":"application/json"}:{},body:data?JSON.stringify(data):undefined});
     if(!response.headers.get("content-type")?.includes("application/json")) throw new Error("Archive temporarily unavailable. Please try again.");
@@ -17,7 +18,7 @@ export function initChatArchive() {
   function article(message:Chat, context=false) {
     const item=document.createElement("article");item.className="review-item";
     const meta=document.createElement("p");meta.className="chat-meta";
-    meta.textContent=`${message.groupTitle ? message.groupTitle+" · " : ""}${message.author} · ${new Date(message.postedAt).toLocaleString()}`;
+    meta.textContent=`${message.groupTitle ? message.groupTitle+" · " : ""}${message.author} · ${formatDateTime(message.postedAt)}`;
     const text=document.createElement("p");text.className="chat-text";text.textContent=message.text;
     item.append(meta,text);
     if(!context) {
@@ -55,7 +56,7 @@ export function initChatArchive() {
     } catch(error) {if(current===generation){el("chat-results").replaceChildren();el("chat-context").hidden=true;el("chat-more").hidden=true;const e=error as Error & {status?:number};status(e.status===401||e.status===403?"Approved access is required. Start at Apply to join, sign in with LinkedIn, and return here after approval.":e.message);}}
     finally {if(current===generation)(el("chat-more") as HTMLButtonElement).disabled=false;}
   }
-  el("chat-search").addEventListener("submit",event=>{event.preventDefault();query=new URLSearchParams();for(const [key,value] of new FormData(el("chat-search") as HTMLFormElement)){if(String(value).trim())query.set(key,String(value).trim());}cursor=null;el("chat-context").hidden=true;void search();});
+  el("chat-search").addEventListener("submit",event=>{event.preventDefault();query=new URLSearchParams({timezone:"Asia/Kolkata"});for(const [key,value] of new FormData(el("chat-search") as HTMLFormElement)){const text=String(value).trim();if(!text)continue;if(key==="from"||key==="to"){const parsed=parseDateInput(text);if(!parsed){status("Enter a valid date, such as 15 Sep 2026.");return;}query.set(key,parsed);(el("chat-"+key) as HTMLInputElement).value=formatDate(parsed+"T00:00:00Z");}else query.set(key,text);}cursor=null;el("chat-context").hidden=true;void search();});
   el("chat-more").onclick=()=>void search(true);
   void (async()=>{
     try {
@@ -63,7 +64,7 @@ export function initChatArchive() {
       for(const group of groups) {
         const option=document.createElement("option");option.value=group.id;option.textContent=`${group.title} (${group.messageCount})`;el("chat-group").append(option);
         if(administrator) {
-          const row=document.createElement("p");row.textContent=`${group.title} · ${group.messageCount} messages · ${group.coverageNote} · Imported ${new Date(group.importedAt).toLocaleString()} `;
+          const row=document.createElement("p");row.textContent=`${group.title} · ${group.messageCount} messages · ${group.coverageNote} · Imported ${formatDateTime(group.importedAt)} `;
           const toggle=document.createElement("button");toggle.textContent=group.published?"Unpublish group":"Publish group";
           toggle.onclick=async()=>{toggle.disabled=true;try {await api(`/groups/${group.id}`,"POST",{published:!group.published});group.published=group.published?0:1;toggle.textContent=group.published?"Unpublish group":"Publish group";status("Group visibility updated.");}catch(error){status((error as Error).message);}finally{toggle.disabled=false;}};
           row.append(toggle);el("chat-moderation").append(row);
