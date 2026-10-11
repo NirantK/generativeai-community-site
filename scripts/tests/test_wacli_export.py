@@ -73,3 +73,19 @@ class ExportTests(unittest.TestCase):
                 self.assertEqual(db.execute('SELECT msg_id,ts,from_me,text,sender_jid FROM messages').fetchall(),[('AUTHENTIC123',1789472025,0,None,None)])
             with self.assertRaises(ValueError):exporter.seed_demos_anchor(json.dumps({'messageId':'bad','timestamp':0,'fromMe':False}))
             with self.assertRaises(ValueError):exporter.seed_demos_anchor(json.dumps({'messageId':'AUTHENTIC123','timestamp':1789472025,'fromMe':False,'text':'unwanted'}))
+
+    def test_sanitized_precloud_demos_cache_bootstrap_does_not_override_cloud_edits(self):
+        import tempfile,sqlite3,json
+        with tempfile.TemporaryDirectory() as tmp,patch.object(exporter,'STORE',tmp):
+            with sqlite3.connect(Path(tmp)/'wacli.db') as db:
+                db.executescript('CREATE TABLE chats(jid TEXT PRIMARY KEY,kind TEXT,name TEXT); CREATE TABLE messages(chat_jid TEXT,chat_name TEXT,msg_id TEXT,ts INTEGER,from_me INTEGER,sender_jid TEXT,sender_name TEXT,text TEXT,display_text TEXT,edited INTEGER DEFAULT 0,revoked INTEGER DEFAULT 0,deleted_for_me INTEGER DEFAULT 0,UNIQUE(chat_jid,msg_id))')
+            exporter.seed_demos_anchor(json.dumps({'messageId':'AUTHENTIC123','timestamp':1789472025,'fromMe':False}))
+            payload={'sourceRef':exporter.DEMOS_SOURCE,'anchorMessageId':'AUTHENTIC123','messages':[{'messageId':'AUTHENTIC123','timestamp':1789472025,'fromMe':False,'author':'+91 12345 67890','text':'Demo call +91 12345 67890'},{'messageId':'SECOND12345','timestamp':1789472026,'fromMe':False,'author':'Builder','text':'Original demo'}]}
+            path=Path(tmp)/'cache.json';path.write_text(json.dumps(payload));exporter.bootstrap_demos(path)
+            with sqlite3.connect(Path(tmp)/'wacli.db') as db:
+                self.assertEqual(db.execute('SELECT text,sender_name FROM messages WHERE msg_id=?',('AUTHENTIC123',)).fetchone(),('Demo call amber bear noon','amber bear noon'))
+                db.execute("UPDATE messages SET text='Cloud edited demo',edited=1 WHERE msg_id='SECOND12345'")
+            exporter.bootstrap_demos(path)
+            with sqlite3.connect(Path(tmp)/'wacli.db') as db:self.assertEqual(db.execute("SELECT text FROM messages WHERE msg_id='SECOND12345'").fetchone()[0],'Cloud edited demo')
+            payload['sourceRef']='unapproved@g.us';path.write_text(json.dumps(payload))
+            with self.assertRaises(ValueError):exporter.bootstrap_demos(path)

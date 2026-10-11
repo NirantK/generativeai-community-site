@@ -91,7 +91,7 @@ export class WhatsAppContainer extends Container<Env> {
   // Do not start or restore: only the existing container can hold the latest session.
   return this.saveCheckpoint();
  }
- async run(owner:string,backfillJobs=false,cachedOnly=false,backfillDemos=false,demosAnchor?:{messageId:string;timestamp:number;fromMe:boolean}) {
+ async run(owner:string,backfillJobs=false,cachedOnly=false,backfillDemos=false,demosAnchor?:{messageId:string;timestamp:number;fromMe:boolean},bootstrapDemos=false) {
   if((await this.ctx.storage.get<{owner:string}>('lease'))?.owner!==owner)throw new Error('lease-required');
   let restored=false;
   try {
@@ -103,9 +103,11 @@ export class WhatsAppContainer extends Container<Env> {
    if(!restore.ok)throw new Error('session-restore-failed');
    restored=true;
    await this.env.STATE.put('session/recovery-required',String(Date.now()));
-   const endpoint=backfillJobs?'http://container/sync/backfill-jobs':backfillDemos?'http://container/sync/backfill-demos':cachedOnly?'http://container/sync/cached-only':'http://container/sync';
+   const bootstrap=bootstrapDemos?await this.env.STATE.get('bootstrap/demos-cache.json'):null;
+   if(bootstrapDemos&&(!bootstrap||bootstrap.size>2_000_000))throw new Error('sanitized-demos-bootstrap-required');
+   const endpoint=bootstrapDemos?'http://container/sync/bootstrap-demos':backfillJobs?'http://container/sync/backfill-jobs':backfillDemos?'http://container/sync/backfill-demos':cachedOnly?'http://container/sync/cached-only':'http://container/sync';
    const settings=await this.env.DB.prepare('SELECT trial_started_at FROM chat_routing_settings WHERE id=1').first<{trial_started_at:number}>().catch(()=>null);
-   const response=await this.containerFetch(endpoint,{method:'POST',headers:{'X-Routing-Since':String(settings?.trial_started_at??0),...(demosAnchor?{'X-Demos-Anchor':JSON.stringify(demosAnchor)}:{})}});
+   const response=await this.containerFetch(endpoint,{method:'POST',headers:{'X-Routing-Since':String(settings?.trial_started_at??0),...(demosAnchor?{'X-Demos-Anchor':JSON.stringify(demosAnchor)}:{}),...(bootstrap?{'Content-Length':String(bootstrap.size)}:{})},...(bootstrap?{body:await bootstrap.arrayBuffer()}: {})});
    if(!response.ok){
     const detail=await response.json<{error?:string}>().catch(()=>({error:'unknown'}));
     const code=typeof detail.error==='string' && /^[a-z-]+$/.test(detail.error)?detail.error:'unknown';
@@ -129,7 +131,7 @@ export class WhatsAppContainer extends Container<Env> {
    if(candidates.length>200)throw new Error('routing-candidate-limit');
    // Save only sanitized archive data. AI failure cannot lose an otherwise valid archive update.
    await this.env.STATE.put('pending/export.json',JSON.stringify(data));
-   if(settings && !cachedOnly){
+   if(settings && !cachedOnly && !bootstrapDemos){
     try{await classifyLive(this.env,(backfillJobs||backfillDemos)?candidates.slice(0,30):candidates,async(c,destination)=>{
      const reply=await this.containerFetch('http://container/send-reply',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({source:c.source,messageId:c.messageId,sender:c.sender,destination})});
      if(!reply.ok)throw new Error('reply-outcome-uncertain');
@@ -157,7 +159,7 @@ async function metrics(db:D1Database){
  }
  return result;
 }
-type SyncParams={demosAnchor?:{messageId:string;timestamp:number;fromMe:boolean};force?:boolean;preflight?:boolean;recover?:boolean;storageTest?:boolean;backfillJobs?:boolean;cachedOnly?:boolean;terminatedLeaseOwner?:string;backfillDemos?:boolean;seedRouting?:number;modelEvaluation?:boolean;evaluatePolicy?:boolean};
+type SyncParams={bootstrapDemos?:boolean;demosAnchor?:{messageId:string;timestamp:number;fromMe:boolean};force?:boolean;preflight?:boolean;recover?:boolean;storageTest?:boolean;backfillJobs?:boolean;cachedOnly?:boolean;terminatedLeaseOwner?:string;backfillDemos?:boolean;seedRouting?:number;modelEvaluation?:boolean;evaluatePolicy?:boolean};
 export class ChatSyncWorkflow extends WorkflowEntrypoint<Env,SyncParams> {
  async run(event:WorkflowEvent<SyncParams>,step:WorkflowStep){
   const params=event.payload ?? {};
@@ -181,8 +183,8 @@ export class ChatSyncWorkflow extends WorkflowEntrypoint<Env,SyncParams> {
    finally{await instance.release(event.instanceId);}
   }
   if(this.env.SYNC_ENABLED!=='true' && !params.force)return {status:'paused'};
-  if((params.backfillJobs||params.backfillDemos||params.cachedOnly) && !params.force)throw new Error('manual-sync-requires-explicit-force');
-  if([params.backfillJobs,params.backfillDemos,params.cachedOnly].filter(Boolean).length>1)throw new Error('incompatible-sync-modes');
+  if((params.backfillJobs||params.backfillDemos||params.cachedOnly||params.bootstrapDemos) && !params.force)throw new Error('manual-sync-requires-explicit-force');
+  if([params.backfillJobs,params.backfillDemos,params.cachedOnly,params.bootstrapDemos].filter(Boolean).length>1)throw new Error('incompatible-sync-modes');
   const last=await this.env.STATE.get('last-success.json');
   const previous=last?await last.json<{at:number;digest:string}>():null;
   const owner=event.instanceId;
@@ -194,8 +196,8 @@ export class ChatSyncWorkflow extends WorkflowEntrypoint<Env,SyncParams> {
   try {
    // Never overwrite an export awaiting import after a partial failure.
    const pending=await this.env.STATE.head('pending/export.json');
-   if(pending && (params.backfillJobs||params.backfillDemos))throw new Error('pending-export-must-be-imported-first');
-   if(!pending)await step.do('sync-wacli',{retries:{limit:0,delay:'1 second'},timeout:'20 minutes'},()=>this.env.WACLI.getByName('preflight').run(owner,!!params.backfillJobs,!!params.cachedOnly,!!params.backfillDemos,params.demosAnchor));
+   if(pending && (params.backfillJobs||params.backfillDemos||params.bootstrapDemos))throw new Error('pending-export-must-be-imported-first');
+   if(!pending)await step.do('sync-wacli',{retries:{limit:0,delay:'1 second'},timeout:'20 minutes'},()=>this.env.WACLI.getByName('preflight').run(owner,!!params.backfillJobs,!!params.cachedOnly,!!params.backfillDemos,params.demosAnchor,!!params.bootstrapDemos));
    const result=await step.do('import-and-verify',{retries:{limit:2,delay:'30 seconds'},timeout:'10 minutes'},async()=>{
     if(await this.env.STATE.head('session/recovery-required'))throw new Error('session-recovery-required');
     const object=await this.env.STATE.get('pending/export.json');
@@ -239,6 +241,7 @@ export class ChatSyncWorkflow extends WorkflowEntrypoint<Env,SyncParams> {
     if(!failedGroups.length)await this.env.STATE.put('last-success.json',JSON.stringify(result));
     else await this.env.STATE.put('last-attempt.json',JSON.stringify({status:'could-not-sync',at:result.at,failedGroups}));
     await this.env.STATE.delete('pending/export.json');
+    if(params.bootstrapDemos&&!failedGroups.some(g=>g.sourceRef===GROUPS[2].source))await this.env.STATE.delete('bootstrap/demos-cache.json');
     return result;
    });
    // Historical sampling is independent of the archive's verified success checkpoint.
