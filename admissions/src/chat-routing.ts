@@ -64,7 +64,7 @@ export async function routingAdmin(req:Request,env:Env,suffix:string,actor:strin
   const input=labelSchema.parse(await body(req));
   const decision=await env.INDEX.prepare('SELECT * FROM chat_routing_decisions WHERE id=?').bind(input.decisionId).first();
   if(!decision)throw new ApiError(404,'not_found','Review example not found.');
-  const holdout=parseInt((await digest(input.decisionId)).slice(0,2),16)%5===0?1:0;
+  const holdout=parseInt((await digest(input.decisionId.split(':')[0])).slice(0,2),16)%5===0?1:0;
   const inserted=await env.INDEX.prepare('INSERT INTO chat_routing_labels(decision_id,label,explanation,actor,holdout,created_at) VALUES(?,?,?,?,?,?) ON CONFLICT(decision_id) DO NOTHING RETURNING decision_id').bind(input.decisionId,input.label,input.explanation,actor,holdout,Date.now()).first();
   if(!inserted){const prior=await env.INDEX.prepare('SELECT label,explanation FROM chat_routing_labels WHERE decision_id=?').bind(input.decisionId).first<{label:string;explanation:string}>();if(prior?.label!==input.label||prior?.explanation!==input.explanation)throw new ApiError(409,'already_labeled','Another administrator labeled this example. Refresh the queue.');}
   return json({label:input.label,modelChoice:decision.choice,probabilities:JSON.parse(String(decision.probabilities)),model:decision.model,promptVersion:decision.prompt_version,holdout:!!holdout});
