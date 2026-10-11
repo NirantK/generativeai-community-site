@@ -3,9 +3,9 @@ on:
   workflow_dispatch:
   push:
     branches: [main]
-    paths: ['chat-sync/**', '.github/workflows/chat-sync.yml']
+    paths: ['chat-sync/**', 'scripts/export-community-chat.py', 'scripts/chat_privacy.py', 'scripts/import-chat-archive.py', 'admissions/src/chat-routing-policy.ts', '.github/workflows/chat-sync.yml']
   pull_request:
-    paths: ['chat-sync/**', '.github/workflows/chat-sync.yml']
+    paths: ['chat-sync/**', 'scripts/export-community-chat.py', 'scripts/chat_privacy.py', 'scripts/import-chat-archive.py', 'admissions/src/chat-routing-policy.ts', '.github/workflows/chat-sync.yml']
 permissions:
   contents: read
 concurrency:
@@ -29,6 +29,7 @@ jobs:
           docker run --rm --entrypoint python3 genai-chat-sync -m unittest discover -s /app/scripts/tests -p test_chat_import.py
           docker run --rm --entrypoint python3 genai-chat-sync -m unittest discover -s /app/scripts/tests -p test_wacli_export.py
           docker run --rm --entrypoint python3 genai-chat-sync -m unittest discover -s /app -p test_checkpoint.py
+          docker run --rm --entrypoint python3 genai-chat-sync -m unittest discover -s /app -p test_routing.py
           docker run --rm --entrypoint /usr/local/bin/wacli genai-chat-sync --help > /dev/null
   deploy:
     if: github.ref == 'refs/heads/main'

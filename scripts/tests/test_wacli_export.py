@@ -49,3 +49,14 @@ class ExportTests(unittest.TestCase):
             exporter.backfill_jobs()
         call.assert_called_once_with('history','backfill','--chat',exporter.JOBS_SOURCE,
                                      '--count','500','--requests','1','--wait','90s',timeout=240)
+
+    def test_demos_source_and_live_identity_fail_closed(self):
+        self.assertIn((exporter.DEMOS_SOURCE,exporter.DEMOS_TITLE,exporter.JOBS_CUTOVER),exporter.GROUPS)
+        import json
+        with patch.object(exporter,'call',return_value=json.dumps({'success':True,'data':{'JID':exporter.DEMOS_SOURCE,'Name':exporter.DEMOS_TITLE}})):
+            self.assertEqual(exporter.verify_demos()['sourceRef'],exporter.DEMOS_SOURCE)
+        with patch.object(exporter,'call',return_value=json.dumps({'success':True,'data':{'JID':exporter.DEMOS_SOURCE,'Name':'Wrong group'}})):
+            with self.assertRaises(ValueError):exporter.verify_demos()
+        with patch.object(exporter,'call',return_value='') as call:
+            exporter.backfill_demos()
+        call.assert_called_once_with('history','backfill','--chat',exporter.DEMOS_SOURCE,'--count','500','--requests','1','--wait','90s',timeout=240)

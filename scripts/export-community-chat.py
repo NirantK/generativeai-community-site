@@ -19,11 +19,13 @@ SOURCE = '120363049558306142@g.us'
 TITLE = 'The GenerativeAI Group'
 JOBS_SOURCE = '120363323644237261@g.us'
 JOBS_TITLE = 'Job Posts & Talent'
+DEMOS_SOURCE = '120363297860953641@g.us'
+DEMOS_TITLE = 'Project Demos & Events'
 # The published legacy archive ends here. Its IDs differ from WhatsApp IDs.
 # Preserve it; never guess cross-source matches or re-import overlapping history.
 CUTOVER = datetime.fromisoformat('2026-09-17T00:01:16+00:00')
 JOBS_CUTOVER = datetime.fromtimestamp(0, timezone.utc)
-GROUPS = ((SOURCE, TITLE, CUTOVER), (JOBS_SOURCE, JOBS_TITLE, JOBS_CUTOVER))
+GROUPS = ((SOURCE, TITLE, CUTOVER), (JOBS_SOURCE, JOBS_TITLE, JOBS_CUTOVER), (DEMOS_SOURCE, DEMOS_TITLE, JOBS_CUTOVER))
 LIMIT = 1000000
 
 
@@ -68,7 +70,6 @@ def normalize(messages, source=SOURCE, cutover=CUTOVER):
         selected[mid] = {
             'id': mid, 'timestamp': at.isoformat(),
             'sender_name': html.escape(redact_text(raw.get('SenderName') or '')),
-            'sender_id': raw.get('SenderJID') or '',
             # The shared importer expects HTML; wacli text is plain text.
             'text': html.escape(redact_text(raw.get('Text') or '')),
             'type': 'OTHER' if media else 'TEXT',
@@ -98,6 +99,17 @@ def backfill_jobs():
                 '--requests', '1', '--wait', '90s', timeout=240)
 
 
+def verify_demos():
+    payload = json.loads(call('groups', 'info', '--jid', DEMOS_SOURCE, '--json'))
+    data = payload.get('data') or {}
+    if not payload.get('success') or data.get('JID') != DEMOS_SOURCE or data.get('Name') != DEMOS_TITLE:
+        raise ValueError('Live group identity mismatch')
+    return {'sourceRef': DEMOS_SOURCE, 'title': DEMOS_TITLE}
+
+def backfill_demos():
+    return call('history', 'backfill', '--chat', DEMOS_SOURCE, '--count', '500',
+                '--requests', '1', '--wait', '90s', timeout=240)
+
 def main():
     global PHASE
     PHASE = 'arguments'
@@ -105,7 +117,10 @@ def main():
     parser.add_argument('--output-dir', type=Path, required=True)
     parser.add_argument('--sync', action='store_true', help='Receive current WhatsApp messages before exporting')
     parser.add_argument('--backfill-jobs', action='store_true', help='Request one bounded older-history batch for Job Posts & Talent')
+    parser.add_argument('--backfill-demos', action='store_true', help='Request one bounded older-history batch for Project Demos & Events')
     args = parser.parse_args()
+    if args.backfill_jobs and args.backfill_demos:
+        raise ValueError('Select one backfill group')
     if args.output_dir.resolve().is_relative_to(Path(__file__).resolve().parents[1]):
         raise ValueError('Keep exports outside the repository')
     args.output_dir.mkdir(mode=0o700, parents=True, exist_ok=True)
@@ -114,27 +129,35 @@ def main():
     auth = json.loads(call('auth', 'status', '--json'))
     if not auth.get('success') or not auth.get('data', {}).get('authenticated'):
         raise RuntimeError('wacli is not authenticated')
+    verified = None
+    if args.sync or args.backfill_demos:
+        PHASE = 'verify-demos'
+        verified = verify_demos()
+    if args.backfill_demos:
+        PHASE = 'backfill-demos'
+        backfill_demos()
     if args.backfill_jobs:
         PHASE = 'backfill'
         backfill_jobs()
     if args.sync:
         PHASE = 'live-sync'
         call('sync', '--once', '--idle-exit', '15s', '--max-reconnect', '45s',
-             '--presence-mode', 'quiet', timeout=700 if args.backfill_jobs else 900)
+             '--presence-mode', 'quiet', timeout=700 if (args.backfill_jobs or args.backfill_demos) else 900)
     coverages, manifest = [], []
     for index, (source, title, cutover) in enumerate(GROUPS):
-        PHASE = 'export-primary' if source == SOURCE else 'export-jobs'
+        PHASE = 'export-primary' if source == SOURCE else 'export-jobs' if source == JOBS_SOURCE else 'export-demos'
         payload = json.loads(call('messages', 'export', '--chat', source, '--limit', str(LIMIT), '--json'))
         if not payload.get('success'):
             raise RuntimeError('Export failed')
         raw = payload['data']['messages']
         if not raw or len(raw) >= LIMIT:
             raise ValueError('Empty or potentially capped export; investigate before importing')
-        PHASE = 'normalize-primary' if source == SOURCE else 'normalize-jobs'
+        PHASE = 'normalize-primary' if source == SOURCE else 'normalize-jobs' if source == JOBS_SOURCE else 'normalize-demos'
         messages, overlap = normalize(raw, source, cutover)
         dates = sorted(m['timestamp'] for m in messages)
         coverage = {
             'title': title, 'sourceRef': source, 'provider': 'wacli',
+            'verifiedIdentity': verified if source == DEMOS_SOURCE else None,
             'exportedAt': datetime.now(timezone.utc).isoformat(),
             'cachedRecords': len(raw), 'messages': len(messages), 'overlapSkipped': overlap,
             'publicationCounts': publication_counts(messages),

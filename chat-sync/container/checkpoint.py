@@ -8,6 +8,7 @@ sys.path.insert(0,'/app/scripts')
 from chat_privacy import redact_text
 SOURCE='120363049558306142@g.us'
 JOBS_SOURCE='120363323644237261@g.us'
+DEMOS_SOURCE='120363297860953641@g.us'
 
 def checkpoint(store):
  with tempfile.TemporaryDirectory() as tmp:
@@ -24,8 +25,8 @@ def checkpoint(store):
     if name in ('schema_migrations','sqlite_sequence','messages','chats') or 'fts' in name or 'search' in name:continue
     if not name.replace('_','').isalnum():raise ValueError('Unexpected schema')
     dst.execute(f'DELETE FROM "{name}"')
-   dst.execute('DELETE FROM messages WHERE chat_jid NOT IN (?,?)', (SOURCE,JOBS_SOURCE))
-   dst.execute('DELETE FROM chats WHERE jid NOT IN (?,?)', (SOURCE,JOBS_SOURCE))
+   dst.execute('DELETE FROM messages WHERE chat_jid NOT IN (?,?,?)', (SOURCE,JOBS_SOURCE,DEMOS_SOURCE))
+   dst.execute('DELETE FROM chats WHERE jid NOT IN (?,?,?)', (SOURCE,JOBS_SOURCE,DEMOS_SOURCE))
    for rowid,text,display,name,caption in dst.execute('SELECT rowid,text,display_text,sender_name,media_caption FROM messages').fetchall():
     dst.execute('UPDATE messages SET text=?,display_text=?,sender_name=?,media_caption=? WHERE rowid=?',tuple(redact_text(x or '') for x in (text,display,name,caption))+(rowid,))
    dst.execute("UPDATE messages SET sender_jid='',quoted_sender_jid='',media_key=NULL,file_sha256=NULL,file_enc_sha256=NULL,direct_path=NULL,local_path=NULL,filename=NULL,buttons=NULL")

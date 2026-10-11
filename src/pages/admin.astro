@@ -1,6 +1,7 @@
 ---
 import BaseLayout from "../layouts/BaseLayout.astro";
 import "../styles/admissions.css";
+import ChatRoutingReview from "../components/ChatRoutingReview.astro";
 ---
 
 <BaseLayout title="Application review" wide>
@@ -26,6 +27,7 @@ import "../styles/admissions.css";
       </div>
       <div id="applications" class="application-grid"></div>
     </section>
+    <ChatRoutingReview />
     <section aria-labelledby="administrators-title">
       <h2 id="administrators-title">Administrators</h2>
       <p>Invite someone using their LinkedIn email. They can review applications, make decisions, and invite other administrators after accepting.</p>

@@ -1,15 +1,15 @@
+import { routingGroups } from '../../admissions/src/chat-routing-policy';
+import { classifyLive, evaluateReviewedPolicy, modelEvaluation, seedRouting, type LiveCandidate } from './routing';
 import { Container } from '@cloudflare/containers';
 import { WorkflowEntrypoint, type WorkflowEvent, type WorkflowStep } from 'cloudflare:workers';
-const GROUP='80a506e83ca3ccc963bfbbc5493b124e85e5a87d7e074835728a1d78a9b38fca';
-const SOURCE='120363049558306142@g.us';
-const JOBS_GROUP='ab58449e10d8bf6a4e74b68ef82e6232186039fb9f003e0735dc0ebfd12cc985';
-const JOBS_SOURCE='120363323644237261@g.us';
-const GROUPS=[{id:GROUP,source:SOURCE,title:'The GenerativeAI Group',cutover:Date.parse('2026-09-17T00:01:16Z')},{id:JOBS_GROUP,source:JOBS_SOURCE,title:'Job Posts & Talent',cutover:0}] as const;
+const GROUP=routingGroups[0].id;
+const SOURCE=routingGroups[0].source;
+const GROUPS=routingGroups;
 const DAY=86400000;
 // Retain the original preflight instance identity: Containers reserves this slot even after stop.
 type Row={id:string;group_id:string;source_id:string;posted_at:number;author:string;body:string;hidden:number};
-type Coverage={sourceRef:string;provider:string;cachedRecords:number;messages:number;cutover:string;oldest:string|null;newest:string|null;publicationCounts?:{textCandidates:number;mediaOrReactions:number;emptyText:number;deleted:number}};
-type Export={rows:Row[];coverage:Coverage[]};
+type Coverage={sourceRef:string;provider:string;cachedRecords:number;messages:number;cutover:string;oldest:string|null;newest:string|null;publicationCounts?:{textCandidates:number;mediaOrReactions:number;emptyText:number;deleted:number};verifiedIdentity?:{sourceRef:string;title:string}|null};
+type Export={rows:Row[];coverage:Coverage[];routingCandidates?:LiveCandidate[];routingOmitted?:number};
 async function digest(value:string){return Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(value))),b=>b.toString(16).padStart(2,'0')).join('');}
 
 async function checkpointBytes(response:Response){
@@ -91,7 +91,7 @@ export class WhatsAppContainer extends Container<Env> {
   // Do not start or restore: only the existing container can hold the latest session.
   return this.saveCheckpoint();
  }
- async run(owner:string,backfillJobs=false,cachedOnly=false) {
+ async run(owner:string,backfillJobs=false,cachedOnly=false,backfillDemos=false) {
   if((await this.ctx.storage.get<{owner:string}>('lease'))?.owner!==owner)throw new Error('lease-required');
   let restored=false;
   try {
@@ -103,15 +103,16 @@ export class WhatsAppContainer extends Container<Env> {
    if(!restore.ok)throw new Error('session-restore-failed');
    restored=true;
    await this.env.STATE.put('session/recovery-required',String(Date.now()));
-   const endpoint=backfillJobs?'http://container/sync/backfill-jobs':cachedOnly?'http://container/sync/cached-only':'http://container/sync';
-   const response=await this.containerFetch(endpoint,{method:'POST'});
+   const endpoint=backfillJobs?'http://container/sync/backfill-jobs':backfillDemos?'http://container/sync/backfill-demos':cachedOnly?'http://container/sync/cached-only':'http://container/sync';
+   const settings=await this.env.DB.prepare('SELECT trial_started_at FROM chat_routing_settings WHERE id=1').first<{trial_started_at:number}>().catch(()=>null);
+   const response=await this.containerFetch(endpoint,{method:'POST',headers:{'X-Routing-Since':String(settings?.trial_started_at??0)}});
    if(!response.ok){
     const detail=await response.json<{error?:string}>().catch(()=>({error:'unknown'}));
     const code=typeof detail.error==='string' && /^[a-z-]+$/.test(detail.error)?detail.error:'unknown';
     throw new Error(`wacli-sync-failed:${code}`);
    }
    const size=Number(response.headers.get('Content-Length'));
-   if(!size || size>20_000_000)throw new Error('invalid-export-size');
+   if(!size || size>30_000_000)throw new Error('invalid-export-size');
    const data=await response.json<Export>();
    if(!Array.isArray(data.coverage)||data.coverage.length!==GROUPS.length||!Array.isArray(data.rows))throw new Error('invalid-export');
    for(const group of GROUPS){
@@ -122,8 +123,19 @@ export class WhatsAppContainer extends Container<Env> {
     const group=GROUPS.find(g=>g.id===r.group_id);
     if(!group || !r.source_id.startsWith('wacli:') || r.id!==await digest(group.source+'\0'+r.source_id) || ![0,1].includes(r.hidden) || typeof r.body!=='string' || typeof r.author!=='string' || r.body.length>30000 || r.author.length>200 || (!r.hidden && (!Number.isSafeInteger(r.posted_at)||r.posted_at<=group.cutover||r.posted_at>Date.now()+DAY)))throw new Error('invalid-export-row');
    }
-   // Persist sanitized export before session advancement, so a later D1 failure is recoverable.
+   // Original text and sender exist only in this method; never return them from a Workflow step.
+   const candidates=data.routingCandidates??[];
+   delete data.routingCandidates;
+   if(candidates.length>200)throw new Error('routing-candidate-limit');
+   // Save only sanitized archive data. AI failure cannot lose an otherwise valid archive update.
    await this.env.STATE.put('pending/export.json',JSON.stringify(data));
+   if(settings && !backfillJobs && !backfillDemos && !cachedOnly){
+    try{await classifyLive(this.env,candidates,async(c,destination)=>{
+     const reply=await this.containerFetch('http://container/send-reply',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({source:c.source,messageId:c.messageId,sender:c.sender,destination})});
+     if(!reply.ok)throw new Error('reply-outcome-uncertain');
+     return reply.json<{accepted:boolean;id?:string|null;uncertain?:boolean}>();
+    });}catch{await this.env.STATE.put('routing/last-attempt.json',JSON.stringify({status:'could-not-classify',at:Date.now()}));}
+   }
    return {records:data.rows.length};
   } finally {
    try {
@@ -145,10 +157,13 @@ async function metrics(db:D1Database){
  }
  return result;
 }
-type SyncParams={force?:boolean;preflight?:boolean;recover?:boolean;storageTest?:boolean;backfillJobs?:boolean;cachedOnly?:boolean;terminatedLeaseOwner?:string};
+type SyncParams={force?:boolean;preflight?:boolean;recover?:boolean;storageTest?:boolean;backfillJobs?:boolean;cachedOnly?:boolean;terminatedLeaseOwner?:string;backfillDemos?:boolean;seedRouting?:number;modelEvaluation?:boolean;evaluatePolicy?:boolean};
 export class ChatSyncWorkflow extends WorkflowEntrypoint<Env,SyncParams> {
  async run(event:WorkflowEvent<SyncParams>,step:WorkflowStep){
   const params=event.payload ?? {};
+  if(params.evaluatePolicy)return step.do('evaluate-reviewed-policy',{retries:{limit:0,delay:'1 second'},timeout:'20 minutes'},()=>evaluateReviewedPolicy(this.env));
+  if(params.modelEvaluation)return step.do('cloud-clef-evaluation',{retries:{limit:0,delay:'1 second'},timeout:'10 minutes'},()=>modelEvaluation(this.env));
+  if(params.seedRouting)return step.do('seed-historical-review',{retries:{limit:0,delay:'1 second'},timeout:'20 minutes'},()=>seedRouting(this.env,params.seedRouting));
   if(params.storageTest)return step.do('cloud-r2-checkpoint-test',()=>storagePreflight(this.env.STATE));
   if(params.terminatedLeaseOwner)return step.do('release-verified-terminated-lease',()=>this.env.WACLI.getByName('preflight').releaseTerminatedLease(params.terminatedLeaseOwner!));
   if(params.recover){
@@ -165,8 +180,8 @@ export class ChatSyncWorkflow extends WorkflowEntrypoint<Env,SyncParams> {
    finally{await instance.release(event.instanceId);}
   }
   if(this.env.SYNC_ENABLED!=='true' && !params.force)return {status:'paused'};
-  if((params.backfillJobs||params.cachedOnly) && !params.force)throw new Error('manual-sync-requires-explicit-force');
-  if(params.backfillJobs && params.cachedOnly)throw new Error('incompatible-sync-modes');
+  if((params.backfillJobs||params.backfillDemos||params.cachedOnly) && !params.force)throw new Error('manual-sync-requires-explicit-force');
+  if([params.backfillJobs,params.backfillDemos,params.cachedOnly].filter(Boolean).length>1)throw new Error('incompatible-sync-modes');
   const last=await this.env.STATE.get('last-success.json');
   const previous=last?await last.json<{at:number;digest:string}>():null;
   const owner=event.instanceId;
@@ -178,9 +193,9 @@ export class ChatSyncWorkflow extends WorkflowEntrypoint<Env,SyncParams> {
   try {
    // Never overwrite an export awaiting import after a partial failure.
    const pending=await this.env.STATE.head('pending/export.json');
-   if(pending && params.backfillJobs)throw new Error('pending-export-must-be-imported-first');
-   if(!pending)await step.do('sync-wacli',{retries:{limit:0,delay:'1 second'},timeout:'20 minutes'},()=>this.env.WACLI.getByName('preflight').run(owner,!!params.backfillJobs,!!params.cachedOnly));
-   return await step.do('import-and-verify',{retries:{limit:2,delay:'30 seconds'},timeout:'10 minutes'},async()=>{
+   if(pending && (params.backfillJobs||params.backfillDemos))throw new Error('pending-export-must-be-imported-first');
+   if(!pending)await step.do('sync-wacli',{retries:{limit:0,delay:'1 second'},timeout:'20 minutes'},()=>this.env.WACLI.getByName('preflight').run(owner,!!params.backfillJobs,!!params.cachedOnly,!!params.backfillDemos));
+   const result=await step.do('import-and-verify',{retries:{limit:2,delay:'30 seconds'},timeout:'10 minutes'},async()=>{
     if(await this.env.STATE.head('session/recovery-required'))throw new Error('session-recovery-required');
     const object=await this.env.STATE.get('pending/export.json');
     if(!object || object.size>20_000_000)throw new Error('missing-export');
@@ -189,9 +204,10 @@ export class ChatSyncWorkflow extends WorkflowEntrypoint<Env,SyncParams> {
     const before=await metrics(this.env.DB);
     const primary=await this.env.DB.prepare('SELECT published FROM chat_groups WHERE id=? AND source_ref=?').bind(GROUP,SOURCE).first();
     if(!primary)throw new Error('archive-group-missing');
-    const jobs=GROUPS[1];
-    await this.env.DB.prepare('INSERT INTO chat_groups(id,title,source_ref,imported_at,coverage_note) VALUES(?,?,?,?,?) ON CONFLICT(id) DO NOTHING').bind(jobs.id,jobs.title,jobs.source,Date.now(),'Available wacli text may be incomplete.').run();
-    if(!await this.env.DB.prepare('SELECT id FROM chat_groups WHERE id=? AND source_ref=?').bind(jobs.id,jobs.source).first())throw new Error('jobs-group-identity-mismatch');
+    for(const added of GROUPS.slice(1)){
+    await this.env.DB.prepare('INSERT INTO chat_groups(id,title,source_ref,imported_at,coverage_note) VALUES(?,?,?,?,?) ON CONFLICT(id) DO NOTHING').bind(added.id,added.title,added.source,Date.now(),'Available wacli text may be incomplete.').run();
+    if(!await this.env.DB.prepare('SELECT id FROM chat_groups WHERE id=? AND source_ref=?').bind(added.id,added.source).first())throw new Error('group-identity-mismatch');
+    }
     if(hash!==previous?.digest){
      for(let offset=0;offset<data.rows.length;offset+=20){
       const statements:D1PreparedStatement[]=[];
@@ -204,13 +220,21 @@ export class ChatSyncWorkflow extends WorkflowEntrypoint<Env,SyncParams> {
      }
     }
     const after=await metrics(this.env.DB);
-    if((after[jobs.id]?.visible??0)<1)throw new Error('jobs-group-empty');
+    for(const added of GROUPS.slice(1))if((after[added.id]?.visible??0)<1)throw new Error('archive-group-empty');
     for(const group of GROUPS)await this.env.DB.prepare('UPDATE chat_groups SET imported_at=? WHERE id=?').bind(Date.now(),group.id).run();
     const result={status:hash===previous?.digest?'unchanged':'synced',at:Date.now(),digest:hash,records:data.rows.length,before,after,coverage:data.coverage};
+    for(const group of GROUPS){
+     const rows=data.rows.filter(r=>r.group_id===group.id);
+     await this.env.STATE.put(`groups/${group.key}/last-success.json`,JSON.stringify({at:result.at,digest:await digest(JSON.stringify(rows)),counts:after[group.id],coverage:data.coverage.find(c=>c.sourceRef===group.source)}));
+    }
     await this.env.STATE.put('last-success.json',JSON.stringify(result));
     await this.env.STATE.delete('pending/export.json');
     return result;
    });
+   // Historical sampling is independent of the archive's verified success checkpoint.
+   try{await step.do('replenish-review',{retries:{limit:0,delay:'1 second'},timeout:'5 minutes'},()=>seedRouting(this.env,18));}catch{await this.env.STATE.put('routing/last-attempt.json',JSON.stringify({status:'could-not-seed',at:Date.now()}));}
+   try{await step.do('evaluate-reviewed-policy',{retries:{limit:0,delay:'1 second'},timeout:'20 minutes'},()=>evaluateReviewedPolicy(this.env));}catch{await this.env.STATE.put('routing/last-attempt.json',JSON.stringify({status:'could-not-evaluate',at:Date.now()}));}
+   return result;
   }catch{
    await this.env.STATE.put('last-attempt.json',JSON.stringify({status:'could-not-sync',at:Date.now()}));
    throw new Error('could-not-sync: inspect authenticated workflow steps; archive checkpoint not advanced');
