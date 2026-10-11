@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test';
 import { formatDate, formatDateTime, parseDateInput } from '../src/lib/dates';
+test.use({ locale: 'en-US', timezoneId: 'America/Los_Angeles' });
 test('IST display crosses UTC midnight and year boundaries with fixed Sep notation', () => {
   expect(formatDateTime('2026-09-14T20:00:00Z')).toBe('15 Sep 2026, 01:30 IST');
   expect(formatDate('2026-12-31T20:00:00Z')).toBe('1 Jan 2027');
