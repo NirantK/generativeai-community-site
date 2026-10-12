@@ -34,5 +34,5 @@ test('member sidebar exposes Search and API management without admin tabs',async
  await expect(nav.getByRole('link',{name:'Roles',exact:true})).toHaveCount(0);
  await expect(page.locator('#workspace-role')).toHaveText('Member');
  await expect(page.locator('#account-navigation')).toHaveText('Search');
- await expect(page.getByRole('link',{name:'API management',exact:true})).toHaveAttribute('href','/apply#api-management');
+ await expect(page.locator('.chat-hero').getByRole('link',{name:'API management',exact:true})).toHaveAttribute('href','/token');
 });

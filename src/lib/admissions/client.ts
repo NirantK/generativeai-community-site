@@ -1,4 +1,4 @@
-type Snapshot = {
+export type Snapshot = {
   profile: { name: string; email: string; emailVerified: boolean };
   consent: string | null;
   consentCurrent: boolean;
@@ -17,7 +17,7 @@ function notice(message: string, error = false) {
   el("message").textContent = message;
   el("message").classList.toggle("error", error);
 }
-async function api<T = Snapshot>(
+export async function api<T = Snapshot>(
   path: string,
   method = "GET",
   data?: unknown,
@@ -62,11 +62,10 @@ async function api<T = Snapshot>(
   return result;
 }
 export function initApplication() {
+  if (["#agent-token", "#api-management"].includes(location.hash)) {location.replace("/token");return;}
   let submissionKey = crypto.randomUUID();
   let appealKey = crypto.randomUUID();
   let enrichmentPoll: number | undefined;
-  let issuingToken = false;
-  let canIssueToken = false;
   let landed = false;
   async function refresh() {
     try {
@@ -101,11 +100,6 @@ export function initApplication() {
       el("form-section").hidden = !!s.application;
       el("status-section").hidden = !s.application;
       const canSubmit = s.profile.emailVerified && s.consentCurrent;
-      canIssueToken = s.profile.emailVerified && (s.status === "approved" || s.consentCurrent);
-      if (!issuingToken) el("issue-token").textContent = s.tokenActive ? "Regenerate token" : "Generate token";
-      el<HTMLButtonElement>("issue-token").disabled = !canIssueToken || issuingToken;
-      if (!canIssueToken && !issuingToken)
-        el("token-status").textContent = "Save consent and confirm your LinkedIn email below to enable token generation.";
       el<HTMLButtonElement>(
         "application-form",
       ).querySelector<HTMLButtonElement>("button[type=submit]")!.disabled =
@@ -132,13 +126,13 @@ export function initApplication() {
       } else
         notice(
           canSubmit
-            ? "Generate an application token below so your agent can apply through the API. You can also apply manually with the form."
+            ? "Complete the form below, or open API management to let your agent apply."
             : "Save consent to continue. If LinkedIn did not confirm your email, refresh your LinkedIn sign-in.",
         );
       if (!landed) {
         landed = true;
-        const target = location.hash ? document.getElementById(location.hash.slice(1)) : el("api-management");
-        (target ?? el("api-management")).scrollIntoView({block:"start"});
+        const target = location.hash ? document.getElementById(location.hash.slice(1)) : s.application ? el("status-section") : !s.consentCurrent ? el("consent-section") : el("form-section");
+        target?.scrollIntoView({block:"start"});
       }
     } catch (e) {
       if ((e as { status?: number }).status === 401) {
@@ -214,49 +208,9 @@ export function initApplication() {
     );
     await refresh();
   });
-  el("issue-token").addEventListener("click", async () => {
-    if (issuingToken || !canIssueToken) return;
-    issuingToken = true;
-    const button = el<HTMLButtonElement>("issue-token");
-    const status = el("token-status");
-    button.disabled = true;
-    status.classList.remove("error");
-    status.textContent = "Creating your token…";
-    const slowMessage = window.setTimeout(() => {
-      status.textContent = "Still creating your token. Please keep this page open.";
-    }, 8000);
-    try {
-      const result = await api<{ token: string }>(
-        "/api/application-token", "POST", undefined, undefined,
-        AbortSignal.timeout(60000),
-      );
-      el("token-output").hidden = false;
-      el("token-snippet").textContent = `curl ${location.origin}/api/v1/application \\
-  -H "Authorization: Bearer ${result.token}"`;
-      button.textContent = "Regenerate token";
-      status.textContent = "Token created. Copy it now; it is shown only once.";
-      el("token-output").scrollIntoView({ block: "nearest" });
-      notice("Token created. Previous tokens are no longer valid.");
-    } catch (error) {
-      const message = (error as Error).name === "TimeoutError"
-        ? "Token creation timed out. It may have succeeded; generating again will replace any earlier token."
-        : (error as Error).message;
-      status.textContent = message;
-      status.classList.add("error");
-      notice(message, true);
-    } finally {
-      window.clearTimeout(slowMessage);
-      issuingToken = false;
-      button.disabled = !canIssueToken;
-    }
-  });
-  action("copy-token", async () => {
-    await navigator.clipboard.writeText(el("token-snippet").textContent ?? "");
-    notice("Snippet copied.");
-  });
   action("accept-admin", async () => {
     await api("/api/admin-invitation", "POST");
-    location.href = "/admin";
+    location.href = "/app";
   });
   action("logout", async () => {
     await api("/auth/logout", "POST");

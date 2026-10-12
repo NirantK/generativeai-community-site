@@ -1,0 +1,54 @@
+---
+import BaseLayout from "../layouts/BaseLayout.astro";
+import "../styles/admissions.css";
+---
+<BaseLayout title="API management">
+ <div class="admissions" id="api-management">
+  <h1>API management</h1>
+  <p class="intro">Connect Codex or your preferred agent. Use your token to apply and, after approval, search community chats and use member APIs.</p>
+  <p id="message" class="notice" role="status" aria-live="polite">Checking your sign-in…</p>
+  <noscript>Enable JavaScript to manage API tokens.</noscript>
+  <section id="signed-out" hidden><h2>Sign in to manage tokens</h2><a class="button primary" href="/auth/linkedin">Sign in with LinkedIn</a></section>
+  <div id="signed-in" hidden><p id="identity"></p><a id="refresh-linkedin" href="/auth/linkedin" hidden>Refresh LinkedIn sign-in</a>
+      <section id="consent-section">
+        <h2>Before you apply</h2>
+        <form id="consent-form">
+          <label class="check">
+            <input type="checkbox" name="consent" required />
+            <span>
+              I agree to the{" "}
+              <a href="/#whatsapp-community-rules">community rules</a> and the{" "}
+              <a href="/terms-and-conditions">Terms &amp; Conditions</a> and{" "}
+              <a href="/privacy-policy">Privacy Policy</a>. I
+              consent to AI-assisted assessment, Crustdata professional profile lookup, and email
+              about my application and invitation.
+            </span>
+          </label>
+          <div class="actions">
+            <button type="submit">Save consent</button>
+          </div>
+        </form>
+      </section>
+      <span id="agent-token" class="anchor-target" aria-hidden="true"></span>
+      <details id="agent-section" open>
+        <summary>Your API token</summary>
+        <p class="help">Use the same token for your application and member APIs. Tokens last 30 days. Regenerating immediately invalidates all previous tokens.</p>
+        <div class="actions">
+          <button id="issue-token" type="button" disabled>Generate token</button>
+        </div>
+        <p id="token-status" class="help" role="status" aria-live="polite"></p>
+        <div id="token-output" hidden>
+          <p class="notice">Copy this snippet now. The token is shown only once.</p>
+          <pre id="token-snippet"></pre>
+          <button id="copy-token" type="button">Copy snippet</button>
+        </div>
+        <p>
+          <a href="/api-instructions">Continue to agent instructions</a> ·{" "}
+          <a href="/openapi.json">OpenAPI specification</a>
+        </p>
+      </details>
+  </div>
+  <div class="actions"><a href="/apply">Manage your application</a><a href="/app/search">Search chats</a></div>
+ </div>
+</BaseLayout>
+<script>import {initTokens} from "../lib/admissions/tokens";initTokens();</script>

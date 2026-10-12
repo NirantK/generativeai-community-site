@@ -21,7 +21,7 @@ Never log the token, put it in URLs, commit it, or send it to another origin.
 
 - [Complete agent workflow](/api-instructions)
 - [OpenAPI contract](/openapi.json)
-- [Sign in and generate a token](/apply#agent-token)
+- [Sign in and generate a token](/token)
 
 ## Access errors
 

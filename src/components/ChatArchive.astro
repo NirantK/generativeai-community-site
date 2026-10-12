@@ -9,7 +9,7 @@ const { administrator = false, workspace = false } = Astro.props;
     <p class="intro">Search the conversations that shaped the community’s work with generative AI.</p>
     <p class="help">Available synced text history may be incomplete. Attachments and phone metadata are omitted, and phone numbers in message text are replaced with stable privacy aliases.</p>
     <div class="actions">
-      <a class="button primary" href={workspace?"/apply#api-management":"/apply"}>{workspace?"API management":"Join"}</a>
+      <a class="button primary" href={workspace?"/token":"/apply"}>{workspace?"API management":"Join"}</a>
       <a href="/api-instructions">Agent API instructions</a>
       {administrator && <a href="/app/applications">Applications</a>}
     </div>

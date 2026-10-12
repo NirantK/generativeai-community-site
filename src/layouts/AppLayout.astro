@@ -6,7 +6,7 @@ const views=[{key:"applications",title:"Applications",admin:true},{key:"message-
 ---
 <BaseLayout title={title} wide>
  <div class="app-shell">
-  <aside><nav aria-label="Workspace"><p class="workspace-title">Community workspace<span id="workspace-role" class="workspace-role"></span></p>{views.map(view=><a href={`/app/${view.key}`} aria-current={active===view.key?"page":undefined} data-admin-tab={view.admin?"true":undefined} hidden={view.admin}>{view.title}</a>)}<a href="/apply#api-management">API management &amp; application</a></nav></aside>
+  <aside><nav aria-label="Workspace"><p class="workspace-title">Community workspace<span id="workspace-role" class="workspace-role"></span></p>{views.map(view=><a href={`/app/${view.key}`} aria-current={active===view.key?"page":undefined} data-admin-tab={view.admin?"true":undefined} hidden={view.admin}>{view.title}</a>)}<a href="/token">API management</a><a href="/apply">Your application</a></nav></aside>
   <div class="app-content"><slot /></div>
  </div>
 </BaseLayout>
