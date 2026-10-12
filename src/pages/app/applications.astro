@@ -1,12 +1,10 @@
 ---
-import BaseLayout from "../../layouts/BaseLayout.astro";
 import "../../styles/admissions.css";
-import AdminNav from "../../components/AdminNav.astro";
+import AppLayout from "../../layouts/AppLayout.astro";
 ---
 
-<BaseLayout title="Application review" wide>
+<AppLayout title="Applications" active="applications">
   <div class="admissions admin-view">
-    <AdminNav active="applications" />
     <p class="eyebrow">Community administration</p>
     <h1>Application review</h1>
     <p>
@@ -18,7 +16,7 @@ import AdminNav from "../../components/AdminNav.astro";
     <div class="actions">
       <button id="reload">Refresh applications</button>
       <a href="/apply">Your account</a>
-      <a href="/admin/chats">Manage Past Chats</a>
+      <a href="/app/search">Manage Past Chats</a>
     </div>
     <section class="application-list" aria-labelledby="list-title">
       <div class="list-toolbar"><div><h2 id="list-title">Approved applications</h2><p class="help">Newest approvals first.</p></div>
@@ -27,16 +25,6 @@ import AdminNav from "../../components/AdminNav.astro";
         </label>
       </div>
       <div id="applications" class="application-grid"></div>
-    </section>
-    <section aria-labelledby="administrators-title">
-      <h2 id="administrators-title">Administrators</h2>
-      <p>Invite someone using their LinkedIn email. They can review applications, make decisions, and invite other administrators after accepting.</p>
-      <form id="invite-admin">
-        <label for="admin-email">New administrator email</label>
-        <input id="admin-email" type="email" required maxlength="254" />
-        <button type="submit">Send administrator invitation</button>
-      </form>
-      <div id="administrators"></div>
     </section>
     <section aria-labelledby="bug-reports-title">
       <h2 id="bug-reports-title">Agent bug reports</h2>
@@ -96,7 +84,7 @@ import AdminNav from "../../components/AdminNav.astro";
       </p>
     </section>
   </div>
-</BaseLayout>
+</AppLayout>
 <script>
   import { formatDateTime } from "../../lib/dates";
   import type { RecordState } from "../../../admissions/src/domain";
@@ -301,42 +289,6 @@ import AdminNav from "../../components/AdminNav.astro";
       if (generation === loadGeneration) get("applications").setAttribute("aria-busy", "false");
     }
   }
-  async function loadAdministrators() {
-    try {
-      const { invitations } = await api<{invitations: {id:string;email:string;accepted_at:number|null;revoked_at:number|null;expires_at:number;delivery:string}[]}>("/api/admin/invitations");
-      get("administrators").replaceChildren();
-      for (const invitation of invitations) {
-        const row = document.createElement("p");
-        const status = invitation.revoked_at ? "Revoked" : invitation.accepted_at ? "Active administrator" : invitation.expires_at < Date.now() ? "Expired" : "Awaiting acceptance";
-        row.textContent = `${invitation.email} — ${status} · Email: ${invitation.delivery} `;
-        if (!invitation.revoked_at) {
-          const revoke = document.createElement("button"); revoke.textContent = "Revoke access";
-          revoke.onclick = async () => {
-            revoke.disabled = true;
-            try {
-              const response = await fetch(`/api/admin/invitations/${invitation.id}`, {method:"DELETE"});
-              if (!response.ok) throw new Error("Could not revoke access. You cannot revoke your own access.");
-              await loadAdministrators();
-            } catch(e) { message((e as Error).message); revoke.disabled = false; }
-          };
-          row.append(revoke);
-        }
-        get("administrators").append(row);
-      }
-    } catch(e) { message((e as Error).message); }
-  }
-  get("invite-admin").addEventListener("submit", async e => {
-    e.preventDefault();
-    const button = (e.currentTarget as HTMLFormElement).querySelector("button")!;
-    button.disabled = true;
-    try {
-      const result = await api<{delivery:string}>("/api/admin/invitations", {email:(get("admin-email") as HTMLInputElement).value});
-      await loadAdministrators();
-      message(result.delivery === "accepted" ? "Administrator invitation accepted by the email provider." : "Invitation saved; email outcome needs reconciliation in Cloudflare logs. Do not resend blindly.");
-    } catch(e) { message((e as Error).message); }
-    finally { button.disabled = false; }
-  });
-  void loadAdministrators();
   get("application-status").onchange = () => void load();
   get("reload").onclick = () => void load();
   get("decision").addEventListener("submit", async (e) => {

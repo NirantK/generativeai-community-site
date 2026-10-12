@@ -892,6 +892,7 @@ it("validates signed LinkedIn callbacks and repeats failure cases without a pers
       headers,
     );
     expect(callback.status).toBe(302);
+    expect(callback.headers.get("Location")).toBe("https://genaicommunity.ai/app");
     expect(callback.headers.get("set-cookie")).toContain("__Host-ga-session=");
     const session = callback.headers
       .get("set-cookie")!
@@ -1404,4 +1405,25 @@ describe("chat routing review",()=>{
    expect((await env.INDEX.prepare('SELECT count(*) n FROM chat_routing_sends').first<any>())?.n).toBe(0);
   }finally{env.ADMIN_EMAILS=previous;}
  });
+});
+
+it("keeps the member directory browser-admin only and excludes pending applicants",async()=>{
+ const owner=await account(true,crypto.randomUUID(),"directory-owner@example.com");
+ const member=await account(true,crypto.randomUUID(),"directory-member@example.com");
+ const pending=await account(true,crypto.randomUUID(),"directory-pending@example.com");
+ await runInDurableObject(member.agent,async instance=>{instance.setState({...instance.state,status:"approved"});});await member.agent.index();
+ const previous=env.ADMIN_EMAILS;env.ADMIN_EMAILS="directory-owner@example.com";
+ try{
+  const memberCookie=await browser(member.id),ownerCookie=await browser(owner.id);
+  expect((await gateway("/api/app/access","GET",{Cookie:memberCookie})).status).toBe(200);
+  expect((await (await gateway("/api/app/access","GET",{Cookie:ownerCookie})).json() as any).administrator).toBe(true);
+  expect((await gateway("/api/admin/members","GET",{Cookie:memberCookie})).status).toBe(403);
+  await member.agent.consent();const {token}=await member.agent.token();
+  expect((await gateway("/api/admin/members","GET",{Authorization:`Bearer ${token}`})).status).toBe(403);
+  const result=await (await gateway("/api/admin/members","GET",{Cookie:ownerCookie})).json() as any;
+  expect(result.members.some((entry:any)=>entry.email==="directory-member@example.com")).toBe(true);
+  expect(result.members.some((entry:any)=>entry.email==="directory-pending@example.com")).toBe(false);
+  expect(result.administrators).toContain("directory-owner@example.com");
+  expect((await gateway("/api/admin/members?cursor=bad","GET",{Cookie:ownerCookie})).status).toBe(422);
+ }finally{env.ADMIN_EMAILS=previous;}
 });

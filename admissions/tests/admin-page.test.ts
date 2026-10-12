@@ -1,14 +1,23 @@
 import {it,expect,vi} from "vitest";
 import {onRequest} from "../../functions/admin/[[path]]";
-it("serves the administrator page only after a successful server-side authorization", async () => {
-  for (const path of ["/admin/", "/admin/applications/", "/admin/message-reviews/", "/admin/chats/"]) for (const status of [200,401,403,503]) {
-    const next=vi.fn(async()=>new Response("private dashboard"));
-    const response=await onRequest({request:new Request(`https://genaicommunity.ai${path}`),env:{ADMISSIONS:{fetch:async()=>new Response(null,{status})}},next});
-    expect(next).toHaveBeenCalledTimes(status===200?1:0);
-    expect(response.status).toBe(status===401?302:status);
-    expect(response.headers.get("Cache-Control")).toContain("no-store");
-    if(status!==200) expect(await response.text()).not.toContain("private dashboard");
-  }
+import {onRequest as appPage} from "../../functions/app/[[path]]";
+it("guards every workspace view and chooses the role-appropriate landing page",async()=>{
+ for(const path of ["/app/","/app/applications/","/app/message-review/","/app/roles/","/app/search/"]) for(const administrator of [true,false]) for(const status of [200,401,503]){
+  const next=vi.fn(async()=>new Response("private workspace"));
+  const response=await appPage({request:new Request(`https://genaicommunity.ai${path}`),env:{ADMISSIONS:{fetch:async request=>{expect(new URL(request.url).pathname).toBe("/api/app/access");return Response.json({administrator},{status});}}},next});
+  const allowed=status===200&&path!=="/app/"&&(administrator||path==="/app/search/");
+  expect(next).toHaveBeenCalledTimes(allowed?1:0);
+  expect(response.status).toBe(status===401?302:status===503?503:path==="/app/"?302:allowed?200:403);
+  expect(response.headers.get("Cache-Control")).toContain("no-store");
+  if(status===200&&path==="/app/")expect(response.headers.get("Location")).toBe(administrator?"/app/applications":"/app/search");
+ }
+});
+it("redirects old admin bookmarks only after authorization",async()=>{
+ for(const [path,destination] of [["/admin/","/app"],["/admin/applications/","/app/applications"],["/admin/message-reviews/","/app/message-review"],["/admin/chats/","/app/search"]])for(const status of [200,401,403,503]){
+  const next=vi.fn();const response=await onRequest({request:new Request(`https://genaicommunity.ai${path}`),env:{ADMISSIONS:{fetch:async()=>new Response(null,{status})}},next});
+  expect(next).not.toHaveBeenCalled();expect(response.status).toBe(status===200||status===401?302:status);
+  if(status===200)expect(response.headers.get("Location")).toBe(destination);
+ }
 });
 
 import {onRequest as memberPage} from "../../functions/past-chats/[[path]]";
