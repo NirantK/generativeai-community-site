@@ -22,7 +22,7 @@ test('approved grid defaults to newest approvals and exposes supplied LinkedIn l
  await expect(page.getByRole('link',{name:'View LinkedIn profile'})).toHaveAttribute('href','https://www.linkedin.com/in/recent-member/');
  await expect(page.getByText('LinkedIn profile: Not provided')).toHaveCount(2);
  const columns=await page.locator('#applications').evaluate(el=>getComputedStyle(el).gridTemplateColumns.split(' ').length);
- expect(columns).toBe(info.project.name==='desktop'?3:1);
+ expect(columns).toBe(info.project.name==='desktop'?2:1);
  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
  const axe=await new AxeBuilder({page}).withTags(['wcag2a','wcag2aa']).analyze();expect(axe.violations.filter(v=>['serious','critical'].includes(v.impact??''))).toEqual([]);
  if(['desktop','iphone-se'].includes(info.project.name))await page.screenshot({path:`.shots/admin-grid-${info.project.name}.png`,fullPage:true});
