@@ -11,7 +11,7 @@ test('approved grid defaults to newest approvals and exposes supplied LinkedIn l
    {id:'c'.repeat(64),name:'Another Member',status:'approved',delivery:'paused',approved_at:1789430400000,linkedin_url:'javascript:alert(1)'}
   ]:[]}});
  });
- await page.goto('/admin');
+ await page.goto('/admin/applications');
  await expect(page.getByLabel('Show applications')).toHaveValue('approved');
  await expect(page.locator('.application-card')).toHaveCount(3);
  await expect(page.locator('.application-card').first()).toContainText('Recent Member');
