@@ -1,4 +1,8 @@
 import { test, expect } from '@playwright/test';
+test.beforeEach(async ({page}) => {
+ await page.route('**/api/app/access', r=>r.fulfill({json:{administrator:true,status:'approved'}}));
+ await page.route('**/api/admin/members*', r=>r.fulfill({json:{members:[],administrators:[],nextCursor:null}}));
+});
 import AxeBuilder from '@axe-core/playwright';
 const group={id:'a'.repeat(64),title:'Test community',published:1,messageCount:2,firstMessageAt:1,lastMessageAt:2,importedAt:3,coverageNote:'Synthetic history'};
 const message={id:'b'.repeat(64),groupTitle:group.title,author:'Test Member',postedAt:1789430400000,text:'Retrieval project <img src=x onerror=alert(1)>'};
@@ -43,7 +47,7 @@ test('admin can unpublish a group and hide a message',async({page})=>{
   if(route.request().method()==='DELETE'){hidden=true;return route.fulfill({json:{hidden:true}});}
   return route.fulfill({json:route.request().url().endsWith('/groups')?{groups:[group]}:{messages:[message],nextCursor:null}});
  });
- await page.goto('/admin/chats');
+ await page.goto('/app/search');
  await page.getByRole('button',{name:'Unpublish group'}).click();
  await expect(page.getByRole('button',{name:'Publish group',exact:true})).toBeVisible();
  expect(unpublished).toBe(true);

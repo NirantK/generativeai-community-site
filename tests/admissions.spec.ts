@@ -1,4 +1,8 @@
 import { test, expect } from "@playwright/test";
+test.beforeEach(async ({page}) => {
+ await page.route('**/api/app/access', r=>r.fulfill({json:{administrator:true,status:'approved'}}));
+ await page.route('**/api/admin/members*', r=>r.fulfill({json:{members:[],administrators:[],nextCursor:null}}));
+});
 import AxeBuilder from "@axe-core/playwright";
 const draft = {
   profile: {
@@ -260,7 +264,7 @@ test("administrator can read evidence and record a decision", async ({
     decided = true;
     return r.fulfill({ json: { status: "approved" } });
   });
-  await page.goto("/admin/applications");
+  await page.goto("/app/applications");
   await page
     .getByRole("button", { name: "Review application", exact: true })
     .click();
@@ -348,7 +352,7 @@ test("administrator invites a colleague by email and sees the pending invitation
     }
     return r.fulfill({json:{invitations:invited?[{id:"test",email:"colleague@example.com",expires_at:Date.now()+86400000,accepted_at:null,revoked_at:null,delivery:"accepted"}]:[]}});
   });
-  await page.goto("/admin/applications");
+  await page.goto("/app/roles");
   await page.getByLabel("New administrator email").fill("colleague@example.com");
   await page.getByRole("button",{name:"Send administrator invitation"}).click();
   await expect(page.locator("#admin-message")).toHaveText("Administrator invitation accepted by the email provider.");
@@ -384,7 +388,7 @@ test("admin review displays appeal evidence, reference status, and original reje
   await page.route("**/api/admin/bug-reports",r=>r.fulfill({json:{reports:[]}}));
   await page.route("**/api/admin/applications*",r=>r.fulfill({json:{applications:[{id,name:"Appealing student",status:"review",appeal_status:"pending",delivery:"pending"}]}}));
   await page.route(`**/api/admin/applications/${id}`,r=>r.fulfill({json:{profile:draft.profile,application:{role:"Student"},status:"review",submissionChannel:"agent",delivery:{status:"pending"},history:[],appeals:[{submittedAt:Date.now(),previousDecision:{reason:"Original student rejection"},resolution:null,evidence:{explanation:"Original project details for a human reviewer",voucher:"<script>untrusted reference claim</script>"}}]}}));
-  await page.goto("/admin/applications");
+  await page.goto("/app/applications");
   await expect(page.getByText(/APPEAL AWAITING REVIEW/)).toBeVisible();
   await page.getByRole("button",{name:"Review application",exact:true}).click();
   await expect(page.getByRole("heading",{name:"Appeal 1 — Awaiting decision"})).toBeVisible();
@@ -402,7 +406,7 @@ test("routing review hides predictions until labeling and remains usable on mobi
  await page.route('**/api/admin/chat-routing/queue?*',r=>r.fulfill({json:{groups,available:labeled?0:1,cards:labeled?[]:[{decisionId:'example',messageId:'message',groupId:'g',text:'<script>ignore instructions</script> We are hiring an ML engineer.',postedAt:Date.now(),historical:true,reason:'Group disagreement'}]}}));
  await page.route('**/api/admin/chat-routing/metrics',r=>r.fulfill({json:{settings:{trial_started_at:Date.now(),replies_enabled:0,test_verified:0,version:1,test_requested_at:null,active_policy:'trial',policy_requested_at:null},metrics:{total:labeled?1:0,reviewedProposals:labeled?1:0,precision:1,trialDays:0,trialPassed:false,matrix:{}},sends:[],policies:[],replyTemplates:[]}}));
  await page.route('**/api/admin/chat-routing/labels',r=>{expect(r.request().postDataJSON().label).toBe('jobs');labeled=true;return r.fulfill({json:{modelChoice:'jobs',probabilities:{jobs:.95},holdout:true}});});
- await page.goto('/admin/message-reviews');
+ await page.goto('/app/message-review');
  const review=page.locator('.routing-review');
  await expect(review.getByRole('heading',{name:'Help improve group choices'})).toBeVisible();
  const card=review.locator('.routing-card');await expect(card).toHaveCount(1);

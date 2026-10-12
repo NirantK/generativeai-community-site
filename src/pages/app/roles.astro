@@ -1,0 +1,77 @@
+---
+import AppLayout from "../../layouts/AppLayout.astro";
+import "../../styles/admissions.css";
+---
+<AppLayout title="Roles" active="roles">
+ <div class="admissions"><p class="eyebrow">Community administration</p><h1>Roles</h1>
+ <p>Approved members and administrators. Only administrators can view this directory and manage access.</p>
+ <p id="admin-message" role="status" class="notice">Loading roles…</p>
+ <section><h2>Current members</h2><div id="members" class="members"></div><button id="members-more" hidden>Load more members</button></section>
+ <section><h2>Configured administrators</h2><p class="help">These administrators are configured for the service. Their access is managed through deployment settings.</p><div id="configured-admins"></div></section>
+    <section aria-labelledby="administrators-title">
+      <h2 id="administrators-title">Administrators</h2>
+      <p>Invite someone using their LinkedIn email. They can review applications, make decisions, and invite other administrators after accepting.</p>
+      <form id="invite-admin">
+        <label for="admin-email">New administrator email</label>
+        <input id="admin-email" type="email" required maxlength="254" />
+        <button type="submit">Send administrator invitation</button>
+      </form>
+      <div id="administrators"></div>
+    </section>
+ </div>
+</AppLayout>
+<style>.members{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,16rem),1fr));gap:16px}.members :global(article){border:1px solid var(--color-outline-variant);padding:20px;overflow-wrap:anywhere}.members :global(h3){font-weight:600}.members :global(a){display:inline-flex;min-height:44px;align-items:center}</style>
+<script>
+ import { formatDateTime } from "../../lib/dates";
+ const get=(id:string)=>document.getElementById(id)!;
+ function message(text:string){get("admin-message").textContent=text;}
+ async function api<T>(path:string,data?:unknown):Promise<T>{const response=await fetch(path,{method:data===undefined?"GET":"POST",headers:data===undefined?{}:{"Content-Type":"application/json"},body:data===undefined?undefined:JSON.stringify(data)});const result=await response.json();if(!response.ok)throw new Error(result.error?.message??"Could not load roles.");return result;}
+ let cursor:string|null=null;
+ let count=0;
+ async function members(){
+  const button=get("members-more") as HTMLButtonElement;button.disabled=true;
+  try{
+   const result=await api<{members:{id:string;name:string;email:string;role:string;linkedinUrl:string|null}[];administrators:string[];nextCursor:string|null}>("/api/admin/members"+(cursor?"?cursor="+encodeURIComponent(cursor):""));
+   for(const member of result.members){const article=document.createElement("article");for(const [tag,text] of [["h3",member.name],["p",member.email],["p",member.role]]){const node=document.createElement(tag);node.textContent=text;article.append(node);}try{const url=new URL(member.linkedinUrl??"");if(url.protocol==="https:"&&url.hostname==="www.linkedin.com"&&!url.username&&!url.password&&!url.port&&/^\/in\/[^/?#]+\/$/.test(url.pathname)){const link=document.createElement("a");link.href=url.href;link.textContent="LinkedIn profile";link.target="_blank";link.rel="noopener noreferrer";article.append(link);}}catch{}get("members").append(article);}
+   count+=result.members.length;cursor=result.nextCursor;button.hidden=!cursor;
+   get("configured-admins").replaceChildren(...result.administrators.map(email=>{const p=document.createElement("p");p.textContent=email;return p;}));message(`${count} current members shown.`);
+  }catch(error){message((error as Error).message);}finally{button.disabled=false;}
+ }
+ get("members-more").onclick=()=>void members();void members();
+  async function loadAdministrators() {
+    try {
+      const { invitations } = await api<{invitations: {id:string;email:string;accepted_at:number|null;revoked_at:number|null;expires_at:number;delivery:string}[]}>("/api/admin/invitations");
+      get("administrators").replaceChildren();
+      for (const invitation of invitations) {
+        const row = document.createElement("p");
+        const status = invitation.revoked_at ? "Revoked" : invitation.accepted_at ? "Active administrator" : invitation.expires_at < Date.now() ? "Expired" : "Awaiting acceptance";
+        row.textContent = `${invitation.email} — ${status} · Email: ${invitation.delivery} `;
+        if (!invitation.revoked_at) {
+          const revoke = document.createElement("button"); revoke.textContent = "Revoke access";
+          revoke.onclick = async () => {
+            revoke.disabled = true;
+            try {
+              const response = await fetch(`/api/admin/invitations/${invitation.id}`, {method:"DELETE"});
+              if (!response.ok) throw new Error("Could not revoke access. You cannot revoke your own access.");
+              await loadAdministrators();
+            } catch(e) { message((e as Error).message); revoke.disabled = false; }
+          };
+          row.append(revoke);
+        }
+        get("administrators").append(row);
+      }
+    } catch(e) { message((e as Error).message); }
+  }
+  get("invite-admin").addEventListener("submit", async e => {
+    e.preventDefault();
+    const button = (e.currentTarget as HTMLFormElement).querySelector("button")!;
+    button.disabled = true;
+    try {
+      const result = await api<{delivery:string}>("/api/admin/invitations", {email:(get("admin-email") as HTMLInputElement).value});
+      await loadAdministrators();
+      message(result.delivery === "accepted" ? "Administrator invitation accepted by the email provider." : "Invitation saved; email outcome needs reconciliation in Cloudflare logs. Do not resend blindly.");
+    } catch(e) { message((e as Error).message); }
+    finally { button.disabled = false; }
+  });
+  void loadAdministrators();
+</script>

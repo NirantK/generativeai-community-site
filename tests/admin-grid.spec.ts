@@ -1,4 +1,8 @@
 import {test,expect} from '@playwright/test';
+test.beforeEach(async ({page}) => {
+ await page.route('**/api/app/access', r=>r.fulfill({json:{administrator:true,status:'approved'}}));
+ await page.route('**/api/admin/members*', r=>r.fulfill({json:{members:[],administrators:[],nextCursor:null}}));
+});
 import AxeBuilder from '@axe-core/playwright';
 test('approved grid defaults to newest approvals and exposes supplied LinkedIn links',async({page},info)=>{
  await page.route('**/api/admin/bug-reports',r=>r.fulfill({json:{reports:[]}}));
@@ -11,7 +15,7 @@ test('approved grid defaults to newest approvals and exposes supplied LinkedIn l
    {id:'c'.repeat(64),name:'Another Member',status:'approved',delivery:'paused',approved_at:1789430400000,linkedin_url:'javascript:alert(1)'}
   ]:[]}});
  });
- await page.goto('/admin/applications');
+ await page.goto('/app/applications');
  await expect(page.getByLabel('Show applications')).toHaveValue('approved');
  await expect(page.locator('.application-card')).toHaveCount(3);
  await expect(page.locator('.application-card').first()).toContainText('Recent Member');

@@ -1,1 +1,1 @@
-{"version": 1, "include": ["/api/*", "/auth/*", "/admin", "/admin/*", "/past-chats", "/past-chats/*"], "exclude": []}
+{"version": 1, "include": ["/api/*", "/auth/*", "/admin", "/admin/*", "/past-chats", "/past-chats/*", "/app", "/app/*"], "exclude": []}

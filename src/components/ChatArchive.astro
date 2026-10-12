@@ -1,27 +1,27 @@
 ---
 import "../styles/admissions.css";
-const { administrator = false } = Astro.props;
+const { administrator = false, workspace = false } = Astro.props;
 ---
-<div class="admissions chat-archive" id="chat-archive" data-administrator={administrator ? "true" : "false"}>
+<div class="admissions chat-archive" id="chat-archive" data-administrator={administrator ? "true" : "false"} data-workspace={workspace?"true":undefined}>
   <header class="chat-hero">
     <p class="eyebrow">{administrator ? "Community administration" : "Members-only archive"}</p>
-    <h1>Past Chats</h1>
+    <h1>{workspace ? "Search" : "Past Chats"}</h1>
     <p class="intro">Search the conversations that shaped the community’s work with generative AI.</p>
     <p class="help">Available synced text history may be incomplete. Attachments and phone metadata are omitted, and phone numbers in message text are replaced with stable privacy aliases.</p>
     <div class="actions">
       <a class="button primary" href="/apply">Apply to join</a>
       <a href="/api-instructions">Agent API instructions</a>
-      {administrator && <a href="/admin/applications">Applications</a>}
+      {administrator && <a href="/app/applications">Applications</a>}
     </div>
   </header>
-  <section class="chat-orientation" aria-labelledby="chat-orientation-title">
+  {!workspace && <section class="chat-orientation" aria-labelledby="chat-orientation-title">
     <h2 id="chat-orientation-title">How access works</h2>
     <div class="chat-orientation-grid">
       <div><span class="chat-step">01</span><h3>Apply with LinkedIn</h3><p>Start at <a href="/apply">Apply to join</a>. Sign in with LinkedIn, accept the terms, and share your work.</p></div>
       <div><span class="chat-step">02</span><h3>Wait for approval</h3><p>Approved members get access here. Your browser session or 30-day agent token must belong to that approved account.</p></div>
       <div><span class="chat-step">03</span><h3>Search with context</h3><p>Search by words, group, or date. Open any result to read five messages on either side.</p></div>
     </div>
-  </section>
+  </section>}
   <section class="chat-search-section" aria-labelledby="chat-search-title">
     <div class="chat-section-heading"><div><h2 id="chat-search-title">Search the archive</h2><p class="help">Search all words in your query. Results are private to approved members. Dates and times use IST (UTC+05:30).</p></div><span class="chat-access-state" id="chat-access-state">Checking access…</span></div>
     <form id="chat-search">
@@ -32,7 +32,7 @@ const { administrator = false } = Astro.props;
     </form>
     <p id="chat-status" role="status">Loading archive…</p>
   </section>
-  {administrator && <section><h2>Archive visibility</h2><p>Unpublished groups and hidden messages are unavailable to members and their agents.</p><div id="chat-moderation"></div></section>}
+  {(administrator || workspace) && <section id="archive-visibility" hidden={!administrator}><h2>Archive visibility</h2><p>Unpublished groups and hidden messages are unavailable to members and their agents.</p><div id="chat-moderation"></div></section>}
   <div id="chat-results"></div>
   <div class="actions"><button id="chat-more" type="button" hidden>Load more messages</button></div>
   <section id="chat-context" hidden aria-labelledby="chat-context-title"><h2 id="chat-context-title">Conversation context</h2><div id="chat-context-messages"></div></section>
@@ -41,4 +41,7 @@ const { administrator = false } = Astro.props;
   .chat-archive{margin-top:32px}.chat-hero{border-bottom:1px solid var(--color-outline-variant);padding-bottom:40px}.chat-hero .intro{max-width:52ch}.chat-hero .help{max-width:70ch}.chat-orientation{margin-top:40px}.chat-orientation-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:24px;margin-top:24px}.chat-orientation-grid>div{border-top:1px solid var(--color-outline);padding-top:16px}.chat-orientation-grid h3{font-size:var(--text-body-base);line-height:1.4;margin:8px 0}.chat-orientation-grid p{margin:0;color:var(--color-on-surface-variant)}.chat-step,.chat-access-state{font:11px/1 var(--font-mono);letter-spacing:.1em;text-transform:uppercase;color:var(--color-tertiary)}.chat-search-section{margin-top:48px}.chat-section-heading{display:flex;justify-content:space-between;gap:24px;align-items:end;border-top:1px solid var(--color-outline-variant);padding-top:24px}.chat-section-heading h2{margin-bottom:4px}.chat-section-heading .help{margin:0}.chat-filter-grid{display:grid;grid-template-columns:2fr 1fr 1fr;gap:16px}.admissions :global(.chat-text){white-space:pre-wrap;overflow-wrap:anywhere}.admissions :global(.chat-meta){font-size:var(--text-body-base);color:var(--color-on-surface-variant)}
   @media (max-width:700px){.chat-archive{margin-top:16px}.chat-hero{padding-bottom:32px}.chat-orientation-grid{grid-template-columns:1fr;gap:20px}.chat-section-heading{display:block}.chat-access-state{display:block;margin-top:16px}.chat-filter-grid{grid-template-columns:1fr;gap:0}}
 </style>
-<script>import { initChatArchive } from "../lib/admissions/chats";initChatArchive();</script>
+<script>
+import { initChatArchive } from "../lib/admissions/chats";
+void(async()=>{const root=document.getElementById("chat-archive")!;if(root.dataset.workspace){try{const response=await fetch("/api/app/access");if(response.ok){const access=await response.json();root.dataset.administrator=access.administrator?"true":"false";document.getElementById("archive-visibility")!.hidden=!access.administrator;}}catch{}}initChatArchive();})();
+</script>

@@ -80,15 +80,19 @@ async function authenticated(req: Request, env: Env, browserOnly = false) {
 async function admin(req: Request, env: Env) {
   const auth = await authenticated(req, env, true);
   const state = await auth.agent.publicState();
+  if (!await isAdministrator(state, env)) throw new ApiError(403, "forbidden", "Administrator access required.");
+  const email = state.profile!.email.trim().toLowerCase();
+  return { ...auth, sub: state.profile!.sub, email: email! };
+}
+async function isAdministrator(state: {profile: {email: string; emailVerified: boolean} | null}, env: Env) {
   const administrators = (env.ADMIN_EMAILS ?? "")
     .split(",")
     .map((s) => s.trim().toLowerCase())
     .filter(Boolean);
   const email = state.profile?.email.trim().toLowerCase();
   const invited = email ? await env.INDEX.prepare("SELECT id FROM administrator_invites WHERE email=? AND accepted_at IS NOT NULL AND revoked_at IS NULL").bind(email).first() : null;
-  if (!state.profile?.emailVerified || (!administrators.includes(email!) && !invited))
-    throw new ApiError(403, "forbidden", "Administrator access required.");
-  return { ...auth, sub: state.profile.sub, email: email! };
+  return !!state.profile?.emailVerified && (administrators.includes(email!) || !!invited);
+
 }
 function redirect(url: string, cookies: string[] = []) {
   const headers = new Headers({
@@ -237,7 +241,7 @@ async function handle(req: Request, env: Env): Promise<Response> {
         "INSERT INTO sessions(hash,account_id,expires_at) VALUES(?,?,?)",
       ).bind(await digest(session), id, Date.now() + 7 * 86400000),
     ]);
-    return redirect(`${env.SITE_URL}/apply`, [
+    return redirect(`${env.SITE_URL}/app`, [
       sessionCookie(sessionName, session, 7 * 86400),
       sessionCookie(oauthName, "", 0),
     ]);
@@ -272,11 +276,32 @@ async function handle(req: Request, env: Env): Promise<Response> {
     }
     throw new ApiError(405, "method_not_allowed", "Method not allowed.");
   }
+  if (path === "/api/app/access" && req.method === "GET") {
+    const auth = await authenticated(req, env, true);
+    const state = await auth.agent.publicState();
+    return json({ administrator: await isAdministrator(state, env), status: state.status });
+  }
   if (path.startsWith("/api/admin/")) {
     const auth = await admin(req, env);
     if (path.startsWith("/api/admin/chat-routing/")) return routingAdmin(req, env, path.slice("/api/admin/chat-routing".length), auth.sub);
     if (path.startsWith("/api/admin/chats/")) return archiveAdmin(req, env, path.slice("/api/admin/chats".length), auth.sub);
     if (path === "/api/admin/access" && req.method === "GET") return json({ administrator: true });
+    if (path === "/api/admin/members" && req.method === "GET") {
+      const cursor = new URL(req.url).searchParams.get("cursor") ?? "";
+      if (cursor && !/^[a-f0-9]{64}$/.test(cursor)) throw new ApiError(422, "cursor", "Invalid member cursor.");
+      const rows = await env.INDEX.prepare("SELECT id FROM applications WHERE status='approved' AND id>? ORDER BY id LIMIT 51").bind(cursor).all<{id:string}>();
+      const members = [];
+      for (let offset=0; offset<Math.min(rows.results.length,50); offset+=5) {
+        const batch = await Promise.all(rows.results.slice(offset,Math.min(offset+5,50)).map(async row => {
+          const state = await (await actor(env,row.id)).publicState();
+          if (state.status !== "approved" || !state.profile) return null;
+          return {id:row.id,name:state.profile.name,email:state.profile.email,role:await isAdministrator(state,env)?"Administrator":"Member",linkedinUrl:state.application?.linkedinUrl ?? null};
+        }));
+        members.push(...batch.filter(member => member !== null));
+      }
+      const administrators = (env.ADMIN_EMAILS ?? "").split(",").map(email=>email.trim().toLowerCase()).filter(Boolean);
+      return json({members,administrators,nextCursor:rows.results.length>50?rows.results[49].id:null});
+    }
     if (path === "/api/admin/invitations" && req.method === "GET") {
       const rows = await env.INDEX.prepare("SELECT id,email,created_at,expires_at,accepted_at,revoked_at,delivery FROM administrator_invites ORDER BY created_at DESC LIMIT 100").all();
       return json({ invitations: rows.results });
