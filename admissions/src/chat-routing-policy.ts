@@ -24,3 +24,8 @@ export function proposal(choice:RoutingChoice,current:string,probabilities:Recor
  const ranked=Object.values(probabilities).sort((a,b)=>b-a);
  return choice!=='unclear' && choice!==own && probabilities[choice]>=0.9 && ranked[0]-ranked[1]>=0.6;
 }
+
+export const REPLY_MAX_AGE_MS = 12 * 60 * 60 * 1000;
+export function withinReplyWindow(postedAt: number, now = Date.now()): boolean {
+ return Number.isFinite(postedAt) && postedAt > 0 && postedAt <= now && now - postedAt <= REPLY_MAX_AGE_MS;
+}

@@ -1,5 +1,5 @@
 """Original text/quote sender are transient. Never include these in checkpoints or logs."""
-import hashlib,json,sqlite3,subprocess
+import hashlib,json,sqlite3,subprocess,time
 from pathlib import Path
 GROUPS={'120363049558306142@g.us':'The GenerativeAI Group','120363323644237261@g.us':'Job Posts & Talent','120363297860953641@g.us':'Project Demos & Events'}
 DESTINATIONS={'general':'The GenerativeAI Group','jobs':'Job Posts & Talent','demos_events':'Project Demos & Events'}
@@ -20,8 +20,11 @@ def send_reply(store,data):
  source=data.get('source');destination=data.get('destination');mid=data.get('messageId');sender=data.get('sender')
  if source not in GROUPS or destination not in DESTINATIONS or GROUPS[source]==DESTINATIONS[destination] or not isinstance(mid,str) or len(mid)>200 or not isinstance(sender,str) or len(sender)>150:raise ValueError('invalid reply')
  with sqlite3.connect(f'file:{store}/wacli.db?mode=ro',uri=True) as db:
-  row=db.execute('SELECT sender_jid,from_me,quoted_msg_id,revoked,deleted_for_me FROM messages WHERE chat_jid=? AND msg_id=?',(source,mid)).fetchone()
+  row=db.execute('SELECT sender_jid,from_me,quoted_msg_id,revoked,deleted_for_me,ts FROM messages WHERE chat_jid=? AND msg_id=?',(source,mid)).fetchone()
  if not row or row[0]!=sender or row[1] or row[2] or row[3] or row[4]:raise ValueError('source reply unavailable')
+ # Use the original message timestamp, never its edited timestamp or model decision time.
+ age=time.time()-row[5]
+ if row[5]<=0 or age<0 or age>12*60*60:return {'accepted':False,'uncertain':False}
  message=f"I'd love it if you could move this message to {DESTINATIONS[destination]}.\n\n- Sent by my agent"
  r=subprocess.run(['/usr/local/bin/wacli','--store',str(store),'send','text','--to',source,'--message',message,'--reply-to',mid,'--reply-to-sender',sender,'--no-preview','--json'],capture_output=True,timeout=90)
  try:payload=json.loads(r.stdout);sent=payload.get('data') or {}

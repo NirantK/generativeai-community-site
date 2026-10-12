@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { choices, proposal, ROUTING_MODEL, ROUTING_POLICY, routingCriteria, routingGroups, routingInstructions, type RoutingChoice } from '../../admissions/src/chat-routing-policy';
+import { withinReplyWindow, choices, proposal, ROUTING_MODEL, ROUTING_POLICY, routingCriteria, routingGroups, routingInstructions, type RoutingChoice } from '../../admissions/src/chat-routing-policy';
 export type LiveCandidate={id:string;groupId:string;source:string;messageId:string;sender:string;text:string;sanitizedText:string;contentHash:string;postedAt:number};
 type Example={id:string;text:string;label:string;explanation:string};
 type Settings={trial_started_at:number;replies_enabled:number;enabled_at:number|null;test_verified:number;test_source_group:string|null;test_destination:RoutingChoice|null;test_requested_by:string|null;test_requested_at:number|null};
@@ -57,19 +57,23 @@ export async function classifyLive(env:Env,candidates:LiveCandidate[],send:(c:Li
   if(!settings)break;
   const answer=await assess(env,candidate,historical||candidate.postedAt<settings.trial_started_at,bank);
   if(!answer)continue;assessed++;
-  if(historical||!answer.proposed||candidate.postedAt<settings.trial_started_at||candidate.postedAt<Date.now()-3600000||!candidate.sender)continue;
+  if(historical||!answer.proposed||candidate.postedAt<settings.trial_started_at||!withinReplyWindow(candidate.postedAt)||!candidate.sender)continue;
   // Public replies are possible only with fresh, transient sender metadata. No queue stores it.
   const fresh=await env.DB.prepare('SELECT * FROM chat_routing_settings WHERE id=1').first<Settings>();
   if(!fresh||!await trialPassed(env.DB,fresh))continue;
   const test=!!fresh.test_requested_at&&candidate.postedAt>=fresh.test_requested_at&&fresh.test_source_group===candidate.groupId&&fresh.test_destination===answer.choice;
   const enabled=fresh.replies_enabled===1&&fresh.test_verified===1&&!!fresh.enabled_at&&candidate.postedAt>=fresh.enabled_at;
-  if(!test&&!enabled)continue;
+  if(!test&&!enabled||!withinReplyWindow(candidate.postedAt))continue;
   const ledger=await env.DB.prepare(`INSERT INTO chat_routing_sends(message_id,decision_id,destination,status,requested_by,test,created_at,updated_at) VALUES(?,?,?,'sending',?,?,?,?) ON CONFLICT(message_id) DO NOTHING RETURNING message_id`).bind(candidate.id,answer.id,answer.choice,test?fresh.test_requested_by:null,test?1:0,Date.now(),Date.now()).first();
   if(!ledger)continue;
   if(test)await env.DB.prepare('UPDATE chat_routing_settings SET test_requested_at=NULL,test_source_group=NULL,test_destination=NULL,test_requested_by=NULL,version=version+1 WHERE id=1 AND test_requested_at=?').bind(fresh.test_requested_at).run();
   try{
+   if(!withinReplyWindow(candidate.postedAt)){
+    await env.DB.prepare("UPDATE chat_routing_sends SET status='not_sent',updated_at=? WHERE message_id=?").bind(Date.now(),candidate.id).run();
+    continue;
+   }
    const result=await send(candidate,answer.choice);
-   await env.DB.prepare('UPDATE chat_routing_sends SET status=?,whatsapp_message_id=?,updated_at=? WHERE message_id=?').bind(result.accepted?'accepted':'uncertain',result.id??null,Date.now(),candidate.id).run();
+   await env.DB.prepare('UPDATE chat_routing_sends SET status=?,whatsapp_message_id=?,updated_at=? WHERE message_id=?').bind(result.accepted?'accepted':result.uncertain===false?'not_sent':'uncertain',result.id??null,Date.now(),candidate.id).run();
    if(result.accepted){sent++;if(test)await env.DB.prepare('UPDATE chat_routing_settings SET test_verified=1,version=version+1 WHERE id=1').run();}
   }catch{failed++;await env.DB.prepare("UPDATE chat_routing_sends SET status='uncertain',updated_at=? WHERE message_id=?").bind(Date.now(),candidate.id).run();}
  }

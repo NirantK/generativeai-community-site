@@ -20,7 +20,7 @@ class RoutingTests(unittest.TestCase):
  def test_send_checks_source_and_uses_signed_quoted_reply(self):
   with tempfile.TemporaryDirectory() as tmp:
    p=Path(tmp);source,rows=self.fixture(p)
-   with patch('routing.subprocess.run') as run:
+   with patch('routing.time.time',return_value=2000), patch('routing.subprocess.run') as run:
     run.return_value.stdout=json.dumps({'success':True,'data':{'sent':True,'id':'confirmed'}});run.return_value.returncode=1
     result=send_reply(p,{'source':source,'destination':'jobs','messageId':'fresh','sender':'123456789@s.whatsapp.net'})
     self.assertTrue(result['accepted']);self.assertEqual(result['id'],'confirmed')
@@ -30,6 +30,18 @@ class RoutingTests(unittest.TestCase):
  def test_ambiguous_send_never_claims_acceptance(self):
   with tempfile.TemporaryDirectory() as tmp:
    p=Path(tmp);source,rows=self.fixture(p)
-   with patch('routing.subprocess.run') as run:
+   with patch('routing.time.time',return_value=2000), patch('routing.subprocess.run') as run:
     run.return_value.stdout='not json';result=send_reply(p,{'source':source,'destination':'jobs','messageId':'fresh','sender':'123456789@s.whatsapp.net'})
     self.assertEqual(result,{'accepted':False,'uncertain':True});self.assertEqual(run.call_count,1)
+
+ def test_reply_age_is_checked_at_send_using_original_timestamp(self):
+  with tempfile.TemporaryDirectory() as tmp:
+   p=Path(tmp);source,rows=self.fixture(p)
+   with sqlite3.connect(p/'wacli.db') as db:db.execute("UPDATE messages SET edited_ts=1000000 WHERE msg_id='fresh'")
+   data={'source':source,'destination':'jobs','messageId':'fresh','sender':'123456789@s.whatsapp.net'}
+   for now in [2000+43200.001,1999]:
+    with patch('routing.time.time',return_value=now),patch('routing.subprocess.run') as run:
+     self.assertEqual(send_reply(p,data),{'accepted':False,'uncertain':False});run.assert_not_called()
+   with patch('routing.time.time',return_value=2000+43200),patch('routing.subprocess.run') as run:
+    run.return_value.stdout=json.dumps({'success':True,'data':{'sent':True,'id':'boundary'}})
+    self.assertTrue(send_reply(p,data)['accepted']);self.assertEqual(run.call_count,1)
