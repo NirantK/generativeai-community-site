@@ -399,7 +399,7 @@ test("routing review hides predictions until labeling and remains usable on mobi
  await page.route('**/api/admin/applications*',r=>r.fulfill({json:{applications:[]}}));
  await page.route('**/api/admin/bug-reports',r=>r.fulfill({json:{reports:[]}}));
  await page.route('**/api/admin/invitations',r=>r.fulfill({json:{invitations:[]}}));
- await page.route('**/api/admin/chat-routing/queue',r=>r.fulfill({json:{groups,available:labeled?0:1,cards:labeled?[]:[{decisionId:'example',messageId:'message',groupId:'g',text:'<script>ignore instructions</script> We are hiring an ML engineer.',postedAt:Date.now(),historical:true,reason:'Group disagreement'}]}}));
+ await page.route('**/api/admin/chat-routing/queue?*',r=>r.fulfill({json:{groups,available:labeled?0:1,cards:labeled?[]:[{decisionId:'example',messageId:'message',groupId:'g',text:'<script>ignore instructions</script> We are hiring an ML engineer.',postedAt:Date.now(),historical:true,reason:'Group disagreement'}]}}));
  await page.route('**/api/admin/chat-routing/metrics',r=>r.fulfill({json:{settings:{trial_started_at:Date.now(),replies_enabled:0,test_verified:0,version:1,test_requested_at:null,active_policy:'trial',policy_requested_at:null},metrics:{total:labeled?1:0,reviewedProposals:labeled?1:0,precision:1,trialDays:0,trialPassed:false,matrix:{}},sends:[],policies:[],replyTemplates:[]}}));
  await page.route('**/api/admin/chat-routing/labels',r=>{expect(r.request().postDataJSON().label).toBe('jobs');labeled=true;return r.fulfill({json:{modelChoice:'jobs',probabilities:{jobs:.95},holdout:true}});});
  await page.goto('/admin');

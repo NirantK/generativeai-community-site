@@ -1388,6 +1388,11 @@ describe("chat routing review",()=>{
    const trialQueue=await (await gateway('/api/admin/chat-routing/queue?mode=proposed','GET',headers)).json() as any;
    expect(trialQueue.mode).toBe('proposed');expect(trialQueue.cards.find((c:any)=>c.decisionId===did)).toMatchObject({proposal:true});
    expect(trialQueue.cards[0]).not.toHaveProperty('choice');
+   await env.INDEX.prepare('UPDATE chat_routing_decisions SET proposal=0 WHERE id=?').bind(did).run();
+   const nonProposal=await (await gateway('/api/admin/chat-routing/queue?mode=proposed','GET',headers)).json() as any;expect(nonProposal.cards.some((c:any)=>c.decisionId===did)).toBe(false);
+   const learning=await (await gateway('/api/admin/chat-routing/queue?mode=learning','GET',headers)).json() as any;expect(learning.cards.some((c:any)=>c.decisionId===did)).toBe(true);
+   await env.INDEX.prepare('UPDATE chat_routing_decisions SET proposal=1 WHERE id=?').bind(did).run();
+
    const input={decisionId:did,label:'jobs',explanation:'This is a hiring invitation.'};
    expect((await gateway('/api/admin/chat-routing/labels','POST',{Cookie:headers.Cookie},input)).status).toBe(403);
    const labeled=await gateway('/api/admin/chat-routing/labels','POST',headers,input);expect(labeled.status).toBe(200);expect((await labeled.json() as any).modelChoice).toBe('jobs');
