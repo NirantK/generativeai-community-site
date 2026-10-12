@@ -1385,10 +1385,14 @@ describe("chat routing review",()=>{
    const headers={Cookie:await browser(owner.id),Origin:'https://genaicommunity.ai'};
    expect((await gateway('/api/admin/chat-routing/queue','GET',{Authorization:`Bearer ${token}`})).status).toBe(403);
    const queue=await (await gateway('/api/admin/chat-routing/queue','GET',headers)).json() as any;expect(queue.cards.find((c:any)=>c.decisionId===did)).not.toHaveProperty('choice');expect(queue.cards[0]).not.toHaveProperty('probabilities');
+   const trialQueue=await (await gateway('/api/admin/chat-routing/queue?mode=proposed','GET',headers)).json() as any;
+   expect(trialQueue.mode).toBe('proposed');expect(trialQueue.cards.find((c:any)=>c.decisionId===did)).toMatchObject({proposal:true});
+   expect(trialQueue.cards[0]).not.toHaveProperty('choice');
    const input={decisionId:did,label:'jobs',explanation:'This is a hiring invitation.'};
    expect((await gateway('/api/admin/chat-routing/labels','POST',{Cookie:headers.Cookie},input)).status).toBe(403);
    const labeled=await gateway('/api/admin/chat-routing/labels','POST',headers,input);expect(labeled.status).toBe(200);expect((await labeled.json() as any).modelChoice).toBe('jobs');
    expect((await gateway('/api/admin/chat-routing/labels','POST',headers,input)).status).toBe(200);
+   const remaining=await (await gateway('/api/admin/chat-routing/queue?mode=proposed','GET',headers)).json() as any;expect(remaining.cards.some((c:any)=>c.decisionId===did)).toBe(false);
    expect((await gateway('/api/admin/chat-routing/labels','POST',headers,{...input,label:'general'})).status).toBe(409);
    expect((await gateway('/api/admin/chat-routing/settings','POST',headers,{enabled:true,version:1})).status).toBe(409);
    expect((await gateway('/api/admin/chat-routing/test','POST',headers,{sourceGroup:group.id,destination:'jobs'})).status).toBe(409);

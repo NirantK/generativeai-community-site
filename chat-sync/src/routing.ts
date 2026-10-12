@@ -79,14 +79,14 @@ export async function classifyLive(env:Env,candidates:LiveCandidate[],send:(c:Li
  }
  return {assessed,sendFailures:failed,sent};
 }
-export async function seedRouting(env:Env,limit=60){
+export async function seedRouting(env:Env,limit=60,proposedMoves=false){
  if(!Number.isInteger(limit)||limit<1||limit>300)throw new Error('invalid-seed-limit');
  const bank=await exampleBank(env.DB);let processed=0;
  for(const group of routingGroups){
-  const rows=await env.DB.prepare(`SELECT m.id,m.group_id groupId,m.body text FROM chat_messages m WHERE m.group_id=? AND m.hidden=0 AND length(m.body)>=30 AND NOT EXISTS(SELECT 1 FROM chat_routing_decisions d WHERE d.message_id=m.id) ORDER BY substr(m.id,-16) LIMIT ?`).bind(group.id,Math.ceil(limit/3)).all<{id:string;groupId:string;text:string}>();
+  const rows=await env.DB.prepare(`SELECT m.id,m.group_id groupId,m.body text FROM chat_messages m WHERE m.group_id=? AND m.hidden=0 AND length(m.body)>=30 AND NOT EXISTS(SELECT 1 FROM chat_routing_decisions d WHERE d.message_id=m.id) ${proposedMoves ? "AND (lower(m.body) LIKE '%hiring%' OR lower(m.body) LIKE '%apply%' OR lower(m.body) LIKE '%vacancy%' OR lower(m.body) LIKE '%looking for a role%' OR lower(m.body) LIKE '%meetup%' OR lower(m.body) LIKE '%register%' OR lower(m.body) LIKE '%i built%' OR lower(m.body) LIKE '%demo%' OR lower(m.body) LIKE '%launched%')" : ""} ORDER BY substr(m.id,-16) LIMIT ?`).bind(group.id,proposedMoves?Math.max(0,limit-processed):Math.ceil(limit/3)).all<{id:string;groupId:string;text:string}>();
   for(const r of rows.results){await assess(env,{...r,contentHash:await hash(r.text)},true,bank);processed++;}
  }
- return {processed,model:ROUTING_MODEL,promptVersion:bank.version};
+ return {processed,model:ROUTING_MODEL,promptVersion:bank.version,targeted:proposedMoves};
 }
 const fixtures=[
  {name:'job',text:'We are hiring a senior ML engineer in Bangalore. Full-time, 3+ years experience. Apply with your CV at our careers page.',expected:'jobs'},

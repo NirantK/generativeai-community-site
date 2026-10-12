@@ -159,13 +159,14 @@ async function metrics(db:D1Database){
  }
  return result;
 }
-type SyncParams={bootstrapDemos?:boolean;demosAnchor?:{messageId:string;timestamp:number;fromMe:boolean};force?:boolean;preflight?:boolean;recover?:boolean;storageTest?:boolean;backfillJobs?:boolean;cachedOnly?:boolean;terminatedLeaseOwner?:string;backfillDemos?:boolean;seedRouting?:number;modelEvaluation?:boolean;evaluatePolicy?:boolean};
+type SyncParams={bootstrapDemos?:boolean;demosAnchor?:{messageId:string;timestamp:number;fromMe:boolean};force?:boolean;preflight?:boolean;recover?:boolean;storageTest?:boolean;backfillJobs?:boolean;cachedOnly?:boolean;terminatedLeaseOwner?:string;backfillDemos?:boolean;seedRouting?:number;seedProposals?:number;modelEvaluation?:boolean;evaluatePolicy?:boolean};
 export class ChatSyncWorkflow extends WorkflowEntrypoint<Env,SyncParams> {
  async run(event:WorkflowEvent<SyncParams>,step:WorkflowStep){
   const params=event.payload ?? {};
   if(params.demosAnchor&&(!params.force||!params.backfillDemos))throw new Error('anchor-requires-forced-demos-backfill');
   if(params.evaluatePolicy)return step.do('evaluate-reviewed-policy',{retries:{limit:0,delay:'1 second'},timeout:'20 minutes'},()=>evaluateReviewedPolicy(this.env));
   if(params.modelEvaluation)return step.do('cloud-clef-evaluation',{retries:{limit:0,delay:'1 second'},timeout:'10 minutes'},()=>modelEvaluation(this.env));
+  if(params.seedProposals)return step.do('seed-trial-proposals',{retries:{limit:0,delay:'1 second'},timeout:'20 minutes'},()=>seedRouting(this.env,params.seedProposals,true));
   if(params.seedRouting)return step.do('seed-historical-review',{retries:{limit:0,delay:'1 second'},timeout:'20 minutes'},()=>seedRouting(this.env,params.seedRouting));
   if(params.storageTest)return step.do('cloud-r2-checkpoint-test',()=>storagePreflight(this.env.STATE));
   if(params.terminatedLeaseOwner)return step.do('release-verified-terminated-lease',()=>this.env.WACLI.getByName('preflight').releaseTerminatedLease(params.terminatedLeaseOwner!));
