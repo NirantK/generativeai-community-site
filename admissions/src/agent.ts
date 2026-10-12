@@ -517,16 +517,16 @@ export class AdmissionAgent extends Agent<Env, RecordState> {
           to: this.state.profile!.email,
           subject:
             kind === "receipt"
-              ? "Your GenerativeAI Community application — submitted copy"
-              : "You’re approved — join the GenerativeAI Community",
+              ? "A copy of your GenerativeAI Community application"
+              : "Your GenerativeAI Community application is approved",
           text:
             kind === "receipt"
               ? receiptText
-              : `Your application is approved. Join our WhatsApp community: ${url}\nOpen the invitation link on your phone for the best experience.\n\nExplore the member-only Past Chats archive: ${this.env.SITE_URL}/past-chats\n\nTo let your AI agent search Past Chats, sign in and generate a token here: ${this.env.SITE_URL}/token\nAgent instructions: ${this.env.SITE_URL}/api-instructions\n\nPlease read our community rules: ${this.env.SITE_URL}/#whatsapp-community-rules`,
+              : `Your application is approved. Join our WhatsApp community: ${url}\nOpen the invitation link on your phone.\n\nExplore the member-only Past Chats archive: ${this.env.SITE_URL}/past-chats\n\nTo let your AI agent search Past Chats, sign in and generate a token here: ${this.env.SITE_URL}/token\nAgent instructions: ${this.env.SITE_URL}/api-instructions\n\nPlease read our community rules: ${this.env.SITE_URL}/#whatsapp-community-rules`,
           html:
             kind === "receipt"
               ? receiptHtml
-              : `<p>Your application is approved.</p><p><a href="${escapeHtml(url!)}">Join our WhatsApp community</a></p><p>Open the invitation link on your phone for the best experience.</p><p>Now that you’re a member, explore <a href="${escapeHtml(this.env.SITE_URL)}/past-chats">Past Chats</a> to search conversations that shaped the community.</p><p>To let your AI agent search Past Chats, <a href="${escapeHtml(this.env.SITE_URL)}/token">generate a member API token</a> after signing in. You can then give the token && the <a href="${escapeHtml(this.env.SITE_URL)}/api-instructions">agent instructions</a> to your agent.</p><p>Please read our <a href="${escapeHtml(this.env.SITE_URL)}/#whatsapp-community-rules">community rules</a>.</p>`,
+              : `<p>Your application is approved.</p><p><a href="${escapeHtml(url!)}">Join our WhatsApp community</a></p><p>Open the invitation link on your phone.</p><p>Once approved, use <a href="${escapeHtml(this.env.SITE_URL)}/past-chats">Past Chats</a> to search past group conversations.</p><p>To let your AI agent search Past Chats, <a href="${escapeHtml(this.env.SITE_URL)}/token">generate a member API token</a> after signing in. Give the token and the <a href="${escapeHtml(this.env.SITE_URL)}/api-instructions">agent instructions</a> to your agent.</p><p>Please read our <a href="${escapeHtml(this.env.SITE_URL)}/#whatsapp-community-rules">community rules</a>.</p>`,
         });
         this.write(
           {

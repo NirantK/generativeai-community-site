@@ -201,7 +201,7 @@ test("new pages fit the viewport and documentation names Cloudflare sender", asy
     ).toBe(true);
   }
   await expect(
-    page.getByText("noreply@genaicommunity.ai", { exact: true }).first(),
+    page.locator("article").getByText(/noreply@genaicommunity\.ai/).first(),
   ).toBeVisible();
 });
 
@@ -339,7 +339,7 @@ test("administrator invites a colleague by email and sees the pending invitation
   await page.getByLabel("New administrator email").fill("colleague@example.com");
   await page.getByRole("button",{name:"Send administrator invitation"}).click();
   await expect(page.locator("#admin-message")).toHaveText("Administrator invitation accepted by the email provider.");
-  await expect(page.getByText(/colleague@example.com — Awaiting acceptance/)).toBeVisible();
+  await expect(page.getByText(/colleague@example.com: Awaiting acceptance/)).toBeVisible();
 });
 
 test("agent applicants can appeal with evidence and see human-review status", async ({page}) => {
@@ -372,9 +372,9 @@ test("admin review displays appeal evidence, reference status, and original reje
   await page.route("**/api/admin/applications*",r=>r.fulfill({json:{applications:[{id,name:"Appealing student",status:"review",appeal_status:"pending",delivery:"pending"}]}}));
   await page.route(`**/api/admin/applications/${id}`,r=>r.fulfill({json:{profile:draft.profile,application:{role:"Student"},status:"review",submissionChannel:"agent",delivery:{status:"pending"},history:[],appeals:[{submittedAt:Date.now(),previousDecision:{reason:"Original student rejection"},resolution:null,evidence:{explanation:"Original project details for a human reviewer",voucher:"<script>untrusted reference claim</script>"}}]}}));
   await page.goto("/app/applications");
-  await expect(page.getByText(/APPEAL AWAITING REVIEW/)).toBeVisible();
+  await expect(page.getByText(/Appeal awaiting review/)).toBeVisible();
   await page.getByRole("button",{name:"Review application",exact:true}).click();
-  await expect(page.getByRole("heading",{name:"Appeal 1 — Awaiting decision"})).toBeVisible();
+  await expect(page.getByRole("heading",{name:"Appeal 1: Awaiting decision"})).toBeVisible();
   await expect(page.getByText(/Community reference \(unverified\): <script>untrusted reference claim<\/script>/)).toBeVisible();
   await expect(page.getByRole("button",{name:"Retry AI assessment"})).toBeHidden();
 });

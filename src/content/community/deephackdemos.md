@@ -10,40 +10,33 @@ weight: 640
 toc: true
 ---
 
-👋 You've landed at the perfect spot to check out all the coolest demos from the #GenerativeAIHack.
+Demos from #GenerativeAIHack:
 
+- 90+ hackers on Day 1 and 150+ people at Demo day.
+- 43 submissions: 32 in person and 11 remote, from 6 cities.
+- 13 sponsors from 3 countries, including two open-source software companies, Weaviate and AppSmith.
+- 20% of funds came from individual donors or collectives.
+- 5 Lakh INR in prizes.
 
-🧑‍🤝‍🧑 90+ hackers on Day 1, 150+ folks at Demo day
-
-⚡️ 43 submissions, 32 in-person, 11 remote from 6 cities
-
-🙏 13 sponsors from 3 countries, 2 Open Source Software companies: Weaviate, AppSmith
-
-🤗 20% raised from individual donors or collectives of them
-
-💰 5 Lakh INR in Prizes
-
-I'm super stoked to share these mind-blowing projects with you—created by some seriously talented folks from all corners of the world. 🌍 Whether you're into art, gaming, or just love a good tech innovation, we've got something for everyone.
-
-All demos have been shared with creator's permission! 🚀
+Creators gave permission to share these demos. Projects cover art, gaming, and other uses of AI.
 
 # Links
 - **Livestream**: https://www.youtube.com/live/E5gpisqhwJc?feature=share
 - **Hackathon Website**: https://has.gy/gpt4hack 
 
-# Prize Winners
+# Prize winners
 
 ## Best Tooling for Media: Multimode: Text to Pixel Animation using Stable Diffusion
 
 [Demo Video](https://youtu.be/VpVT8UQSANg)
 
-[Multimode](https://multimode.run/) helps you generate game assets like sprite animations, tilable textures and more from a text prompt so that you can build you game faster.
+[Multimode](https://multimode.run/) generates game assets from text prompts, including sprite animations and tileable textures, to help you build games faster.
 
 ## AI For Good: Sens.AI: Learning Redefined
 
 [Demo Video](https://drive.google.com/file/d/1wOEPq4eLT3da77AkKln6p4xcZ80uuaZ-/view?usp=sharing)
 
-Sens.AI redefines learning by providing personalized experiences for young people from underserved backgrounds. The platform creates small batches of learners and pairs them with mentors to bridge skill gaps, develop professional communication and critical thinking skills, and offer tailored guidance.
+Sens.AI provides personalised learning for young people from underserved backgrounds. It groups learners into small batches and pairs them with mentors to address skill gaps, practise professional communication and critical thinking, and receive tailored guidance.
 
 ## Best GPT Powered App: YouTalk: Search and Discover Your YouTube Snippets
 
@@ -55,13 +48,13 @@ Sens.AI redefines learning by providing personalized experiences for young peopl
 - **Pitch Deck**: [https://pitch.com/public/2a735687-436f-4af6-99a7-ffcc6c0666d9](https://pitch.com/public/2a735687-436f-4af6-99a7-ffcc6c0666d9)
 - **Demo Video**: [https://youtu.be/PiEJ5S071xk](https://youtu.be/PiEJ5S071xk)
 
-osh revolutionizes the command line experience by providing LLM-based assistance for developers. The tool simplifies workflows and enhances overall productivity, allowing users to navigate errors, and debug complex programs with ease and confidence.
+osh uses LLMs to help developers work in the command line, understand errors, and debug complex programs.
 
 ## Tale of Dattā: Short Comic about the Mythology of Data & AI
 
 [Demo Video](https://www.youtube.com/watch?v=LflHZZ-3VFM) | [Process from the Artist](https://rasagy.in/projects/datta/)
 
-Tale of Dattā is a short comic exploring the mythology of data and AI, offering a creative and engaging perspective on the world of technology.
+Tale of Dattā is a short comic about the mythology of data and AI.
 
 # Jury's Choice
 
@@ -69,7 +62,7 @@ Tale of Dattā is a short comic exploring the mythology of data and AI, offering
 
 [Demo Video](https://www.loom.com/share/219d3523fbe8458a993f5564dd945d2e)
 
-Inspir is a learning app designed to make education accessible and engaging for learners of all ages and backgrounds. It uses natural language processing (NLP) technology to enable users to ask questions and receive detailed, informative responses in real-time. Inspir aims to revolutionize education by democratizing learning and making it accessible to everyone.
+Inspir is a learning app for people of different ages and backgrounds. It uses natural language processing (NLP) to answer questions in detail and in real time. The project aims to make education accessible to everyone.
 
 ## Apne App
 
@@ -87,181 +80,181 @@ JS library which can interface with (almost) any SaaS and Consumer application t
 
 [Demo Video](https://www.loom.com/share/f9b8f89ca90d44deb660ba8fc52edc8c)
 
-Genie Paint inspires kids by showcasing the capabilities of AI in amplifying their creativity, transforming sketches into stunning artwork.
+Genie Paint uses AI to turn children’s sketches into artwork and help them explore their creativity.
 
 ## BlindVisAidGPT: An Interactive Aid for the Visually Impaired
 
 [GitHub](https://github.com/justanotherlad/blindvisaidgpt) | [Demo Video](https://twitter.com/_justanotherlad/status/1640120489128476673?s=20)
 
-BlindVisAidGPT aims to provide a helpful interface for visually impaired individuals by using a Wi-Fi enabled camera mounted on glasses. The project is built on Microsoft's Visual-ChatGPT, and it provides an interactive platform for users to ask questions about the environment in front of them. With multiple avenues for improvement, this project is open for contributions from the open-source community.
+BlindVisAidGPT is a project for visually impaired users. A Wi-Fi camera mounted on glasses lets users ask questions about their surroundings. It is built on Microsoft’s Visual-ChatGPT and accepts open-source contributions.
 
-# All Demos
+# All demos
 
 ## Consumable.AI: Personalized Learning Made Easy
 
 [Demo Video](https://www.youtube.com/shorts/ykyf7on3Kzw)
 
-Consumable.AI is an educational tool designed to make learning more accessible and efficient. By generating short, personalized notes based on keywords, users can quickly consume information tailored to their interests. This innovative approach to education streamlines the learning process and promotes a more engaging experience for students.
+Consumable.AI generates short, personalised learning notes from keywords. Users can read information matched to their interests.
 
 ## CodeAU: Adding and Updating code base.
 
 [Demo Video](https://www.youtube.com/watch?v=qgO_8KdyO_k)
 
-CodeAU, an innovative and robust coding assistant framework designed to empower developers by seamlessly updating and expanding their existing code base. As libraries evolve and new versions are released, it becomes increasingly challenging for developers to keep up with the changes and ensure their code remains functional and efficient. CodeAU is here to bridge the gap and effortlessly maintain the code's compatibility with the latest library versions.
+CodeAU helps developers update and extend an existing codebase as libraries change. It maintains compatibility with new library versions.
 
 ## Parable: Turning Text into Insight
 
 [GitHub](https://github.com/dhruvshrivastava/parable-backend) | [Demo Video](https://www.loom.com/share/87156c77f49e411fb472d9af1ffce75d)
 
-Parable is a text-to-insight tool designed to uncover the hidden stories within large volumes of text. By analyzing and interpreting text data, Parable provides valuable insights and understanding to users. This powerful tool has the potential to revolutionize industries that rely heavily on text-based information, such as journalism, research, and business analytics.
+Parable analyses large amounts of text to help users understand it. Possible uses include journalism, research, and business analytics.
 
 ## AICombinator: Your Personal AI Assistant for Complex Online Tasks
 
 [GitHub](https://github.com/aicombinator/bot) | [Demo Video](https://share.descript.com/view/KrSyraYbkm4)
 
-AICombinator is an open-source project that aims to give AI identity, memory, and agency. This bot can log in as you and perform complex operations across multiple websites in a real browser, including filling in OTPs, making payments, and accessing cloud services. With its ability to run locally, AICombinator can provide file-system access, native app usage, and more, making it an indispensable tool for end-users.
+AICombinator is an open-source bot built to give AI identity, memory, and agency. It can log in as you and work across websites in a browser, including entering OTPs, making payments, and accessing cloud services. Running it locally gives it access to your filesystem and native apps.
 
 ## Hiring Assistant: Streamlining the Recruitment Process
 
 [GitHub](https://github.com/technocouple/hiring-assistant.git) | [Demo Video](https://youtu.be/ZG5T4WEcJ2E)
 
-Hiring Assistant is an AI-powered solution designed to streamline the recruitment process. By using WhatsApp as a digital channel for resume submission, the AI extracts resume data and processes it through ChatGPT to assess skills, compatibility scores, and job description matches. The platform also generates sample interview questions and sends email notifications to HR personnel and candidates. This reduces the time-consuming and error-prone manual recruitment process to mere minutes.
+Hiring Assistant accepts resumes through WhatsApp and uses ChatGPT to assess skills, compatibility scores, and matches with job descriptions. It generates interview questions and emails HR staff and candidates. The recruitment workflow takes minutes.
 
 ## Edden: Effortlessly Create Landing Pages
 
 [Website](https://eddenapp.web.app/) | [Demo Video](https://www.loom.com/share/6e2af3e7dc33485ebb06088b6137d9db)
 
-Edden is an AI-driven tool that enables users to create landing pages within minutes. By simplifying the design process, Edden allows users to focus on their core business objectives while still achieving professional and visually appealing landing pages.
+Edden uses AI to create professional landing pages within minutes, leaving users more time for their business.
 
 ## Shakalaka Boom Boom: Jo ye banaye sach ho jaye!
 
 [Website](http://shakalakaboomboom.jadoosnap.com) | [Demo Video](https://drive.google.com/file/d/1CyC0jGg1oqEI4paOY2jlUUQxf-x0Jt9v/view?usp=sharing)
 
-Discover "Shakalaka Boom Boom": Inspired by the nostalgic Indian TV show, this innovative entertainment tool transforms your doodles into realistic images using advanced AI. Shakalaka Boom Boom also suggests e-commerce products resembling your creations, making it the perfect fusion of imagination and shopping. Relive the magic of your childhood and watch your artistic dreams come to life with Shakalaka Boom Boom!
+Shakalaka Boom Boom, inspired by the Indian TV show, uses AI to turn doodles into realistic images. It also suggests e-commerce products that resemble the drawings.
 
 ## DiagramGenie🔮: Text to Software Engineering Diagrams
 
 [Website](https://diagram-genie.up.railway.app) | [Github](https://github.com/ShimantaBhuyan/diagram-genie) | [Demo Video](https://drive.google.com/file/d/1xPAFXmRX-XWBnk6vm0Kuv7frf1oZ4jth/view?usp=sharing)
 
-DiagramGenie is an innovative tool that allows users to create software engineering diagrams by just describing it in a few simple words. This AI-powered solution simplifies the process of creating complex diagrams and streamlines the workflow for software engineers and developers.
+DiagramGenie creates software engineering diagrams from short text descriptions.
 
 ## Student Mentor: Medical, Literature Analysis, and Career Guidance
 
 [GitHub](https://github.com/ambarishg/generative_ai_hack01) | [Demo Video](https://youtu.be/HX8XloHdw3A)
 
-Student Mentor is an AI-powered platform designed to assist students in various aspects of their academic and professional lives. With features like medical, literature, and career question answering, summary generation, and chat facilities, Student Mentor provides comprehensive support for students seeking guidance and assistance.
+Student Mentor answers medical, literature, and career questions for students. It also generates summaries and has a chat interface.
 
 ## Debate-Bot: An AI-Powered Tool for Rational Discussions
 
-Debate-Bot is an AI-powered tool that analyzes online arguments and points out logical fallacies. By providing users with a deeper understanding of the arguments they encounter, Debate-Bot encourages more informed and rational discussions.
+Debate-Bot analyses online arguments and identifies logical fallacies to help users assess what they read.
 
 ## Anti-ChatGPT: An Antivirus for Your Brain
 
 [GitHub](https://github.com/devxpy/anti-chatgpt) | [Demo Video](https://www.loom.com/share/5671ef9d67044b26863bca60ad1db00c)
 
-Anti-ChatGPT is a Chrome plugin designed to combat the manipulation of AI-generated content. Users can specify what content they don't want to see, and the plugin removes it from their browser, empowering individuals to take control of their digital experiences.
+Anti-ChatGPT is a Chrome plugin for filtering AI-generated content. Users specify what they do not want to see, and the plugin removes it from their browser.
 
 ## Anywhere GPT: Unleashing ChatGPT's Superpowers on the Web
 
 [Demo Video](https://youtu.be/qdqymG3b4EM)
 
-Anywhere GPT is a powerful tool that brings ChatGPT's capabilities to any website, providing real-time writing assistance, language translation, chatbot and virtual assistant support, and more. By integrating AI functionality into everyday browsing, Anywhere GPT enhances the overall user experience.
+Anywhere GPT brings ChatGPT to websites for writing help, translation, and chatbot or virtual assistant support in real time.
 
 ## Wingman: AI-Enhanced Dating Profiles
 
 [Demo Video](https://youtu.be/DddP9D0nT7k)
 
-Wingman is an AI-powered app that helps users create compelling dating profiles. By leveraging AI's language generation capabilities, Wingman ensures users present their best selves in their online dating endeavors.
+Wingman uses AI-generated text to help users write dating profiles.
 
 ## CODEWIZ: Effortless Coding with AI Superpowers
 
 [GitHub](https://github.com/felvin-search/FelvinGPT-VSCode-Ext) | [Demo Video](https://www.loom.com/share/22d344a780144c13ad726effbe2d245b)
 
-CODEWIZ is an AI-driven tool that simplifies the coding process for developers. By integrating AI capabilities directly into a code editor, CODEWIZ empowers developers to write more efficient and accurate code with ease.
+CODEWIZ adds AI assistance to a code editor to help developers write more efficient and accurate code.
 
 ## Zima Blue: Unlimited Data at Your Fingertips
 
-Zima Blue provides unlimited data access to underprivileged individuals, enabling them to utilize their resources effectively and create new opportunities for learning and development.
+Zima Blue gives underprivileged people unlimited data access for learning and development.
 
 ## Sambhash: Your AI Tutor to Practice English
 
-Sambhash is an AI tutor designed to help rural individuals improve their English speaking skills. By offering suggestions, translations, and feedback, the AI tutor helps users enhance their language proficiency and gain confidence.
+Sambhash is an AI tutor for rural people practising spoken English. It gives suggestions, translations, and feedback to build language skills and confidence.
 
 ## TARS: Personal AI Helping Hands
 
 [Demo Video](https://www.loom.com/share/7c008cd0a2c84b819bade5a31b004968)
 
-TARS is a personal AI assistant that can help with tasks such as doing your taxes or even providing some entertainment. By automating these tasks, TARS makes life easier and more enjoyable for its users.
+TARS is a personal AI assistant that can handle tasks such as taxes and entertainment.
 
 ## ReinforceLLM: Train Your Own ChatGPT
 
 [Demo Video](https://www.loom.com/share/6d2cd68e5db3431b985857414599cdc9)
 
-ReinforceLLM is a platform that allows users to train their own ChatGPT models based on their personal preferences, providing a customized AI experience.
+ReinforceLLM lets users train ChatGPT models to match their preferences.
 
 ## AI Tele Agent: Smarter Support with AI
 
 [Demo Video](https://drive.google.com/file/d/1aRHK0EO1KamXt5XFzp_rdNWe0qm0Bc3u/view?usp=sharing)
 
-AI Tele Agent is an AI-based support agent capable of answering customer queries efficiently. By synthesizing user queries and generating informed responses, AI Tele Agent offers instant, efficient customer support.
+AI Tele Agent answers customer questions with immediate AI-generated responses.
 
 ## Selene: A Platform to Build and Deploy Video AI Applications at Scale
 
 [Demo Video](https://www.loom.com/share/fbacbb4a13224b42919d8d573c11a11e)
 
-Selene is a platform that allows developers to build and deploy video AI applications at scale. It offers an SDK and workflow creation tools, enabling developers to run their models on the cloud without worrying about infrastructure.
+Selene helps developers build and deploy video AI applications at scale. Its SDK and workflow tools run models in the cloud and handle the infrastructure.
 
 ## MEME Fake: Self Meme Generator
 
 [Demo Video](https://www.loom.com/share/409e7e9821794d3bbd18c076f5f9e525)
 
-MEME Fake is a self meme generator that allows users to create personalized, humorous content using AI technology.
+MEME Fake uses AI to create personalised memes.
 
 ## Mission Impossible: Silicon Deception
 
 [Demo Video](https://www.youtube.com/watch?v=ey6QwjbAJ_U)
-Mission Impossible: Silicon Deception is a fan-fiction comic where Ethan Hunt is recruited by Sam Altman to find stolen AI technology, offering an exciting and imaginative narrative.
+Mission Impossible: Silicon Deception is a fan-fiction comic in which Sam Altman recruits Ethan Hunt to find stolen AI technology.
 
 ## Text 2 Reel: Create Your Instagram Reel Without Any Efforts
 
 [Demo Video](https://www.loom.com/share/e9bafca24a8143b9b52086a69cb941ec)
 
-Text 2 Reel simplifies the creation of Instagram reels, allowing users to generate engaging content with minimal effort using AI technology.
+Text 2 Reel uses AI to generate Instagram reels with minimal effort.
 
 ## Glaze AI: Langchain for Images
 
-Glaze AI is an open-source library that enables users to chat with multiple image models and perform various tasks on images while also providing post-editing functions.
+Glaze AI is an open-source library for chatting with multiple image models, working on images, and editing the results.
 
 ## Gully AI: Mere Gully AI Main
 
 [Demo Video](https://www.loom.com/share/d75a1ab527604bfab8d80b37a0eeebc3)
 
-Gully AI offers a creative and engaging platform for users to generate and share AI-assisted content, enhancing the user experience and promoting collaboration.
+Gully AI lets users create and share AI-assisted content.
 
 ## Explore and Search for Any Website: GPT for Advanced Browser Search and Exploration
 
 [Demo Video](https://www.loom.com/share/f310ec95184c476ebea603cbf44f3376)
 
-This Chrome extension allows users to ask questions and receive personalized search results based on their preferences, mood, or requirements, simplifying the search and exploration process.
+This Chrome extension answers questions with search results matched to a user’s preferences, mood, or requirements.
 
 ## Sneaker Studio: Canva for Sneakers
 
 [Demo Video](https://www.loom.com/share/229877d6e0164287a80e7f26ec99fb38)
 
-Sneaker Studio is a platform that allows users to design and customize their own sneakers, offering a creative and personalized experience.
+Sneaker Studio lets users design and customise their own sneakers.
 
 ## Bookgist.in
 
 [Demo Video](https://www.loom.com/share/78b35d1b3d2f420da56ba3fad9870836)
 
-Bookgist.in is an AI-powered platform that aims to promote social impact by providing users with easy access to book summaries, facilitating learning and personal growth.
+Bookgist.in provides AI-generated book summaries. The project aims to support learning and social impact.
 
 ## Video Ad Generator: Make a Video Ad of Your Product by Just Entering a Prompt
 
 [Demo Video](https://www.loom.com/share/0605931df50c423c926b84bc596e9e62)
 
-Video Ad Generator enables users to create full video ads using just a text prompt, streamlining the ad creation process and saving time.
+Video Ad Generator creates full video ads from a text prompt.
 
 ## Handmade with AI: A Series of Surreal Artworks Focused on Human Hands
 
-Handmade with AI is a series of surreal artworks created with the assistance of Stable Diffusion and Midjourney AI tools, highlighting the potential of AI in artistic expression.
+Handmade with AI is a series of surreal artworks about human hands, created with Stable Diffusion and Midjourney.

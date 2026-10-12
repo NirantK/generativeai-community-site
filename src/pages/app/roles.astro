@@ -4,13 +4,13 @@ import "../../styles/admissions.css";
 ---
 <AppLayout title="Roles" active="roles">
  <div class="admissions"><p class="eyebrow">Community administration</p><h1>Roles</h1>
- <p>Approved members and administrators. Only administrators can view this directory and manage access.</p>
+ <p>This directory lists approved members and admins. Admins can view it and manage access.</p>
  <p id="admin-message" role="status" class="notice">Loading roles…</p>
  <section><h2>Current members</h2><div id="members" class="members"></div><button id="members-more" hidden>Load more members</button></section>
- <section><h2>Configured administrators</h2><p class="help">These administrators are configured for the service. Their access is managed through deployment settings.</p><div id="configured-admins"></div></section>
+ <section><h2>Configured administrators</h2><p class="help">These admins have access through deployment settings. Change those settings to update their access.</p><div id="configured-admins"></div></section>
     <section aria-labelledby="administrators-title">
       <h2 id="administrators-title">Administrators</h2>
-      <p>Invite someone using their LinkedIn email. They can review applications, make decisions, and invite other administrators after accepting.</p>
+      <p>Invite someone at the email they use for LinkedIn. After accepting, they can review applications, make decisions, and invite other admins.</p>
       <form id="invite-admin">
         <label for="admin-email">New administrator email</label>
         <input id="admin-email" type="email" required maxlength="254" />
@@ -45,7 +45,7 @@ import "../../styles/admissions.css";
       for (const invitation of invitations) {
         const row = document.createElement("p");
         const status = invitation.revoked_at ? "Revoked" : invitation.accepted_at ? "Active administrator" : invitation.expires_at < Date.now() ? "Expired" : "Awaiting acceptance";
-        row.textContent = `${invitation.email} — ${status} · Email: ${invitation.delivery} `;
+        row.textContent = `${invitation.email}: ${status} · Email: ${invitation.delivery} `;
         if (!invitation.revoked_at) {
           const revoke = document.createElement("button"); revoke.textContent = "Revoke access";
           revoke.onclick = async () => {
@@ -69,7 +69,7 @@ import "../../styles/admissions.css";
     try {
       const result = await api<{delivery:string}>("/api/admin/invitations", {email:(get("admin-email") as HTMLInputElement).value});
       await loadAdministrators();
-      message(result.delivery === "accepted" ? "Administrator invitation accepted by the email provider." : "Invitation saved; email outcome needs reconciliation in Cloudflare logs. Do not resend blindly.");
+      message(result.delivery === "accepted" ? "Administrator invitation accepted by the email provider." : "Invitation saved. Check Cloudflare email logs to confirm whether it was sent before retrying.");
     } catch(e) { message((e as Error).message); }
     finally { button.disabled = false; }
   });

@@ -76,7 +76,7 @@ async function infer(req: Request, env: Env, accountId: string, systemOne = fals
   const input = requestSchema.parse(await body(req, 8 * 1024 * 1024));
   const model = selectedModel(input.model);
   if (input.state === null || input.state === undefined || Object.keys(input.questions).length < 1 || Object.keys(input.questions).length > 16)
-    throw new ApiError(422, "validation", "Supply a state and 1–16 typed questions.");
+    throw new ApiError(422, "validation", "Supply a state and 1 to 16 typed questions.");
   const xor = input.model === "juspay/xor";
   if (!xor && new TextEncoder().encode(JSON.stringify(input)).length > 20000)
     throw new ApiError(413, "body_size", "Application is too large.");
@@ -86,10 +86,10 @@ async function infer(req: Request, env: Env, accountId: string, systemOne = fals
     for (const question of Object.values(input.questions)) {
       if (question.type === "score" && (!Array.isArray(question.criteria) || question.criteria.length < 2 ||
           question.criteria.length > 26 || question.criteria.some(x => typeof x !== "string" || !x.trim())))
-        throw new ApiError(422, "validation", "Xor score requires 2–26 ordered levels.");
+        throw new ApiError(422, "validation", "Xor score requires 2 to 26 ordered levels.");
       if (question.type === "choice" && (!question.criteria || Array.isArray(question.criteria) ||
           Object.keys(question.criteria).length < 2 || Object.keys(question.criteria).length > 26))
-        throw new ApiError(422, "validation", "Xor choice requires 2–26 named options.");
+        throw new ApiError(422, "validation", "Xor choice requires 2 to 26 named options.");
       if (question.type === "noul" && Array.isArray(question.criteria))
         throw new ApiError(422, "validation", "Xor binary criteria must be a map.");
     }
@@ -102,9 +102,9 @@ async function infer(req: Request, env: Env, accountId: string, systemOne = fals
       throw new ApiError(422, "validation", "Hopper accepts exactly one question per request.");
     const question = Object.values(input.questions)[0];
     if (question.type === "score" && (!Array.isArray(question.criteria) || question.criteria.length < 2 || question.criteria.length > 26))
-      throw new ApiError(422, "validation", "Hopper scores require an array of 2–26 level descriptions.");
+      throw new ApiError(422, "validation", "Hopper scores require an array of 2 to 26 level descriptions.");
     if (question.type === "choice" && (!question.criteria || Array.isArray(question.criteria) || Object.keys(question.criteria).length < 2 || Object.keys(question.criteria).length > 26))
-      throw new ApiError(422, "validation", "Hopper choices require a map of 2–26 option descriptions.");
+      throw new ApiError(422, "validation", "Hopper choices require a map of 2 to 26 option descriptions.");
     if (question.type === "noul" && Array.isArray(question.criteria))
       throw new ApiError(422, "validation", "Hopper yes/no criteria must be a map when supplied.");
   }

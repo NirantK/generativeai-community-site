@@ -8,7 +8,7 @@ import AppLayout from "../../layouts/AppLayout.astro";
     <p class="eyebrow">Community administration</p>
     <h1>Application review</h1>
     <p>
-      Review an applicant’s work and the assessment evidence before deciding.
+      Read the applicant’s work and assessment evidence before deciding.
     </p>
     <p id="admin-message" class="notice" role="status">
       Loading applications…
@@ -79,8 +79,8 @@ import AppLayout from "../../layouts/AppLayout.astro";
         <button id="retry">Retry confirmed failed or paused email</button>
       </div>
       <p class="help">
-        For uncertain delivery, inspect Cloudflare email logs first. The
-        application will not blindly resend a possibly accepted message.
+        For uncertain delivery, inspect Cloudflare email logs first. We
+        do not resend a message that the provider may already have accepted.
       </p>
     </section>
   </div>
@@ -152,7 +152,7 @@ import AppLayout from "../../layouts/AppLayout.astro";
         [
           "Assessment",
           record.assessment?.reasons ??
-            "A human review is required; no reliable automated assessment is available.",
+            "An admin needs to review this application because the AI assessment was unavailable or unreliable.",
         ],
         ["Supporting evidence", record.assessment?.evidence.join("\n\n") ?? ""],
       ];
@@ -169,7 +169,7 @@ import AppLayout from "../../layouts/AppLayout.astro";
       }
       for (const [index, appeal] of (record.appeals ?? []).entries()) {
         const heading = document.createElement("h3");
-        heading.textContent = `Appeal ${index + 1} — ${appeal.resolution ? appeal.resolution.action : "Awaiting decision"}`;
+        heading.textContent = `Appeal ${index + 1}: ${appeal.resolution ? appeal.resolution.action : "Awaiting decision"}`;
         const evidence = document.createElement("p");
         evidence.style.whiteSpace = "pre-wrap";
         evidence.style.overflowWrap = "anywhere";
@@ -231,7 +231,7 @@ import AppLayout from "../../layouts/AppLayout.astro";
         const title = document.createElement("h3");
         title.textContent = a.name;
         const status = document.createElement("p");
-        status.textContent = `${a.status}${a.appeal_status === "pending" ? " · APPEAL AWAITING REVIEW" : ""} · Email: ${a.delivery}`;
+        status.textContent = `${a.status}${a.appeal_status === "pending" ? " · Appeal awaiting review" : ""} · Email: ${a.delivery}`;
         const button = document.createElement("button");
         button.textContent = "Review application";
         button.onclick = () => void inspect(a.id);

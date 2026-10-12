@@ -5,7 +5,7 @@ import "../styles/admissions.css";
 <BaseLayout title="API management">
  <div class="admissions" id="api-management">
   <h1>API management</h1>
-  <p class="intro">Connect Codex or your preferred agent. Use your token to apply and, after approval, search community chats and use member APIs.</p>
+  <p class="intro">Give your token to Codex or another agent to apply. Once approved, you can also use it to search community chats and call member APIs.</p>
   <p id="message" class="notice" role="status" aria-live="polite">Checking your sign-in…</p>
   <noscript>Enable JavaScript to manage API tokens.</noscript>
   <section id="signed-out" hidden><h2>Sign in to manage tokens</h2><a class="button primary" href="/auth/linkedin">Sign in with LinkedIn</a></section>
@@ -32,7 +32,7 @@ import "../styles/admissions.css";
       <span id="agent-token" class="anchor-target" aria-hidden="true"></span>
       <details id="agent-section" open>
         <summary>Your API token</summary>
-        <p class="help">Use the same token for your application and member APIs. Tokens last 30 days. Regenerating immediately invalidates all previous tokens.</p>
+        <p class="help">Your token works for your application and member APIs. It lasts 30 days. Generating a replacement immediately invalidates all previous tokens.</p>
         <div class="actions">
           <button id="issue-token" type="button" disabled>Generate token</button>
         </div>

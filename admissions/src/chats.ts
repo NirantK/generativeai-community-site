@@ -4,7 +4,7 @@ import { z } from "zod";
 const identifier = /^[a-f0-9]{64}$/;
 export function searchTerms(query: string): string {
   const words = query.match(/[\p{L}\p{N}_]+/gu) ?? [];
-  if (!words.length || words.length > 12) throw new ApiError(422, "search_query", "Search with 1–12 words.");
+  if (!words.length || words.length > 12) throw new ApiError(422, "search_query", "Search with 1 to 12 words.");
   return words.map(word => `"${word}"`).join(" AND ");
 }
 function dateBound(value: string | null, end = false, ist = false): number | null {
