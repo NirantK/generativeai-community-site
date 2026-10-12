@@ -106,7 +106,7 @@ test("token regeneration replaces the snippet and persists its button label", as
     issued++;
     return r.fulfill({ json: { token: `test-token-${issued}` } });
   });
-  await page.goto("/apply");
+  await page.goto("/token");
   await page.getByRole("button", { name: "Generate token", exact: true }).click();
   await expect(page.locator("#token-snippet")).toContainText("Authorization: Bearer test-token-1");
   await expect(page.locator("#token-snippet")).toContainText("/api/v1/application");
@@ -128,7 +128,7 @@ test("approved member with old consent can generate a token without accepting ag
   await page.route("**/api/application-token", route => route.fulfill({
     json: { token: "test-only-approved-token", expiresAt: Date.now() + 30 * 86400000 },
   }));
-  await page.goto("/apply");
+  await page.goto("/token");
   await expect(page.locator("#consent-section")).toBeHidden();
   const button = page.getByRole("button", { name: "Generate token", exact: true });
   await expect(button).toBeEnabled();
@@ -144,7 +144,7 @@ test("token generation shows local progress and a local failure message", async 
     await waiting;
     await route.fulfill({ status: 503, json: { error: { message: "Token service is temporarily unavailable." } } });
   });
-  await page.goto("/apply");
+  await page.goto("/token");
   const button = page.getByRole("button", { name: "Generate token", exact: true });
   await expect(button).toBeEnabled();
   await button.click();
@@ -314,30 +314,13 @@ test("failed and cancelled sign-ins offer a retry", async ({ page }) => {
   }
 });
 
-test("agent application is first and open by default with LinkedIn email and no verification form", async ({
-  page,
-}) => {
-  await page.route("**/api/v1/application", (r) => r.fulfill({ json: draft }));
-  await page.goto("/apply");
-  await expect(page.locator("#agent-section")).toHaveAttribute("open", "");
-  await expect(
-    page.getByText("LinkedIn email: builder@example.com", { exact: true }),
-  ).toBeVisible();
-  await expect(
-    page.locator("#email-form, #verify-form, #change-email"),
-  ).toHaveCount(0);
-  expect(
-    await page
-      .locator("#agent-section")
-      .evaluate(
-        (el) =>
-          !!(
-            el.compareDocumentPosition(
-              document.getElementById("form-section")!,
-            ) & Node.DOCUMENT_POSITION_FOLLOWING
-          ),
-      ),
-  ).toBe(true);
+test("application management separates tokens and keeps the form accessible",async({page})=>{
+ await page.route("**/api/v1/application",r=>r.fulfill({json:draft}));
+ await page.goto("/apply");
+ await expect(page.locator("#form-section")).toBeInViewport();
+ await expect(page.locator("#issue-token, #agent-section")).toHaveCount(0);
+ await expect(page.getByRole("link",{name:"API management",exact:true})).toHaveAttribute("href","/token");
+ await expect(page.locator("#email-form, #verify-form, #change-email")).toHaveCount(0);
 });
 
 test("administrator invites a colleague by email and sees the pending invitation", async ({ page }) => {
@@ -408,15 +391,35 @@ test("routing review hides predictions until labeling and remains usable on mobi
  await page.route('**/api/admin/chat-routing/labels',r=>{expect(r.request().postDataJSON().label).toBe('jobs');labeled=true;return r.fulfill({json:{modelChoice:'jobs',probabilities:{jobs:.95},holdout:true}});});
  await page.goto('/app/message-review');
  const review=page.locator('.routing-review');
- await expect(review.getByRole('heading',{name:'Help improve group choices'})).toBeVisible();
+ await expect(review.getByRole('heading',{name:'Choose the best group'})).toBeVisible();
+ await expect(review.locator('#routing-mode')).toHaveValue('learning');
+ await expect(review.getByRole('button',{name:'Refresh examples'})).toBeHidden();
  const card=review.locator('.routing-card');await expect(card).toHaveCount(1);
  await expect(card.locator('.routing-feedback')).toHaveCount(0);
  await expect(card.getByText(/<script>ignore instructions/)).toBeVisible();
  await card.getByRole('button',{name:'Job Posts & Talent',exact:true}).click();
  await expect(card.locator('.routing-feedback')).toContainText('Clef chose Job Posts & Talent');
  await expect(card.getByRole('button',{name:'Job Posts & Talent',exact:true})).toBeDisabled();
- await review.getByText('Accuracy, trial and reply controls',{exact:true}).click();
+ await review.getByText('Trial & reply settings',{exact:true}).click();
  await expect(review.getByRole('button',{name:'Enable automatic replies'})).toBeDisabled();
  await expect(review.getByRole('button',{name:'Request one controlled test'})).toBeDisabled();
  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1)).toBe(true);
+});
+
+test("explicit manual-form links remain supported",async({page})=>{
+ await page.route("**/api/v1/application",r=>r.fulfill({json:draft}));
+ await page.goto("/apply#form-section");
+ await expect(page.getByRole("heading",{name:"Or apply with the form"})).toBeInViewport();
+});
+
+test("new applicants must save browser consent on the separate token page",async({page})=>{
+ let consent=false;
+ await page.route("**/api/v1/application",r=>r.fulfill({json:{...draft,consentCurrent:consent}}));
+ await page.route("**/api/application-consent",r=>{consent=true;return r.fulfill({json:{saved:true}});});
+ await page.goto("/token");
+ await expect(page.getByRole("button",{name:"Generate token",exact:true})).toBeDisabled();
+ await page.locator('#consent-form input[type="checkbox"]').check();
+ await page.getByRole("button",{name:"Save consent",exact:true}).click();
+ await expect(page.getByRole("button",{name:"Generate token",exact:true})).toBeEnabled();
+ await expect(page.locator('#consent-section')).toBeHidden();
 });

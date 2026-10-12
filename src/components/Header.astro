@@ -37,11 +37,18 @@ const path = Astro.url.pathname.replace(/\/$/, '') || '/';
       })}
     </nav>
     <a
+      id="account-navigation"
       href={whatsappUrl}
       rel="noopener"
       class="font-mono text-label-caps uppercase border border-outline-variant px-3 min-h-tap inline-flex items-center text-on-surface hover:border-primary hover:text-primary transition-colors"
     >
-      Apply to Join
+      Join
     </a>
   </div>
 </header>
+
+<script>
+ const accountLink=document.getElementById("account-navigation") as HTMLAnchorElement;
+ void(async()=>{try{const response=await fetch("/api/app/access");if(response.ok){accountLink.href="/app/search";accountLink.textContent="Search";}}catch{}})();
+ document.addEventListener("community-signed-out",()=>{accountLink.href="/apply";accountLink.textContent="Join";});
+</script>

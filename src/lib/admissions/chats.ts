@@ -53,7 +53,7 @@ export function initChatArchive() {
       el("chat-results").append(...result.messages.map(m=>article(m)));
       cursor=result.nextCursor;el("chat-more").hidden=!cursor;
       status(el("chat-results").children.length ? `${el("chat-results").children.length} messages shown${cursor ? ". More results are available." : "."}` : "No messages found. Try different words or filters.");
-    } catch(error) {if(current===generation){el("chat-results").replaceChildren();el("chat-context").hidden=true;el("chat-more").hidden=true;const e=error as Error & {status?:number};status(e.status===401||e.status===403?"Approved access is required. Start at Apply to join, sign in with LinkedIn, and return here after approval.":e.message);}}
+    } catch(error) {if(current===generation){el("chat-results").replaceChildren();el("chat-context").hidden=true;el("chat-more").hidden=true;const e=error as Error & {status?:number};status(e.status===401||e.status===403?"Approved access is required. Start at Join, sign in with LinkedIn, and return here after approval.":e.message);}}
     finally {if(current===generation)(el("chat-more") as HTMLButtonElement).disabled=false;}
   }
   el("chat-search").addEventListener("submit",event=>{event.preventDefault();query=new URLSearchParams({timezone:"Asia/Kolkata"});for(const [key,value] of new FormData(el("chat-search") as HTMLFormElement)){const text=String(value).trim();if(!text)continue;if(key==="from"||key==="to"){const parsed=parseDateInput(text);if(!parsed){status("Enter a valid date, such as 15 Sep 2026.");return;}query.set(key,parsed);(el("chat-"+key) as HTMLInputElement).value=formatDate(parsed+"T00:00:00Z");}else query.set(key,text);}cursor=null;el("chat-context").hidden=true;void search();});
@@ -73,6 +73,6 @@ export function initChatArchive() {
       accessState("Approved member access");
       if(!groups.length){status("No chat history has been published yet.");return;}
       await search();
-    }catch(error){const e=error as Error & {status?:number};accessState(e.status===401||e.status===403?"Approval required":"Temporarily unavailable");status(e.status===401||e.status===403?"Past Chats is for approved members. Start at Apply to join, sign in with LinkedIn, and return after approval.":e.message);}
+    }catch(error){const e=error as Error & {status?:number};accessState(e.status===401||e.status===403?"Approval required":"Temporarily unavailable");status(e.status===401||e.status===403?"Past Chats is for approved members. Start at Join, sign in with LinkedIn, and return after approval.":e.message);}
   })();
 }

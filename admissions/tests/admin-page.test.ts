@@ -1,7 +1,7 @@
 import {it,expect,vi} from "vitest";
 import {onRequest} from "../../functions/admin/[[path]]";
 import {onRequest as appPage} from "../../functions/app/[[path]]";
-it("guards every workspace view and chooses the role-appropriate landing page",async()=>{
+it("guards every workspace view and lands every signed-in role on Search",async()=>{
  for(const path of ["/app/","/app/applications/","/app/message-review/","/app/roles/","/app/search/"]) for(const administrator of [true,false]) for(const status of [200,401,503]){
   const next=vi.fn(async()=>new Response("private workspace"));
   const response=await appPage({request:new Request(`https://genaicommunity.ai${path}`),env:{ADMISSIONS:{fetch:async request=>{expect(new URL(request.url).pathname).toBe("/api/app/access");return Response.json({administrator},{status});}}},next});
@@ -9,7 +9,7 @@ it("guards every workspace view and chooses the role-appropriate landing page",a
   expect(next).toHaveBeenCalledTimes(allowed?1:0);
   expect(response.status).toBe(status===401?302:status===503?503:path==="/app/"?302:allowed?200:403);
   expect(response.headers.get("Cache-Control")).toContain("no-store");
-  if(status===200&&path==="/app/")expect(response.headers.get("Location")).toBe(administrator?"/app/applications":"/app/search");
+  if(status===200&&path==="/app/")expect(response.headers.get("Location")).toBe("/app/search");
  }
 });
 it("redirects old admin bookmarks only after authorization",async()=>{

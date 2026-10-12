@@ -36,20 +36,19 @@ const fields = [
 ---
 
 <BaseLayout
-  title="Apply to join"
+  title="Join"
   description="Join a community of people building, researching, and applying generative AI."
 >
   <div class="admissions">
-    <h1>Bring what you’re building.</h1>
+    <h1>Your application</h1>
     <p class="intro">
-      Meet people working with generative AI. Tell us about your work or a
-      project, and we’ll review your application. Students and independent
-      builders are welcome.
+      Apply to join, check your decision, and manage any appeal here.
+      Want your agent to apply? Generate a token on the separate API management page.
     </p>
     <section id="agent-api-guidance" aria-labelledby="agent-api-heading">
       <h2 id="agent-api-heading">Applying with an AI agent?</h2>
       <p>
-        Sign in with LinkedIn, save consent if you’re applying, and generate an application token below.
+        Sign in with LinkedIn, then open API management to save consent and generate your token.
         Your agent should then use that token to apply through our API.
       </p>
       <p class="help">
@@ -57,7 +56,7 @@ const fields = [
         and token generation. After sign-in, continue with the bearer-token API;
         leave the application form for people applying manually.
       </p>
-      <p><a href="/api-instructions">Read the agent workflow</a> · <a href="/openapi.json">API contract</a></p>
+      <p><a class="button" href="/token">API management</a> · <a href="/api-instructions">Read the agent workflow</a></p>
     </section>
     <p id="message" class="notice" role="status" aria-live="polite">
       Checking your sign-in…
@@ -83,28 +82,33 @@ const fields = [
     <div id="signed-in" hidden>
       <div class="actions">
         <p id="identity"></p>
-        <a id="past-chats-link" href="/past-chats" hidden>Past Chats</a>
-        <a id="member-agent-link" href="/apply#agent-token" hidden>Generate a token for your agent</a>
+        <a id="past-chats-link" href="/app/search" hidden>Search</a>
+        <a id="member-agent-link" href="/token" hidden>Manage API access</a>
         <a id="admin-link" href="/app" hidden>Open workspace</a>
         <div id="admin-invitation" hidden><p>You’re invited to administer the community. Administrators can read applications, make admission decisions, and invite other administrators.</p><button id="accept-admin" type="button">Accept administrator invitation</button></div>
         <button id="logout" type="button">
           Sign out
         </button>
       </div>
-      <section id="email-section">
-        <h2>Your email</h2>
-        <p class="help">
-          Your LinkedIn email receives a copy of your application and, after approval, your invitation.
-          Check your spam or junk folder if either email doesn’t arrive.
-        </p>
-        <p id="email-status" class="help"></p>
-        <a id="refresh-linkedin" href="/auth/linkedin" hidden>Refresh LinkedIn sign-in</a>
+      <section id="status-section" hidden>
+        <h2 id="status-title">Application status</h2>
+        <p id="status-copy"></p>
+        <button id="refresh" type="button">
+          Refresh status
+        </button>
       </section>
-      <section id="enrichment-section" hidden>
-        <h2>Profile enrichment</h2>
-        <p id="enrichment-status" class="help" role="status"></p>
-        <p id="enrichment-details" hidden></p>
-        <p class="help">These details come from Crustdata. Your own application answers remain yours to review and submit.</p>
+      <section id="appeal-section" hidden>
+        <h2>Appeal your rejection</h2>
+        <p>Appeals are available because your original application was submitted using an agent. Provide at least one item below. An administrator will review it. A named reference is not treated as verified endorsement.</p>
+        <form id="appeal-form">
+          <label for="appeal-proof">Link to your work (HTTPS)</label>
+          <input id="appeal-proof" name="proofUrl" type="url" maxlength="2000" />
+          <label for="appeal-explanation">Explain a project and your contribution</label>
+          <textarea id="appeal-explanation" name="explanation" minlength="80" maxlength="4000"></textarea>
+          <label for="appeal-voucher">Community member who can vouch for you</label>
+          <textarea id="appeal-voucher" name="voucher" minlength="20" maxlength="1000" placeholder="Name and how they know your work. Share contact details only with their permission."></textarea>
+          <button type="submit">Submit appeal for admin review</button>
+        </form>
       </section>
       <section id="consent-section">
         <h2>Before you apply</h2>
@@ -126,44 +130,6 @@ const fields = [
         </form>
       </section>
       <p class="help">Students need exceptional original work to qualify, unless an approved company affiliation applies. Rejections can be appealed only when the original application was submitted using an agent.</p>
-      <section id="status-section" hidden>
-        <h2 id="status-title">Application status</h2>
-        <p id="status-copy"></p>
-        <button id="refresh" type="button">
-          Refresh status
-        </button>
-      </section>
-      <section id="appeal-section" hidden>
-        <h2>Appeal your rejection</h2>
-        <p>Appeals are available because your original application was submitted using an agent. Provide at least one item below. An administrator will review it. A named reference is not treated as verified endorsement.</p>
-        <form id="appeal-form">
-          <label for="appeal-proof">Link to your work (HTTPS)</label>
-          <input id="appeal-proof" name="proofUrl" type="url" maxlength="2000" />
-          <label for="appeal-explanation">Explain a project and your contribution</label>
-          <textarea id="appeal-explanation" name="explanation" minlength="80" maxlength="4000"></textarea>
-          <label for="appeal-voucher">Community member who can vouch for you</label>
-          <textarea id="appeal-voucher" name="voucher" minlength="20" maxlength="1000" placeholder="Name and how they know your work. Share contact details only with their permission."></textarea>
-          <button type="submit">Submit appeal for admin review</button>
-        </form>
-      </section>
-      <span id="agent-token" class="anchor-target" aria-hidden="true"></span>
-      <details id="agent-section" open>
-        <summary>Your API token</summary>
-        <p class="help">Use the same token for your application and member APIs. Tokens last 30 days. Regenerating immediately invalidates all previous tokens.</p>
-        <div class="actions">
-          <button id="issue-token" type="button" disabled>Generate token</button>
-        </div>
-        <p id="token-status" class="help" role="status" aria-live="polite"></p>
-        <div id="token-output" hidden>
-          <p class="notice">Copy this snippet now. The token is shown only once.</p>
-          <pre id="token-snippet"></pre>
-          <button id="copy-token" type="button">Copy snippet</button>
-        </div>
-        <p>
-          <a href="/api-instructions">Continue to agent instructions</a> ·{" "}
-          <a href="/openapi.json">OpenAPI specification</a>
-        </p>
-      </details>
       <section id="form-section">
         <h2>Or apply with the form</h2>
         <p class="help">
@@ -205,6 +171,22 @@ const fields = [
             Applications are final once submitted. If you have an ICML, NeurIPS, or ACL main-track paper, include its exact title, venue, and year so we can verify it. Clear matches are approved automatically; other applications receive a human review.
           </p>
         </form>
+      </section>
+
+      <section id="email-section">
+        <h2>Your email</h2>
+        <p class="help">
+          Your LinkedIn email receives a copy of your application and, after approval, your invitation.
+          Check your spam or junk folder if either email doesn’t arrive.
+        </p>
+        <p id="email-status" class="help"></p>
+        <a id="refresh-linkedin" href="/auth/linkedin" hidden>Refresh LinkedIn sign-in</a>
+      </section>
+      <section id="enrichment-section" hidden>
+        <h2>Profile enrichment</h2>
+        <p id="enrichment-status" class="help" role="status"></p>
+        <p id="enrichment-details" hidden></p>
+        <p class="help">These details come from Crustdata. Your own application answers remain yours to review and submit.</p>
       </section>
 
     </div>
