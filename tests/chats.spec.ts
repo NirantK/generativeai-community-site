@@ -35,8 +35,8 @@ test('members search, filter, paginate and read plain-text context',async({page}
 test('membership denial exposes no results',async({page})=>{
  await page.route('**/api/v1/chats/**',route=>route.fulfill({status:403,json:{error:{message:'Approved membership is required.'}}}));
  await page.goto('/past-chats');
- await expect(page.getByRole('status')).toContainText('Past Chats is for approved members. Start at Apply to join');
- await expect(page.getByRole('link',{name:'Apply to join'}).first()).toHaveAttribute('href','/apply');
+ await expect(page.getByRole('status')).toContainText('Past Chats is for approved members. Start at Join');
+ await expect(page.getByRole('link',{name:'Join'}).first()).toHaveAttribute('href','/apply');
  await expect(page.getByRole('heading',{name:'How access works'})).toBeVisible();
  await expect(page.locator('#chat-results article')).toHaveCount(0);
 });

@@ -67,6 +67,7 @@ export function initApplication() {
   let enrichmentPoll: number | undefined;
   let issuingToken = false;
   let canIssueToken = false;
+  let landed = false;
   async function refresh() {
     try {
       const s: Snapshot = await api("/api/v1/application");
@@ -104,7 +105,7 @@ export function initApplication() {
       if (!issuingToken) el("issue-token").textContent = s.tokenActive ? "Regenerate token" : "Generate token";
       el<HTMLButtonElement>("issue-token").disabled = !canIssueToken || issuingToken;
       if (!canIssueToken && !issuingToken)
-        el("token-status").textContent = "Save consent and verify your LinkedIn email above to enable token generation.";
+        el("token-status").textContent = "Save consent and confirm your LinkedIn email below to enable token generation.";
       el<HTMLButtonElement>(
         "application-form",
       ).querySelector<HTMLButtonElement>("button[type=submit]")!.disabled =
@@ -134,6 +135,11 @@ export function initApplication() {
             ? "Generate an application token below so your agent can apply through the API. You can also apply manually with the form."
             : "Save consent to continue. If LinkedIn did not confirm your email, refresh your LinkedIn sign-in.",
         );
+      if (!landed) {
+        landed = true;
+        const target = location.hash ? document.getElementById(location.hash.slice(1)) : el("api-management");
+        (target ?? el("api-management")).scrollIntoView({block:"start"});
+      }
     } catch (e) {
       if ((e as { status?: number }).status === 401) {
         el("signed-out").hidden = false;

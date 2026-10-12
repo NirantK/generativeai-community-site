@@ -320,6 +320,9 @@ test("agent application is first and open by default with LinkedIn email and no 
   await page.route("**/api/v1/application", (r) => r.fulfill({ json: draft }));
   await page.goto("/apply");
   await expect(page.locator("#agent-section")).toHaveAttribute("open", "");
+  await expect(page.locator("#api-management")).toBeInViewport();
+  expect(await page.locator("#agent-section").evaluate(el => !!(el.compareDocumentPosition(document.getElementById("email-section")!) & Node.DOCUMENT_POSITION_FOLLOWING))).toBe(true);
+
   await expect(
     page.getByText("LinkedIn email: builder@example.com", { exact: true }),
   ).toBeVisible();
@@ -419,4 +422,10 @@ test("routing review hides predictions until labeling and remains usable on mobi
  await expect(review.getByRole('button',{name:'Enable automatic replies'})).toBeDisabled();
  await expect(review.getByRole('button',{name:'Request one controlled test'})).toBeDisabled();
  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1)).toBe(true);
+});
+
+test("explicit manual-form links bypass the default API landing",async({page})=>{
+ await page.route("**/api/v1/application",r=>r.fulfill({json:draft}));
+ await page.goto("/apply#form-section");
+ await expect(page.getByRole("heading",{name:"Or apply with the form"})).toBeInViewport();
 });
