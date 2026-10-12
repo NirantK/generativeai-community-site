@@ -322,8 +322,8 @@ async function handle(req: Request, env: Env): Promise<Response> {
         const response = await env.EMAIL.send({
           from: { email: "noreply@genaicommunity.ai", name: "GenerativeAI Community" }, to: email,
           subject: "Invitation to administer GenerativeAI Community",
-          text: `You have been invited to administer GenerativeAI Community. Administrators can read applications, approve or decline applicants, and invite other administrators. Sign in with LinkedIn using this email and accept the invitation at ${env.SITE_URL}/apply/. This invitation expires in seven days. If unexpected, ignore this email.`,
-          html: `<p>You have been invited to administer GenerativeAI Community.</p><p>Administrators can read applications, approve or decline applicants, and invite other administrators.</p><p><a href="${env.SITE_URL}/apply/">Sign in with LinkedIn using this email and accept the invitation</a>.</p><p>This invitation expires in seven days. If unexpected, ignore this email.</p>`,
+          text: `You’ve been invited to be a GenerativeAI Community admin. Administrators can read applications, approve or decline applicants, and invite other administrators. Sign in with LinkedIn using this email and accept the invitation at ${env.SITE_URL}/apply/. This invitation expires in seven days. If you did not expect this invitation, ignore this email.`,
+          html: `<p>You’ve been invited to be a GenerativeAI Community admin.</p><p>Administrators can read applications, approve or decline applicants, and invite other administrators.</p><p><a href="${env.SITE_URL}/apply/">Sign in with LinkedIn using this email and accept the invitation</a>.</p><p>This invitation expires in seven days. If you did not expect this invitation, ignore this email.</p>`,
         });
         await env.INDEX.prepare("UPDATE administrator_invites SET delivery='accepted',message_id=? WHERE id=?").bind(response.messageId ?? null, id).run();
       } catch {
@@ -464,7 +464,7 @@ async function handle(req: Request, env: Env): Promise<Response> {
       throw new ApiError(
         400,
         "idempotency_key",
-        "Supply an Idempotency-Key of 8–128 letters, digits, underscores or hyphens.",
+        "Supply an Idempotency-Key of 8 to 128 letters, digits, underscores or hyphens.",
       );
     const reader = req.body?.getReader();
     if (!reader)
@@ -507,7 +507,7 @@ async function handle(req: Request, env: Env): Promise<Response> {
       throw new ApiError(
         422,
         "validation",
-        "Provide a plain-text bug report of 1–200 words.",
+        "Provide a plain-text bug report of 1 to 200 words.",
       );
     const hash = await digest(report);
     const existing = await env.INDEX.prepare(
@@ -549,7 +549,7 @@ async function handle(req: Request, env: Env): Promise<Response> {
   }
   if (path === "/api/v1/appeal" && req.method === "POST") {
     const key = req.headers.get("Idempotency-Key");
-    if (!key || !/^[\w-]{8,128}$/.test(key)) throw new ApiError(400, "idempotency_key", "Supply an Idempotency-Key of 8–128 letters, digits, underscores or hyphens.");
+    if (!key || !/^[\w-]{8,128}$/.test(key)) throw new ApiError(400, "idempotency_key", "Supply an Idempotency-Key of 8 to 128 letters, digits, underscores or hyphens.");
     return json(await auth.agent.appeal(await body(req), key, auth.bearer ? auth.hash : undefined), 202);
   }
   if (path === "/api/v1/application") {
@@ -560,7 +560,7 @@ async function handle(req: Request, env: Env): Promise<Response> {
         throw new ApiError(
           400,
           "idempotency_key",
-          "Supply an Idempotency-Key of 8–128 letters, digits, underscores or hyphens.",
+          "Supply an Idempotency-Key of 8 to 128 letters, digits, underscores or hyphens.",
         );
       return json(
         await auth.agent.submit(

@@ -6,8 +6,8 @@ const { administrator = false, workspace = false } = Astro.props;
   <header class="chat-hero">
     <p class="eyebrow">{administrator ? "Community administration" : "Members-only archive"}</p>
     <h1>{workspace ? "Search" : "Past Chats"}</h1>
-    <p class="intro">Search the conversations that shaped the community’s work with generative AI.</p>
-    <p class="help">Available synced text history may be incomplete. Attachments and phone metadata are omitted, and phone numbers in message text are replaced with stable privacy aliases.</p>
+    <p class="intro">Search past conversations from our community groups.</p>
+    <p class="help">The archive may be incomplete. It contains text, without attachments or phone metadata. Phone numbers in messages use consistent privacy aliases.</p>
     <div class="actions">
       <a class="button primary" href={workspace?"/token":"/apply"}>{workspace?"API management":"Join"}</a>
       <a href="/api-instructions">Agent API instructions</a>
@@ -17,9 +17,9 @@ const { administrator = false, workspace = false } = Astro.props;
   {!workspace && <section class="chat-orientation" aria-labelledby="chat-orientation-title">
     <h2 id="chat-orientation-title">How access works</h2>
     <div class="chat-orientation-grid">
-      <div><span class="chat-step">01</span><h3>Apply with LinkedIn</h3><p>Start at <a href="/apply">Join</a>. Sign in with LinkedIn, accept the terms, and share your work.</p></div>
-      <div><span class="chat-step">02</span><h3>Wait for approval</h3><p>Approved members get access here. Your browser session or 30-day agent token must belong to that approved account.</p></div>
-      <div><span class="chat-step">03</span><h3>Search with context</h3><p>Search by words, group, or date. Open any result to read five messages on either side.</p></div>
+      <div><span class="chat-step">01</span><h3>Apply with LinkedIn</h3><p><a href="/apply">Join</a> with LinkedIn, accept the terms, and tell us about your work.</p></div>
+      <div><span class="chat-step">02</span><h3>Wait for approval</h3><p>Approved members get access here. Sign in with that account, or use its 30-day agent token.</p></div>
+      <div><span class="chat-step">03</span><h3>Search with context</h3><p>Search by words, group, or date. Open a result to read five messages before and after it.</p></div>
     </div>
   </section>}
   <section class="chat-search-section" aria-labelledby="chat-search-title">
@@ -32,7 +32,7 @@ const { administrator = false, workspace = false } = Astro.props;
     </form>
     <p id="chat-status" role="status">Loading archive…</p>
   </section>
-  {(administrator || workspace) && <section id="archive-visibility" hidden={!administrator}><h2>Archive visibility</h2><p>Unpublished groups and hidden messages are unavailable to members and their agents.</p><div id="chat-moderation"></div></section>}
+  {(administrator || workspace) && <section id="archive-visibility" hidden={!administrator}><h2>Archive visibility</h2><p>Members and their agents cannot see unpublished groups or hidden messages.</p><div id="chat-moderation"></div></section>}
   <div id="chat-results"></div>
   <div class="actions"><button id="chat-more" type="button" hidden>Load more messages</button></div>
   <section id="chat-context" hidden aria-labelledby="chat-context-title"><h2 id="chat-context-title">Conversation context</h2><div id="chat-context-messages"></div></section>

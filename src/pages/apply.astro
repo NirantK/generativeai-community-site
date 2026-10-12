@@ -42,14 +42,14 @@ const fields = [
   <div class="admissions">
     <h1>Your application</h1>
     <p class="intro">
-      Apply to join, check your decision, and manage any appeal here.
-      Want your agent to apply? Generate a token on the separate API management page.
+      Submit your application here and return to check the decision or appeal a rejection.
+      To apply through an agent, get a token from API management.
     </p>
     <section id="agent-api-guidance" aria-labelledby="agent-api-heading">
       <h2 id="agent-api-heading">Applying with an AI agent?</h2>
       <p>
         Sign in with LinkedIn, then open API management to save consent and generate your token.
-        Your agent should then use that token to apply through our API.
+        Give the token to your agent so it can submit through the API.
       </p>
       <p class="help">
         Agents visiting in a browser: use the browser for LinkedIn sign-in, consent,
@@ -67,8 +67,8 @@ const fields = [
     <section id="signed-out" hidden>
       <h2>Start with LinkedIn</h2>
       <p>
-        We use LinkedIn to connect your application to your account. You’ll add
-        any background details LinkedIn doesn’t provide.
+        LinkedIn identifies your account. You’ll fill in any application details
+        it doesn’t provide.
       </p>
       <div class="actions">
         <a class="button primary" href="/auth/linkedin">
@@ -85,7 +85,7 @@ const fields = [
         <a id="past-chats-link" href="/app/search" hidden>Search</a>
         <a id="member-agent-link" href="/token" hidden>Manage API access</a>
         <a id="admin-link" href="/app" hidden>Open workspace</a>
-        <div id="admin-invitation" hidden><p>You’re invited to administer the community. Administrators can read applications, make admission decisions, and invite other administrators.</p><button id="accept-admin" type="button">Accept administrator invitation</button></div>
+        <div id="admin-invitation" hidden><p>You’ve been invited to be an admin. Admins review applications, approve or decline applicants, and invite other admins.</p><button id="accept-admin" type="button">Accept administrator invitation</button></div>
         <button id="logout" type="button">
           Sign out
         </button>
@@ -133,8 +133,8 @@ const fields = [
       <section id="form-section">
         <h2>Or apply with the form</h2>
         <p class="help">
-          All fields are required. Students, independent builders, and people
-          between roles are welcome.
+          Fill in every field. Students, independent builders, and people
+          between roles can apply.
         </p>
         <p class="help">LinkedIn sign-in shares your name and email, but not your public profile URL. Paste your own profile link below so administrators can review it.</p>
         <form id="application-form">
@@ -176,7 +176,7 @@ const fields = [
       <section id="email-section">
         <h2>Your email</h2>
         <p class="help">
-          Your LinkedIn email receives a copy of your application and, after approval, your invitation.
+          We send a copy of your application to your LinkedIn email, followed by an invitation if you’re approved.
           Check your spam or junk folder if either email doesn’t arrive.
         </p>
         <p id="email-status" class="help"></p>
@@ -186,7 +186,7 @@ const fields = [
         <h2>Profile enrichment</h2>
         <p id="enrichment-status" class="help" role="status"></p>
         <p id="enrichment-details" hidden></p>
-        <p class="help">These details come from Crustdata. Your own application answers remain yours to review and submit.</p>
+        <p class="help">Crustdata supplied these details. Review your own answers before submitting your application.</p>
       </section>
 
     </div>

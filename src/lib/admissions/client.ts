@@ -88,7 +88,7 @@ export function initApplication() {
       el("enrichment-status").textContent = enrichment.status === "pending"
         ? "Looking up your professional profile…"
         : enrichment.status === "matched" ? "We found this professional profile:"
-        : enrichment.status === "no_match" ? "No matching professional profile was found. You can still apply."
+        : enrichment.status === "no_match" ? "We did not find a matching professional profile. You can still apply."
         : "Profile lookup is unavailable. You can still apply.";
       el("enrichment-details").textContent = enrichment.data
         ? [["Name", enrichment.data.name], ["Role", enrichment.data.title],
@@ -111,7 +111,7 @@ export function initApplication() {
           approved:
             s.delivery.status === "accepted"
               ? "You’re approved. Your WhatsApp invitation has been sent to your email provider. Check your inbox and spam folder."
-              : "You’re approved. Your invitation email is pending; we’re working on it.",
+              : "You’re approved. Your invitation email is still pending.",
           declined: "Your application was not approved this time.",
         };
         el("status-title").textContent =

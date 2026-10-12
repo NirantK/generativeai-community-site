@@ -13,11 +13,11 @@ interface Props {
 
 const {
   title,
-  description = 'Generative AI Community — rules, resources, recommendations, and events for India\'s most active GenAI builders.',
+  description = 'Rules, resources, recommendations, and events from the GenerativeAI Community in India.',
   sourcePath,
   wide = false,
 } = Astro.props;
-const fullTitle = title === 'GenerativeAI Community' ? 'GenerativeAI Community' : `${title} — GenerativeAI Community`;
+const fullTitle = title === 'GenerativeAI Community' ? 'GenerativeAI Community' : `${title} | GenerativeAI Community`;
 const siteUrl = Astro.site?.toString().replace(/\/$/, '') ?? 'https://genaicommunity.ai';
 const canonical = new URL(Astro.url.pathname, siteUrl).toString();
 const ogImage = `${siteUrl}/og.png`;

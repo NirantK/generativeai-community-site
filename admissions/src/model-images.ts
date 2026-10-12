@@ -88,7 +88,7 @@ function dimensions(bytes: Uint8Array, mime: string): [number, number] {
 
 export function validateImages(images: unknown): string[] {
   if (!Array.isArray(images) || images.length < 1 || images.length > 8)
-    throw new ApiError(422, "invalid_image", "Supply 1–8 image data URLs.");
+    throw new ApiError(422, "invalid_image", "Supply 1 to 8 image data URLs.");
   let totalBytes = 0;
   let totalPixels = 0;
   for (const image of images) {

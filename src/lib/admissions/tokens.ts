@@ -13,7 +13,7 @@ export function initTokens(){
    el<HTMLButtonElement>("issue-token").disabled=!canIssueToken||issuingToken;
    if(!issuingToken)el("issue-token").textContent=state.tokenActive?"Regenerate token":"Generate token";
    el("token-status").textContent=canIssueToken?state.tokenActive?"A token is active. Regenerate it to replace it.":"Generate a token, then give the snippet to your agent.":!state.profile.emailVerified?"LinkedIn did not confirm your email. Refresh LinkedIn sign-in before generating a token.":"Save consent to enable token generation.";
-   notice("Manage your API access here. Your application is on its own page.");
+   notice("Use this page for tokens. Go to your application to submit or check its status.");
   }catch(error){if((error as {status?:number}).status===401){el("signed-out").hidden=false;el("signed-in").hidden=true;notice("Sign in with LinkedIn to manage API tokens.");}else notice((error as Error).message,true);}
  }
  el("consent-form").addEventListener("submit",async event=>{event.preventDefault();const form=event.currentTarget as HTMLFormElement;if(!form.reportValidity())return;const button=form.querySelector<HTMLButtonElement>("button")!;button.disabled=true;try{await api("/api/application-consent","POST",{consent:true});await refresh();}catch(error){notice((error as Error).message,true);}finally{button.disabled=false;}});
