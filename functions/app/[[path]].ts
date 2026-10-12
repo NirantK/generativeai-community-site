@@ -7,7 +7,7 @@ export async function onRequest({request,env,next}:Context):Promise<Response>{
  if(access.status===401)return new Response(null,{status:302,headers:{...headers,Location:"/auth/linkedin"}});
  if(!access.ok)return new Response("Workspace temporarily unavailable.",{status:503,headers});
  const state=await access.json() as {administrator:boolean};
- if(path==="/app")return new Response(null,{status:302,headers:{...headers,Location:state.administrator?"/app/applications":"/app/search"}});
+ if(path==="/app")return new Response(null,{status:302,headers:{...headers,Location:"/app/search"}});
  if(["/app/applications","/app/message-review","/app/roles"].includes(path)&&!state.administrator)return new Response("Administrator access required.",{status:403,headers});
  const asset=await next();const response=new Response(asset.body,asset);for(const [key,value]of Object.entries(headers))response.headers.set(key,value);return response;
 }

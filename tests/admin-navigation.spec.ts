@@ -22,3 +22,17 @@ test('left workspace navigation separates application, routing and role views', 
   await expect(page.getByRole('link',{name:'LinkedIn profile'})).toHaveAttribute('href','https://www.linkedin.com/in/builder/');
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
 });
+
+test('member sidebar exposes Search and API management without admin tabs',async({page})=>{
+ await page.route('**/api/app/access',r=>r.fulfill({json:{administrator:false,status:'approved'}}));
+ await page.route('**/api/v1/chats/groups',r=>r.fulfill({json:{groups:[]}}));
+ await page.goto('/app/search');
+ const nav=page.getByRole('navigation',{name:'Workspace',exact:true});
+ await expect(nav.getByRole('link',{name:'Search',exact:true})).toBeVisible();
+ await expect(nav.getByRole('link',{name:'Applications',exact:true})).toHaveCount(0);
+ await expect(nav.getByRole('link',{name:'Message Review',exact:true})).toHaveCount(0);
+ await expect(nav.getByRole('link',{name:'Roles',exact:true})).toHaveCount(0);
+ await expect(page.locator('#workspace-role')).toHaveText('Member');
+ await expect(page.locator('#account-navigation')).toHaveText('Search');
+ await expect(page.getByRole('link',{name:'API management',exact:true})).toHaveAttribute('href','/apply#api-management');
+});

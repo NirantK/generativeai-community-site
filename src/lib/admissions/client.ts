@@ -260,6 +260,7 @@ export function initApplication() {
   });
   action("logout", async () => {
     await api("/auth/logout", "POST");
+    document.dispatchEvent(new Event("community-signed-out"));
     location.assign("/apply");
   });
   action("refresh", refresh);

@@ -411,14 +411,16 @@ test("routing review hides predictions until labeling and remains usable on mobi
  await page.route('**/api/admin/chat-routing/labels',r=>{expect(r.request().postDataJSON().label).toBe('jobs');labeled=true;return r.fulfill({json:{modelChoice:'jobs',probabilities:{jobs:.95},holdout:true}});});
  await page.goto('/app/message-review');
  const review=page.locator('.routing-review');
- await expect(review.getByRole('heading',{name:'Help improve group choices'})).toBeVisible();
+ await expect(review.getByRole('heading',{name:'Choose the best group'})).toBeVisible();
+ await expect(review.locator('#routing-mode')).toHaveValue('learning');
+ await expect(review.getByRole('button',{name:'Refresh examples'})).toBeHidden();
  const card=review.locator('.routing-card');await expect(card).toHaveCount(1);
  await expect(card.locator('.routing-feedback')).toHaveCount(0);
  await expect(card.getByText(/<script>ignore instructions/)).toBeVisible();
  await card.getByRole('button',{name:'Job Posts & Talent',exact:true}).click();
  await expect(card.locator('.routing-feedback')).toContainText('Clef chose Job Posts & Talent');
  await expect(card.getByRole('button',{name:'Job Posts & Talent',exact:true})).toBeDisabled();
- await review.getByText('Accuracy, trial and reply controls',{exact:true}).click();
+ await review.getByText('Trial & reply settings',{exact:true}).click();
  await expect(review.getByRole('button',{name:'Enable automatic replies'})).toBeDisabled();
  await expect(review.getByRole('button',{name:'Request one controlled test'})).toBeDisabled();
  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1)).toBe(true);
