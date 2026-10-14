@@ -3,6 +3,7 @@ from pathlib import Path
 from http.server import BaseHTTPRequestHandler,ThreadingHTTPServer
 from checkpoint import checkpoint,restore
 from routing import candidates,send_reply
+from processes import run_bounded
 os.umask(0o077)
 STORE=Path('/data/store');LOCK=threading.Lock()
 def importer():
@@ -15,18 +16,19 @@ class Handler(BaseHTTPRequestHandler):
   if self.path=='/health':return self.reply(200,{'ok':True})
   self.reply(404,{})
  def do_POST(self):
-  if not LOCK.acquire(False):return self.reply(409,{'error':'busy'})
+  if not LOCK.acquire(timeout=45 if self.path=='/checkpoint' else 0):return self.reply(409,{'error':'busy'})
   try:
    if self.path=='/selftest':
     import_test=subprocess.run(['python3','-m','unittest','discover','-s','/app/scripts/tests','-p','test_chat_import.py'],capture_output=True,timeout=60)
     export_test=subprocess.run(['python3','-m','unittest','discover','-s','/app/scripts/tests','-p','test_wacli_export.py'],capture_output=True,timeout=60)
+    process_test=subprocess.run(['python3','-m','unittest','discover','-s','/app','-p','test_processes.py'],capture_output=True,timeout=60)
     privacy=subprocess.run(['python3','-m','unittest','discover','-s','/app','-p','test_checkpoint.py'],capture_output=True,timeout=60)
     routing_test=subprocess.run(['python3','-m','unittest','discover','-s','/app','-p','test_routing.py'],capture_output=True,timeout=60)
     binary=subprocess.run(['/usr/local/bin/wacli','--help'],capture_output=True,timeout=10)
     if import_test.returncode or export_test.returncode:return self.reply(503,{'error':'exporter-selftest-failed'})
-    if privacy.returncode or routing_test.returncode:return self.reply(503,{'error':'privacy-selftest-failed'})
+    if privacy.returncode or routing_test.returncode or process_test.returncode:return self.reply(503,{'error':'privacy-selftest-failed'})
     if binary.returncode:return self.reply(503,{'error':'wacli-binary-failed'})
-    count=sum(int(n) for result in (import_test,export_test,privacy,routing_test) for n in re.findall(r'Ran (\d+) tests?',result.stderr.decode('utf-8','replace')))
+    count=sum(int(n) for result in (import_test,export_test,privacy,routing_test,process_test) for n in re.findall(r'Ran (\d+) tests?',result.stderr.decode('utf-8','replace')))
     return self.reply(200,{'passed':True,'tests':count,'wacli':True})
    if self.path=='/restore':
     size=int(self.headers.get('Content-Length','0'))
@@ -36,6 +38,10 @@ class Handler(BaseHTTPRequestHandler):
     size=int(self.headers.get('Content-Length','0'))
     if size<=0 or size>2000:raise ValueError('reply size')
     return self.reply(200,send_reply(STORE,json.loads(self.rfile.read(size))))
+   if self.path=='/validate-session':
+    result=run_bounded(['/usr/local/bin/wacli','--store',str(STORE),'groups','refresh','--json'],90)
+    if result.returncode:return self.reply(503,{'error':'live-authentication-failed'})
+    return self.reply(200,{'authenticated':True})
    if self.path=='/checkpoint':return self.reply(200,checkpoint(STORE),'application/octet-stream')
    if self.path not in ('/sync','/sync/backfill-jobs','/sync/backfill-demos','/sync/cached-only','/sync/bootstrap-demos'):return self.reply(404,{})
    stage='export'
@@ -54,7 +60,7 @@ class Handler(BaseHTTPRequestHandler):
      if anchor:
       if len(anchor)>1000:raise ValueError('anchor size')
       command.extend(['--demos-anchor',anchor])
-    run=subprocess.run(command,capture_output=True,timeout=940)
+    run=run_bounded(command,940)
     if run.returncode:
      marker=run.stderr.decode('utf-8','replace')
      match=re.search(r'Export failed: (arguments|authentication|verify-demos|backfill|backfill-demos|bootstrap-demos|live-sync|export-primary|export-jobs|export-demos|normalize-primary|normalize-jobs|normalize-demos|complete):([A-Za-z]+)',marker)
@@ -76,4 +82,5 @@ class Handler(BaseHTTPRequestHandler):
   except subprocess.TimeoutExpired:self.reply(503,{'error':'source-timeout'})
   except Exception:self.reply(503,{'error':stage+'-failed' if 'stage' in locals() else 'request-failed'})
   finally:LOCK.release()
-ThreadingHTTPServer(('0.0.0.0',8080),Handler).serve_forever()
+if __name__=='__main__':
+ ThreadingHTTPServer(('0.0.0.0',8080),Handler).serve_forever()

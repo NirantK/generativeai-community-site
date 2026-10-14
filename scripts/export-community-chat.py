@@ -179,7 +179,7 @@ def main():
     if args.sync:
         PHASE = 'live-sync'
         call('sync', '--once', '--idle-exit', '15s', '--max-reconnect', '45s',
-             '--presence-mode', 'quiet', timeout=700 if (args.backfill_jobs or args.backfill_demos) else 900)
+             '--presence-mode', 'quiet', timeout=300)
     coverages, manifest = [], []
     for index, (source, title, cutover) in enumerate(GROUPS):
         PHASE = 'export-primary' if source == SOURCE else 'export-jobs' if source == JOBS_SOURCE else 'export-demos'
