@@ -43,10 +43,19 @@ def checkpoint(store):
 
 def restore(blob,store):
  store.mkdir(mode=0o700,parents=True,exist_ok=True)
- with tarfile.open(fileobj=io.BytesIO(blob),mode='r:gz') as tar:
-  members=tar.getmembers()
-  if {m.name for m in members}!={'session.db','wacli.db'} or len(members)!=2:raise ValueError('Invalid checkpoint')
-  for member in members:
-   if not member.isfile() or member.size>100_000_000:raise ValueError('Invalid checkpoint member')
-   with tar.extractfile(member) as src,open(store/member.name,'wb') as dst:dst.write(src.read())
-   os.chmod(store/member.name,0o600)
+ # Validate both databases before replacing either. Old WAL/SHM sidecars belong
+ # to the previous database incarnation and must never replay over a snapshot.
+ with tempfile.TemporaryDirectory(dir=store) as tmp:
+  root=Path(tmp)
+  with tarfile.open(fileobj=io.BytesIO(blob),mode='r:gz') as tar:
+   members=tar.getmembers()
+   if {m.name for m in members}!={'session.db','wacli.db'} or len(members)!=2:raise ValueError('Invalid checkpoint')
+   for member in members:
+    if not member.isfile() or member.size>100_000_000:raise ValueError('Invalid checkpoint member')
+    with tar.extractfile(member) as src,open(root/member.name,'wb') as dst:dst.write(src.read())
+    os.chmod(root/member.name,0o600)
+    with closing(sqlite3.connect(f'file:{root/member.name}?mode=ro',uri=True)) as db:
+     if db.execute('PRAGMA quick_check').fetchall()!=[('ok',)]:raise ValueError('Invalid checkpoint database')
+  for name in ('session.db','wacli.db'):
+   for suffix in ('-wal','-shm','-journal'):(store/(name+suffix)).unlink(missing_ok=True)
+   os.replace(root/name,store/name)
