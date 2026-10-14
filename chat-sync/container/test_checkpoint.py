@@ -23,6 +23,31 @@ class CheckpointTests(unittest.TestCase):
     self.assertEqual(c.execute('SELECT count(*) FROM messages_fts WHERE messages_fts MATCH ?',('amber',)).fetchone()[0],2)
    self.assertNotIn(b'DO NOT UPLOAD',(root/'restored'/'wacli.db').read_bytes())
    self.assertNotIn(b'12345',(root/'restored'/'wacli.db').read_bytes())
+ def test_restore_removes_old_sqlite_sidecars(self):
+  with tempfile.TemporaryDirectory() as tmp:
+   root=Path(tmp);source=root/'source';source.mkdir();target=root/'target';target.mkdir()
+   for name in ('session.db','wacli.db'):
+    with sqlite3.connect(source/name) as db:db.execute('CREATE TABLE test(value TEXT)');db.execute("INSERT INTO test VALUES('saved')")
+   blob=io.BytesIO()
+   with tarfile.open(fileobj=blob,mode='w:gz') as tar:
+    for name in ('session.db','wacli.db'):tar.add(source/name,arcname=name)
+   for name in ('session.db','wacli.db'):
+    for suffix in ('-wal','-shm','-journal'):(target/(name+suffix)).write_bytes(b'stale')
+   restore(blob.getvalue(),target)
+   for name in ('session.db','wacli.db'):
+    for suffix in ('-wal','-shm','-journal'):self.assertFalse((target/(name+suffix)).exists())
+    with sqlite3.connect(target/name) as db:self.assertEqual(db.execute('SELECT value FROM test').fetchone(),('saved',))
+ def test_invalid_restore_keeps_existing_databases(self):
+  with tempfile.TemporaryDirectory() as tmp:
+   target=Path(tmp)
+   for name in ('session.db','wacli.db'):(target/name).write_bytes(b'keep')
+   blob=io.BytesIO()
+   with tarfile.open(fileobj=blob,mode='w:gz') as tar:
+    for name in ('session.db','wacli.db'):
+     member=tarfile.TarInfo(name);member.size=3;tar.addfile(member,io.BytesIO(b'bad'))
+   with self.assertRaises(sqlite3.Error):restore(blob.getvalue(),target)
+   self.assertEqual((target/'session.db').read_bytes(),b'keep')
+   self.assertEqual((target/'wacli.db').read_bytes(),b'keep')
  def test_restore_rejects_unexpected_members(self):
   b=io.BytesIO()
   with tarfile.open(fileobj=b,mode='w:gz') as t:t.addfile(tarfile.TarInfo('../unexpected'))

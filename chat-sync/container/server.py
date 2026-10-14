@@ -42,7 +42,15 @@ class Handler(BaseHTTPRequestHandler):
     result=run_bounded(['/usr/local/bin/wacli','--store',str(STORE),'groups','refresh','--json'],90)
     if result.returncode:return self.reply(503,{'error':'live-authentication-failed'})
     return self.reply(200,{'authenticated':True})
-   if self.path=='/checkpoint':return self.reply(200,checkpoint(STORE),'application/octet-stream')
+   if self.path=='/checkpoint':
+    try:return self.reply(200,checkpoint(STORE),'application/octet-stream')
+    except sqlite3.Error as error:
+     name=getattr(error,'sqlite_errorname','SQLITE_UNKNOWN').lower().replace('_','-')
+     if not re.fullmatch('[a-z-]+',name):name='sqlite-unknown'
+     return self.reply(503,{'error':'checkpoint-'+name})
+    except Exception as error:
+     name=type(error).__name__.lower()
+     return self.reply(503,{'error':'checkpoint-'+name if re.fullmatch('[a-z]+',name) else 'checkpoint-unknown'})
    if self.path not in ('/sync','/sync/backfill-jobs','/sync/backfill-demos','/sync/cached-only','/sync/bootstrap-demos'):return self.reply(404,{})
    stage='export'
    with tempfile.TemporaryDirectory(dir='/data') as tmp:
