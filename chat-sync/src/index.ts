@@ -13,7 +13,11 @@ type Export={rows:Row[];coverage:Coverage[];routingCandidates?:LiveCandidate[];r
 async function digest(value:string){return Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(value))),b=>b.toString(16).padStart(2,'0')).join('');}
 
 async function checkpointBytes(response:Response){
- if(!response.ok)throw new Error('checkpoint-response-failed');
+ if(!response.ok){
+  const detail=await response.json<{error?:string}>().catch(()=>({error:'unknown'}));
+  const code=typeof detail.error==='string' && /^[a-z-]+$/.test(detail.error)?detail.error:'unknown';
+  throw new Error(`checkpoint-response-failed:${response.status}:${code}`);
+ }
  const size=Number(response.headers.get('Content-Length'));
  if(!Number.isSafeInteger(size)||size<=0||size>30_000_000)throw new Error('checkpoint-size-invalid');
  const bytes=await response.arrayBuffer();
@@ -91,6 +95,23 @@ export class WhatsAppContainer extends Container<Env> {
   // Do not start or restore: only the existing container can hold the latest session.
   return this.saveCheckpoint();
  }
+ async restoreSavedSession(owner:string,marker:number){
+  if((await this.ctx.storage.get<{owner:string}>('lease'))?.owner!==owner)throw new Error('lease-required');
+  if(this.ctx.container?.running)throw new Error('recover-current-session-first');
+  const required=await this.env.STATE.get('session/recovery-required');
+  if(!required || !Number.isSafeInteger(marker) || Number(await required.text())!==marker)throw new Error('recovery-marker-mismatch');
+  const snapshot=await this.env.STATE.get('session/latest.tar.gz');
+  if(!snapshot || snapshot.size>30_000_000)throw new Error('session-checkpoint-required');
+  try{
+   await this.startAndWaitForPorts();
+   const restored=await this.containerFetch('http://container/restore',{method:'POST',headers:{'Content-Length':String(snapshot.size)},body:await snapshot.arrayBuffer()});
+   if(!restored.ok)throw new Error('session-restore-failed');
+   const verified=await this.containerFetch('http://container/validate-session',{method:'POST'});
+   if(!verified.ok || !(await verified.json<{authenticated?:boolean}>()).authenticated)throw new Error('saved-session-live-authentication-failed');
+   // The marker is cleared only by a verified checkpoint of the live-validated session.
+   return {...await this.saveCheckpoint(),liveAuthenticated:true};
+  }finally{await this.destroy();}
+ }
  async run(owner:string,backfillJobs=false,cachedOnly=false,backfillDemos=false,demosAnchor?:{messageId:string;timestamp:number;fromMe:boolean},bootstrapDemos=false) {
   if((await this.ctx.storage.get<{owner:string}>('lease'))?.owner!==owner)throw new Error('lease-required');
   let restored=false;
@@ -159,7 +180,7 @@ async function metrics(db:D1Database){
  }
  return result;
 }
-type SyncParams={bootstrapDemos?:boolean;demosAnchor?:{messageId:string;timestamp:number;fromMe:boolean};force?:boolean;preflight?:boolean;recover?:boolean;storageTest?:boolean;backfillJobs?:boolean;cachedOnly?:boolean;terminatedLeaseOwner?:string;backfillDemos?:boolean;seedRouting?:number;seedProposals?:number;modelEvaluation?:boolean;evaluatePolicy?:boolean};
+type SyncParams={restoreCheckpoint?:number;bootstrapDemos?:boolean;demosAnchor?:{messageId:string;timestamp:number;fromMe:boolean};force?:boolean;preflight?:boolean;recover?:boolean;storageTest?:boolean;backfillJobs?:boolean;cachedOnly?:boolean;terminatedLeaseOwner?:string;backfillDemos?:boolean;seedRouting?:number;seedProposals?:number;modelEvaluation?:boolean;evaluatePolicy?:boolean};
 export class ChatSyncWorkflow extends WorkflowEntrypoint<Env,SyncParams> {
  async run(event:WorkflowEvent<SyncParams>,step:WorkflowStep){
   const params=event.payload ?? {};
@@ -170,6 +191,12 @@ export class ChatSyncWorkflow extends WorkflowEntrypoint<Env,SyncParams> {
   if(params.seedRouting)return step.do('seed-historical-review',{retries:{limit:0,delay:'1 second'},timeout:'20 minutes'},()=>seedRouting(this.env,params.seedRouting));
   if(params.storageTest)return step.do('cloud-r2-checkpoint-test',()=>storagePreflight(this.env.STATE));
   if(params.terminatedLeaseOwner)return step.do('release-verified-terminated-lease',()=>this.env.WACLI.getByName('preflight').releaseTerminatedLease(params.terminatedLeaseOwner!));
+  if(params.restoreCheckpoint){
+   const instance=this.env.WACLI.getByName('preflight');
+   await instance.acquire(event.instanceId);
+   try{return await step.do('restore-and-validate-saved-session',{retries:{limit:0,delay:'1 second'},timeout:'5 minutes'},()=>instance.restoreSavedSession(event.instanceId,params.restoreCheckpoint!));}
+   finally{await instance.release(event.instanceId);}
+  }
   if(params.recover){
    const instance=this.env.WACLI.getByName('preflight');
    await instance.acquire(event.instanceId);
