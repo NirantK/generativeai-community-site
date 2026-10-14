@@ -13,5 +13,8 @@ def run_bounded(command,timeout):
             try:os.killpg(process.pid,signal.SIGKILL)
             except ProcessLookupError:pass
             process.communicate()
+        # A detached child may close its pipes before the parent exits; still reap the group.
+        try:os.killpg(process.pid,signal.SIGKILL)
+        except ProcessLookupError:pass
         raise subprocess.TimeoutExpired(command,timeout) from None
     return subprocess.CompletedProcess(command,process.returncode,stdout,stderr)
