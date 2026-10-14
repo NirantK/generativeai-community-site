@@ -79,7 +79,9 @@ export class WhatsAppContainer extends Container<Env> {
  }
  async saveCheckpoint(){
   if(!this.ctx.container?.running)throw new Error('current-container-session-unavailable');
-  const bytes=await checkpointBytes(await this.containerFetch('http://container/checkpoint',{method:'POST'}));
+  // Checkpoint the running instance directly. The SDK proxy may try to restart
+  // it when its cached health state lags a long request or deployment.
+  const bytes=await checkpointBytes(await this.ctx.container.getTcpPort(8080).fetch('http://container/checkpoint',{method:'POST'}));
   // Verify an immutable recovery copy before replacing the active checkpoint.
   const key=`session/checkpoints/${crypto.randomUUID()}.tar.gz`;
   await this.env.STATE.put(key,bytes);
