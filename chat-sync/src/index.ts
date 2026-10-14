@@ -97,7 +97,7 @@ export class WhatsAppContainer extends Container<Env> {
   // Do not start or restore: only the existing container can hold the latest session.
   return this.saveCheckpoint();
  }
- async restoreSavedSession(owner:string,marker:number,restartFailedContainer=false){
+ async restoreSavedSession(owner:string,marker:number,restartFailedContainer=false):Promise<{saved:boolean;bytes:number;recoveredCurrent?:boolean;liveAuthenticated?:boolean}>{
   if((await this.ctx.storage.get<{owner:string}>('lease'))?.owner!==owner)throw new Error('lease-required');
   const required=await this.env.STATE.get('session/recovery-required');
   if(!required || !Number.isSafeInteger(marker) || Number(await required.text())!==marker)throw new Error('recovery-marker-mismatch');
