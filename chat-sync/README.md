@@ -57,3 +57,5 @@ First try `{"recover":true}` to save the current session without starting or res
 
 
 Restore validates both SQLite files before replacement and removes old WAL, SHM and rollback-journal sidecars under the exclusive store lock. Sidecars from a previous database must never replay into an R2 snapshot.
+
+If Cloudflare reports the instance inactive but the runtime still says running and current-session recovery fails, the operator may add `"restartFailedContainer":true` to the exact-marker restoration payload. Under the lease, this attempts one last current-session checkpoint first. Only a failed checkpoint permits stopping the stale container; then the saved snapshot is restored and live-validated. A successful current checkpoint is returned without discarding it. Never request this on an active sync or without inspecting the instance state and recovery failure.

@@ -97,11 +97,19 @@ export class WhatsAppContainer extends Container<Env> {
   // Do not start or restore: only the existing container can hold the latest session.
   return this.saveCheckpoint();
  }
- async restoreSavedSession(owner:string,marker:number){
+ async restoreSavedSession(owner:string,marker:number,restartFailedContainer=false){
   if((await this.ctx.storage.get<{owner:string}>('lease'))?.owner!==owner)throw new Error('lease-required');
-  if(this.ctx.container?.running)throw new Error('recover-current-session-first');
   const required=await this.env.STATE.get('session/recovery-required');
   if(!required || !Number.isSafeInteger(marker) || Number(await required.text())!==marker)throw new Error('recovery-marker-mismatch');
+  if(this.ctx.container?.running){
+   if(!restartFailedContainer)throw new Error('recover-current-session-first');
+   try{return {...await this.saveCheckpoint(),recoveredCurrent:true};}
+   catch{
+    // Explicit operator restart only after checkpoint failure, with marker and lease verified.
+    // Preserve the R2 snapshot and recovery marker until live validation succeeds.
+    await this.destroy();
+   }
+  }
   const snapshot=await this.env.STATE.get('session/latest.tar.gz');
   if(!snapshot || snapshot.size>30_000_000)throw new Error('session-checkpoint-required');
   try{
@@ -182,7 +190,7 @@ async function metrics(db:D1Database){
  }
  return result;
 }
-type SyncParams={restoreCheckpoint?:number;bootstrapDemos?:boolean;demosAnchor?:{messageId:string;timestamp:number;fromMe:boolean};force?:boolean;preflight?:boolean;recover?:boolean;storageTest?:boolean;backfillJobs?:boolean;cachedOnly?:boolean;terminatedLeaseOwner?:string;backfillDemos?:boolean;seedRouting?:number;seedProposals?:number;modelEvaluation?:boolean;evaluatePolicy?:boolean};
+type SyncParams={restartFailedContainer?:boolean;restoreCheckpoint?:number;bootstrapDemos?:boolean;demosAnchor?:{messageId:string;timestamp:number;fromMe:boolean};force?:boolean;preflight?:boolean;recover?:boolean;storageTest?:boolean;backfillJobs?:boolean;cachedOnly?:boolean;terminatedLeaseOwner?:string;backfillDemos?:boolean;seedRouting?:number;seedProposals?:number;modelEvaluation?:boolean;evaluatePolicy?:boolean};
 export class ChatSyncWorkflow extends WorkflowEntrypoint<Env,SyncParams> {
  async run(event:WorkflowEvent<SyncParams>,step:WorkflowStep){
   const params=event.payload ?? {};
@@ -193,10 +201,11 @@ export class ChatSyncWorkflow extends WorkflowEntrypoint<Env,SyncParams> {
   if(params.seedRouting)return step.do('seed-historical-review',{retries:{limit:0,delay:'1 second'},timeout:'20 minutes'},()=>seedRouting(this.env,params.seedRouting));
   if(params.storageTest)return step.do('cloud-r2-checkpoint-test',()=>storagePreflight(this.env.STATE));
   if(params.terminatedLeaseOwner)return step.do('release-verified-terminated-lease',()=>this.env.WACLI.getByName('preflight').releaseTerminatedLease(params.terminatedLeaseOwner!));
+  if(params.restartFailedContainer&&!params.restoreCheckpoint)throw new Error('restart-requires-exact-recovery-marker');
   if(params.restoreCheckpoint){
    const instance=this.env.WACLI.getByName('preflight');
    await instance.acquire(event.instanceId);
-   try{return await step.do('restore-and-validate-saved-session',{retries:{limit:0,delay:'1 second'},timeout:'5 minutes'},()=>instance.restoreSavedSession(event.instanceId,params.restoreCheckpoint!));}
+   try{return await step.do('restore-and-validate-saved-session',{retries:{limit:0,delay:'1 second'},timeout:'5 minutes'},()=>instance.restoreSavedSession(event.instanceId,params.restoreCheckpoint!,!!params.restartFailedContainer));}
    finally{await instance.release(event.instanceId);}
   }
   if(params.recover){
