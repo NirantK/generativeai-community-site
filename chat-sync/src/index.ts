@@ -122,6 +122,69 @@ export class WhatsAppContainer extends Container<Env> {
    return {...await this.saveCheckpoint(),liveAuthenticated:true};
   }finally{await this.destroy();}
  }
+ private async runJob(payload:Record<string,unknown>):Promise<Response>{
+  const id=crypto.randomUUID();
+  const body=JSON.stringify({...payload,id});
+  const call=async(path:string,init?:RequestInit)=>{
+   for(let attempt=0;attempt<3;attempt++){
+    try{
+     const response=await this.containerFetch(`http://container${path}`,{...init,signal:AbortSignal.timeout(20_000)});
+     if(response.status!==429&&response.status<500)return response;
+     await response.body?.cancel();
+    }catch{ /* Retry only idempotent job creation/status/result, never WhatsApp sends. */ }
+    if(attempt<2)await new Promise(resolve=>setTimeout(resolve,2000));
+   }
+   throw new Error('sync-job-transport-failed');
+  };
+  const started=await call('/sync-job/start',{method:'POST',headers:{'Content-Type':'application/json'},body});
+  if(!started.ok)throw new Error('sync-job-start-failed');
+  await started.body?.cancel();
+  try{
+   for(let poll=0;poll<110;poll++){
+    const response=await call(`/sync-job/${id}`);
+    if(!response.ok)throw new Error('sync-job-lost');
+    const status=await response.json<{state:string;error?:string}>();
+    if(status.state==='failed'){
+     const code=typeof status.error==='string'&&/^[a-z-]+$/.test(status.error)?status.error:'unknown';
+     throw new Error(`wacli-sync-failed:${code}`);
+    }
+    if(status.state==='complete'){
+     const result=await call(`/sync-job/${id}/result`);
+     if(!result.ok)throw new Error('sync-job-result-failed');
+     const headers=new Headers(result.headers);headers.set('X-Sync-Job',id);
+     return new Response(result.body,{headers});
+    }
+    if(status.state!=='running')throw new Error('sync-job-invalid-state');
+    await new Promise(resolve=>setTimeout(resolve,10_000));
+   }
+   throw new Error('sync-job-deadline');
+  }catch(error){
+   // Ack only terminal failures; a running job must keep its store lock.
+   try{await call(`/sync-job/${id}/ack`,{method:'POST'});}catch{}
+   throw error;
+  }
+ }
+ private async ackJob(response:Response){
+  const id=response.headers.get('X-Sync-Job');
+  if(!id||!/^[a-zA-Z0-9-]{8,100}$/.test(id))return;
+  try{const ack=await this.containerFetch(`http://container/sync-job/${id}/ack`,{method:'POST',signal:AbortSignal.timeout(20_000)});await ack.body?.cancel();}catch{}
+ }
+ async transportPreflight(owner:string){
+  if((await this.ctx.storage.get<{owner:string}>('lease'))?.owner!==owner)throw new Error('lease-required');
+  if(await this.env.STATE.head('session/recovery-required'))throw new Error('session-recovery-required');
+  try{
+   await this.startAndWaitForPorts();
+   const response=await this.runJob({probe:true,transientPoll:true});
+   const result=await response.json<{passed:boolean;waitedSeconds:number}>();
+   await this.ackJob(response);
+   if(!result.passed||result.waitedSeconds!==330)throw new Error('transport-probe-failed');
+   let failedSafely=false;
+   try{await this.runJob({probe:true,probeFailure:true});}
+   catch(error){failedSafely=error instanceof Error&&error.message==='wacli-sync-failed:controlled-source-failure';}
+   if(!failedSafely)throw new Error('transport-failure-probe-failed');
+   return {passed:true,waitedSeconds:330,transientPollRecovered:true,sourceFailurePreserved:true};
+  }finally{await this.destroy();}
+ }
  async run(owner:string,backfillJobs=false,cachedOnly=false,backfillDemos=false,demosAnchor?:{messageId:string;timestamp:number;fromMe:boolean},bootstrapDemos=false) {
   if((await this.ctx.storage.get<{owner:string}>('lease'))?.owner!==owner)throw new Error('lease-required');
   let restored=false;
@@ -138,7 +201,7 @@ export class WhatsAppContainer extends Container<Env> {
    if(bootstrapDemos&&(!bootstrap||bootstrap.size>2_000_000))throw new Error('sanitized-demos-bootstrap-required');
    const endpoint=bootstrapDemos?'http://container/sync/bootstrap-demos':backfillJobs?'http://container/sync/backfill-jobs':backfillDemos?'http://container/sync/backfill-demos':cachedOnly?'http://container/sync/cached-only':'http://container/sync';
    const settings=await this.env.DB.prepare('SELECT trial_started_at FROM chat_routing_settings WHERE id=1').first<{trial_started_at:number}>().catch(()=>null);
-   const response=await this.containerFetch(endpoint,{method:'POST',headers:{'X-Routing-Since':String(settings?.trial_started_at??0),...(demosAnchor?{'X-Demos-Anchor':JSON.stringify(demosAnchor)}:{}),...(bootstrap?{'Content-Length':String(bootstrap.size)}:{})},...(bootstrap?{body:await bootstrap.arrayBuffer()}: {})});
+   const response=await this.runJob({path:new URL(endpoint).pathname,headers:{'X-Routing-Since':String(settings?.trial_started_at??0),...(demosAnchor?{'X-Demos-Anchor':JSON.stringify(demosAnchor)}:{}),...(bootstrap?{'Content-Length':String(bootstrap.size)}:{})},...(bootstrap?{body:await bootstrap.text()}: {})});
    if(!response.ok){
     const detail=await response.json<{error?:string}>().catch(()=>({error:'unknown'}));
     const code=typeof detail.error==='string' && /^[a-z-]+$/.test(detail.error)?detail.error:'unknown';
@@ -147,6 +210,7 @@ export class WhatsAppContainer extends Container<Env> {
    const size=Number(response.headers.get('Content-Length'));
    if(!size || size>30_000_000)throw new Error('invalid-export-size');
    const data=await response.json<Export>();
+   await this.ackJob(response);
    if(!Array.isArray(data.coverage)||data.coverage.length!==GROUPS.length||!Array.isArray(data.rows))throw new Error('invalid-export');
    for(const group of GROUPS){
     const coverage=data.coverage.find(c=>c.sourceRef===group.source);
@@ -190,7 +254,7 @@ async function metrics(db:D1Database){
  }
  return result;
 }
-type SyncParams={restartFailedContainer?:boolean;restoreCheckpoint?:number;bootstrapDemos?:boolean;demosAnchor?:{messageId:string;timestamp:number;fromMe:boolean};force?:boolean;preflight?:boolean;recover?:boolean;storageTest?:boolean;backfillJobs?:boolean;cachedOnly?:boolean;terminatedLeaseOwner?:string;backfillDemos?:boolean;seedRouting?:number;seedProposals?:number;modelEvaluation?:boolean;evaluatePolicy?:boolean};
+type SyncParams={transportTest?:boolean;restartFailedContainer?:boolean;restoreCheckpoint?:number;bootstrapDemos?:boolean;demosAnchor?:{messageId:string;timestamp:number;fromMe:boolean};force?:boolean;preflight?:boolean;recover?:boolean;storageTest?:boolean;backfillJobs?:boolean;cachedOnly?:boolean;terminatedLeaseOwner?:string;backfillDemos?:boolean;seedRouting?:number;seedProposals?:number;modelEvaluation?:boolean;evaluatePolicy?:boolean};
 export class ChatSyncWorkflow extends WorkflowEntrypoint<Env,SyncParams> {
  async run(event:WorkflowEvent<SyncParams>,step:WorkflowStep){
   const params=event.payload ?? {};
@@ -215,6 +279,12 @@ export class ChatSyncWorkflow extends WorkflowEntrypoint<Env,SyncParams> {
    finally{await instance.release(event.instanceId);}
   }
 
+  if(params.transportTest){
+   const instance=this.env.WACLI.getByName('preflight');
+   await instance.acquire(event.instanceId);
+   try{return await step.do('cloud-long-job-transport',{retries:{limit:0,delay:'1 second'},timeout:'10 minutes'},()=>instance.transportPreflight(event.instanceId));}
+   finally{await instance.release(event.instanceId);}
+  }
   if(params.preflight){
    const instance=this.env.WACLI.getByName('preflight');
    await instance.acquire(event.instanceId);
@@ -233,6 +303,9 @@ export class ChatSyncWorkflow extends WorkflowEntrypoint<Env,SyncParams> {
    return {status:'already-running'};
   }
   try {
+   // Retry the verified current-session checkpoint on the next slot, before idle shutdown.
+   // No automatic stale-snapshot restoration or marker deletion is permitted here.
+   if(await this.env.STATE.head('session/recovery-required'))await step.do('recover-interrupted-session',{retries:{limit:0,delay:'1 second'},timeout:'2 minutes'},()=>this.env.WACLI.getByName('preflight').recover(owner));
    // Never overwrite an export awaiting import after a partial failure.
    const pending=await this.env.STATE.head('pending/export.json');
    if(pending && (params.backfillJobs||params.backfillDemos||params.bootstrapDemos))throw new Error('pending-export-must-be-imported-first');
@@ -270,7 +343,7 @@ export class ChatSyncWorkflow extends WorkflowEntrypoint<Env,SyncParams> {
     }
     for(const group of GROUPS)if(data.coverage.find(c=>c.sourceRef===group.source)?.status!=='could-not-sync')await this.env.DB.prepare('UPDATE chat_groups SET imported_at=? WHERE id=?').bind(Date.now(),group.id).run();
     const failedGroups=data.coverage.filter(c=>c.status==='could-not-sync').map(c=>({sourceRef:c.sourceRef,reason:c.reason}));
-    const result={status:failedGroups.length?'partial':hash===previous?.digest?'unchanged':'synced',failedGroups,at:Date.now(),digest:hash,records:data.rows.length,before,after,coverage:data.coverage};
+    const result={status:failedGroups.length?'partial':hash===previous?.digest?'unchanged':'synced',failedGroups,at:Date.now(),digest:hash,records:data.rows.length,routingOmitted:data.routingOmitted??0,before,after,coverage:data.coverage};
     for(const group of GROUPS){
      const coverage=data.coverage.find(c=>c.sourceRef===group.source);
      if(coverage?.status==='could-not-sync'){await this.env.STATE.put(`groups/${group.key}/last-attempt.json`,JSON.stringify({status:'could-not-sync',at:result.at,reason:coverage.reason}));continue;}
