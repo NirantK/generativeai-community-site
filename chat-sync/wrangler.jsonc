@@ -13,7 +13,7 @@
  "containers":[{"class_name":"WhatsAppContainer","image":"./Dockerfile","image_build_context":"..","instance_type":"basic","max_instances":1}],
  "durable_objects":{"bindings":[{"name":"WACLI","class_name":"WhatsAppContainer"}]},
  "migrations":[{"tag":"v1","new_sqlite_classes":["WhatsAppContainer"]}],
- "workflows":[{"name":"genaicommunity-chat-sync","binding":"SYNC","class_name":"ChatSyncWorkflow","schedules":["*/15 * * * *"]}],
+ "workflows":[{"name":"genaicommunity-chat-sync","binding":"SYNC","class_name":"ChatSyncWorkflow","schedules":["*/30 * * * *"]}],
  "r2_buckets":[{"binding":"STATE","bucket_name":"genaicommunity-chat-sync-private"}],
  "d1_databases":[{"binding":"DB","database_name":"genai_admissions","database_id":"f60fba3c-e5b2-4c5d-9570-17188843e3fa"}]
 }
