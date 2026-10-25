@@ -94,8 +94,8 @@ export async function routingAdmin(req:Request,env:Env,suffix:string,actor:strin
  }
  if(suffix==='/settings'&&req.method==='POST'){
   const input=z.object({enabled:z.boolean(),version:z.number().int()}).strict().parse(await body(req));
-  if(input.enabled){const metrics=await routingMetrics(env.INDEX,settings);if(!metrics.trialPassed||!settings.test_verified)throw new ApiError(409,'trial_required','Complete the reviewed seven-day trial and one confirmed quoted-reply test before enabling replies.');}
-  const row=await env.INDEX.prepare('UPDATE chat_routing_settings SET replies_enabled=?,enabled_at=?,version=version+1 WHERE id=1 AND version=? RETURNING version').bind(input.enabled?1:0,input.enabled?Date.now():null,input.version).first();
+  if(input.enabled){const metrics=await routingMetrics(env.INDEX,settings);if(!metrics.trialPassed||!settings.test_verified)throw new ApiError(409,'trial_required','Complete the active trial requirements and one confirmed quoted-reply test before enabling replies.');}
+  const row=await env.INDEX.prepare('UPDATE chat_routing_settings SET replies_enabled=?,enabled_at=?,test_requested_at=CASE WHEN ?=0 THEN NULL ELSE test_requested_at END,test_source_group=CASE WHEN ?=0 THEN NULL ELSE test_source_group END,test_destination=CASE WHEN ?=0 THEN NULL ELSE test_destination END,test_requested_by=CASE WHEN ?=0 THEN NULL ELSE test_requested_by END,version=version+1 WHERE id=1 AND version=? RETURNING version').bind(input.enabled?1:0,input.enabled?Date.now():null,input.enabled?1:0,input.enabled?1:0,input.enabled?1:0,input.enabled?1:0,input.version).first();
   if(!row)throw new ApiError(409,'settings_changed','Settings changed. Refresh before trying again.');
   await env.INDEX.prepare('INSERT INTO chat_archive_actions(id,actor,action,target,at) VALUES(?,?,?,?,?)').bind(crypto.randomUUID(),actor,input.enabled?'enable_routing_replies':'pause_routing_replies','routing',Date.now()).run();
   return json({enabled:input.enabled,...row});
