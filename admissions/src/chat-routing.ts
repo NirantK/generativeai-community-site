@@ -1,8 +1,8 @@
 import { z } from 'zod';
 import { ApiError, body, digest, json } from './security';
-import { choices, moveReply, routingGroups, type RoutingChoice } from './chat-routing-policy';
+import { choices, moveReply, routingGroups, reviewRequirementWaived, routingTrialPassed, type RoutingChoice } from './chat-routing-policy';
 export type ReviewRow={id:string;message_id:string;group_id:string;choice:RoutingChoice;probabilities:string;confidence:number;proposal:number;status:string;historical:number;model:string;prompt_version:string;created_at:number;text:string;author:string;postedAt:number};
-export type RoutingSettings={trial_started_at:number;replies_enabled:number;enabled_at:number|null;test_verified:number;version:number;test_source_group:string|null;test_destination:RoutingChoice|null;test_requested_by:string|null;test_requested_at:number|null;active_policy:string;policy_requested_at:number|null};
+export type RoutingSettings={review_waived_at?:number|null;review_waived_by?:string|null;trial_started_at:number;replies_enabled:number;enabled_at:number|null;test_verified:number;version:number;test_source_group:string|null;test_destination:RoutingChoice|null;test_requested_by:string|null;test_requested_at:number|null;active_policy:string;policy_requested_at:number|null};
 const DAY=86400000;
 export async function routingSettings(db:D1Database){
  const settings=await db.prepare('SELECT * FROM chat_routing_settings WHERE id=1').first<RoutingSettings>();
@@ -19,7 +19,7 @@ export async function routingMetrics(db:D1Database,settings:RoutingSettings,now=
  }
  const precision=reviewedProposals?correctProposals/reviewedProposals:0;
  const trialDays=Math.max(0,(now-settings.trial_started_at)/DAY);
- return {total,reviewedProposals,correctProposals,precision,trialDays,matrix,trialPassed:trialDays>=7&&reviewedProposals>=30&&precision>=0.95};
+ return {total,reviewedProposals,correctProposals,precision,trialDays,matrix,reviewWaived:reviewRequirementWaived(settings),trialPassed:routingTrialPassed(settings,reviewedProposals,correctProposals,now)};
 }
 function entropy(probabilities:string){
  try{return Object.values(JSON.parse(probabilities) as Record<string,number>).reduce((n,p)=>n-(p>0?p*Math.log(p):0),0);}catch{return 0;}
@@ -94,8 +94,8 @@ export async function routingAdmin(req:Request,env:Env,suffix:string,actor:strin
  }
  if(suffix==='/settings'&&req.method==='POST'){
   const input=z.object({enabled:z.boolean(),version:z.number().int()}).strict().parse(await body(req));
-  if(input.enabled){const metrics=await routingMetrics(env.INDEX,settings);if(!metrics.trialPassed||!settings.test_verified)throw new ApiError(409,'trial_required','Complete the reviewed seven-day trial and one confirmed quoted-reply test before enabling replies.');}
-  const row=await env.INDEX.prepare('UPDATE chat_routing_settings SET replies_enabled=?,enabled_at=?,version=version+1 WHERE id=1 AND version=? RETURNING version').bind(input.enabled?1:0,input.enabled?Date.now():null,input.version).first();
+  if(input.enabled){const metrics=await routingMetrics(env.INDEX,settings);if(!metrics.trialPassed||!settings.test_verified)throw new ApiError(409,'trial_required','Complete the active trial requirements and one confirmed quoted-reply test before enabling replies.');}
+  const row=await env.INDEX.prepare('UPDATE chat_routing_settings SET replies_enabled=?,enabled_at=?,test_requested_at=CASE WHEN ?=0 THEN NULL ELSE test_requested_at END,test_source_group=CASE WHEN ?=0 THEN NULL ELSE test_source_group END,test_destination=CASE WHEN ?=0 THEN NULL ELSE test_destination END,test_requested_by=CASE WHEN ?=0 THEN NULL ELSE test_requested_by END,version=version+1 WHERE id=1 AND version=? RETURNING version').bind(input.enabled?1:0,input.enabled?Date.now():null,input.enabled?1:0,input.enabled?1:0,input.enabled?1:0,input.enabled?1:0,input.version).first();
   if(!row)throw new ApiError(409,'settings_changed','Settings changed. Refresh before trying again.');
   await env.INDEX.prepare('INSERT INTO chat_archive_actions(id,actor,action,target,at) VALUES(?,?,?,?,?)').bind(crypto.randomUUID(),actor,input.enabled?'enable_routing_replies':'pause_routing_replies','routing',Date.now()).run();
   return json({enabled:input.enabled,...row});

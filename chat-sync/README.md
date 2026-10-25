@@ -71,3 +71,7 @@ Private Workflow payload `{"transportTest":true}` runs a 330-second synthetic jo
 ## Preflight diagnostics
 
 Preflight runs once and reports an allowlisted failing suite and synthetic test identifiers. It never returns assertion text, stderr, tracebacks or live session data. The subprocess tests wait for a synthetic readiness signal before starting their short timeout, so cold interpreter startup on a small cloud container does not masquerade as a shutdown failure. This also ensures the descendant tests actually start their child before testing process-group cleanup. Production sync and subprocess deadlines are unchanged.
+
+## Explicit review waiver
+
+An owner-authorized waiver records `review_waived_at` and `review_waived_by` plus an administrative audit action. Both admission controls and the live classifier use the same gate; metrics retain actual label counts and precision. The waiver bypasses only the review count and precision, not the elapsed trial, live quoted-reply test, confidence threshold, original 12-hour window, one-reply ledger or historical-message exclusion. Arming `replies_enabled=1` while `test_verified=0` permits only the pending controlled test. Normal automatic replies become eligible only after WhatsApp confirms that test; do not manually mark it verified.

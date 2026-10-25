@@ -1,8 +1,8 @@
 import { z } from 'zod';
-import { withinReplyWindow, choices, proposal, ROUTING_MODEL, ROUTING_POLICY, routingCriteria, routingGroups, routingInstructions, type RoutingChoice } from '../../admissions/src/chat-routing-policy';
+import { withinReplyWindow, routingTrialPassed, choices, proposal, ROUTING_MODEL, ROUTING_POLICY, routingCriteria, routingGroups, routingInstructions, type RoutingChoice } from '../../admissions/src/chat-routing-policy';
 export type LiveCandidate={id:string;groupId:string;source:string;messageId:string;sender:string;text:string;sanitizedText:string;contentHash:string;postedAt:number};
 type Example={id:string;text:string;label:string;explanation:string};
-type Settings={trial_started_at:number;replies_enabled:number;enabled_at:number|null;test_verified:number;test_source_group:string|null;test_destination:RoutingChoice|null;test_requested_by:string|null;test_requested_at:number|null};
+type Settings={review_waived_at?:number|null;review_waived_by?:string|null;trial_started_at:number;replies_enabled:number;enabled_at:number|null;test_verified:number;test_source_group:string|null;test_destination:RoutingChoice|null;test_requested_by:string|null;test_requested_at:number|null};
 const schema=z.object({type:z.literal('choice'),choice:z.enum(choices as [RoutingChoice,...RoutingChoice[]]),probabilities:z.record(z.string(),z.number().finite().min(0).max(1)),confidence:z.number().finite().min(0).max(1)});
 export async function hash(value:string){return Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(value))),b=>b.toString(16).padStart(2,'0')).join('');}
 export function validateChoice(output:unknown){
@@ -45,7 +45,7 @@ async function assess(env:Env,input:{id:string;groupId:string;text:string;saniti
 }
 async function trialPassed(db:D1Database,settings:Settings){
  const r=await db.prepare(`SELECT COUNT(*) total,SUM(d.choice=l.label) correct FROM chat_routing_decisions d JOIN chat_routing_labels l ON l.decision_id=d.id WHERE d.proposal=1`).first<{total:number;correct:number}>();
- return Date.now()-settings.trial_started_at>=7*86400000&&(r?.total??0)>=30&&(r?.correct??0)/(r?.total??1)>=0.95;
+ return routingTrialPassed(settings,r?.total??0,r?.correct??0);
 }
 export async function classifyLive(env:Env,candidates:LiveCandidate[],send:(c:LiveCandidate,destination:RoutingChoice)=>Promise<{accepted:boolean;id?:string|null;uncertain?:boolean}>,historical=false){
  const bank=await exampleBank(env.DB);
