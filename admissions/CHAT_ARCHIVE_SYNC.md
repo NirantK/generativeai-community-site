@@ -1,6 +1,6 @@
 # Community chat archive operations
 
-The active sync runs entirely in Cloudflare every 15 minutes. Read [the cloud runbook](../chat-sync/README.md) before acting. Do not run local wacli sync or the former local importer procedure. Code changes deploy through GitHub and automatic Cloudflare deployment.
+The active sync runs entirely in Cloudflare every 30 minutes. Read [the cloud runbook](../chat-sync/README.md) before acting. Do not run local wacli sync or the former local importer procedure. Code changes deploy through GitHub and automatic Cloudflare deployment.
 
 Authorized groups:
 
