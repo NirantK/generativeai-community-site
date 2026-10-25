@@ -67,3 +67,7 @@ Sync work now runs as a single private container job. The Worker starts it idemp
 After an interrupted call, the next scheduled run first attempts the existing verified current-session checkpoint while holding the session lease. It never automatically restores an older snapshot or deletes a recovery marker. If the current session is unavailable or checkpoint verification fails, it retains the marker and published history for operator recovery.
 
 Private Workflow payload `{"transportTest":true}` runs a 330-second synthetic job without reading WhatsApp credentials, syncing, importing, or sending. It crosses the previously observed five-minute failure boundary, injects one transient status failure, and checks that a terminal source failure remains a failure. The test holds the normal lease so it cannot overlap a sync. Run authenticated preflight, this cloud probe, then verify consecutive scheduled imports after deployment.
+
+## Preflight diagnostics
+
+Preflight runs once and reports an allowlisted failing suite and synthetic test identifiers. It never returns assertion text, stderr, tracebacks or live session data. The subprocess tests wait for a synthetic readiness signal before starting their short timeout, so cold interpreter startup on a small cloud container does not masquerade as a shutdown failure. This also ensures the descendant tests actually start their child before testing process-group cleanup. Production sync and subprocess deadlines are unchanged.
