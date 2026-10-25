@@ -97,8 +97,14 @@ class Handler(BaseHTTPRequestHandler):
     privacy=subprocess.run(['python3','-m','unittest','discover','-s','/app','-p','test_checkpoint.py'],capture_output=True,timeout=60)
     routing_test=subprocess.run(['python3','-m','unittest','discover','-s','/app','-p','test_routing.py'],capture_output=True,timeout=60)
     binary=subprocess.run(['/usr/local/bin/wacli','--help'],capture_output=True,timeout=10)
-    if import_test.returncode or export_test.returncode:return self.reply(503,{'error':'exporter-selftest-failed'})
-    if privacy.returncode or routing_test.returncode or process_test.returncode or job_test.returncode:return self.reply(503,{'error':'privacy-selftest-failed'})
+    # Only suite codes and test identifiers leave the synthetic test runner.
+    # Never return stderr, assertion text, tracebacks or runtime/session data.
+    suites=[('import',import_test),('export',export_test),('jobs',job_test),('process',process_test),('checkpoint',privacy),('routing',routing_test)]
+    failed=[(name,result) for name,result in suites if result.returncode]
+    if failed:
+     name,result=failed[0]
+     tests=re.findall(r'^(?:FAIL|ERROR): (test_[a-z0-9_]+) ',result.stderr.decode('utf-8','replace'),re.MULTILINE)
+     return self.reply(503,{'error':name+'-selftest-failed','failedTests':tests[:10]})
     if binary.returncode:return self.reply(503,{'error':'wacli-binary-failed'})
     count=sum(int(n) for result in (import_test,export_test,privacy,routing_test,process_test,job_test) for n in re.findall(r'Ran (\d+) tests?',result.stderr.decode('utf-8','replace')))
     return self.reply(200,{'passed':True,'tests':count,'wacli':True})
