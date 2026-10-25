@@ -10,7 +10,7 @@
  <div id="routing-cards" class="routing-grid"></div>
  <details class="routing-controls"><summary>Trial &amp; reply settings</summary><div id="routing-trial-progress"></div><div id="routing-results"></div>
  <p>Replies apply only to posts from the last 12 hours. Historical examples never receive replies.</p>
- <p>Replies remain paused until a seven-day trial, at least 30 reviewed proposed moves, 95% precision, and one confirmed quoted-reply test are complete.</p>
+ <p id="routing-requirements">Replies require a seven-day trial, 30 reviewed proposed moves at 95% precision, and one confirmed quoted-reply test unless the review requirement is explicitly waived.</p>
  <button id="routing-toggle" type="button" disabled>Replies paused</button>
  <form id="routing-test"><h3>One controlled reply test</h3><p>After the trial passes, this sends one signed reply on the next new qualifying post in the selected source group. Historical messages are excluded.</p>
  <label>Reply in this group<select id="routing-test-source"></select></label><label>Suggest this destination<select id="routing-test-destination"></select></label>
@@ -32,7 +32,7 @@
   import { formatDateTime } from "../lib/dates";
  type Group={key:string;id:string;title:string};type Card={decisionId:string;messageId:string;groupId:string;text:string;author:string;postedAt:number;historical:boolean;proposal?:boolean;reason:string};
  type Settings={trial_started_at:number;replies_enabled:number;test_verified:number;version:number;test_requested_at:number|null;active_policy:string;policy_requested_at:number|null};
- type Metrics={total:number;reviewedProposals:number;precision:number;trialDays:number;trialPassed:boolean;matrix:Record<string,Record<string,number>>};
+ type Metrics={reviewWaived?:boolean;total:number;reviewedProposals:number;precision:number;trialDays:number;trialPassed:boolean;matrix:Record<string,Record<string,number>>};
  type Send={message_id:string;destination:string;status:string;test:number;whatsapp_message_id:string|null};
  const el=(id:string)=>document.getElementById(id)!;
  function queuePath(){return '/queue?mode='+encodeURIComponent((el('routing-mode') as HTMLSelectElement).value);}
@@ -43,7 +43,9 @@
  async function loadMetrics(){const data=await api<{settings:Settings;metrics:Metrics;sends:Send[];policies:{version:string;status:string;evaluation:{cases:number;accuracy:number;precision:number;errors:number};activated_at:number|null}[];replyTemplates:{choice:string;text:string}[]}>('/metrics');settings=data.settings;metrics=data.metrics;templates=data.replyTemplates;
   el('routing-metrics').replaceChildren(node('span',`${data.metrics.total} reviewed`),node('span',settings.replies_enabled?'Replies enabled':'Replies paused'));
   el('routing-trial-progress').replaceChildren(node('span',`${data.metrics.reviewedProposals}/30 proposed moves reviewed`),node('span',data.metrics.reviewedProposals?`${(data.metrics.precision*100).toFixed(1)}% precision`:'Precision not measured yet'),node('span',`${Math.min(7,data.metrics.trialDays).toFixed(1)}/7 trial days`));
-  const toggle=el('routing-toggle') as HTMLButtonElement;toggle.textContent=settings.replies_enabled?'Pause automatic replies':'Enable automatic replies';toggle.disabled=!settings.replies_enabled&&(!metrics.trialPassed||!settings.test_verified);
+  el('routing-requirements').textContent=data.metrics.reviewWaived?'The review requirement has been waived. Replies still require one confirmed quoted-reply test and apply only to eligible new posts.':'Replies require a seven-day trial, 30 reviewed proposed moves at 95% precision, and one confirmed quoted-reply test.';
+  if(data.metrics.reviewWaived)el('routing-trial-progress').replaceChildren(node('span','Review requirement waived'),node('span',`${data.metrics.reviewedProposals} proposed moves reviewed`));
+  const toggle=el('routing-toggle') as HTMLButtonElement;toggle.textContent=settings.replies_enabled?(settings.test_verified?'Pause automatic replies':'Pause replies awaiting test'):'Enable automatic replies';toggle.disabled=!settings.replies_enabled&&(!metrics.trialPassed||!settings.test_verified);
   (el('routing-test-submit') as HTMLButtonElement).disabled=!metrics.trialPassed||!!settings.test_requested_at;el('routing-test-cancel').hidden=!settings.test_requested_at;
   const result=el('routing-results');result.replaceChildren(node('p',settings.replies_enabled?'Automatic replies enabled for clear new posts.':'Automatic replies paused. Your labels help us select examples and measure accuracy. They do not change Clef’s model weights.'));
   const table=document.createElement('table'),head=document.createElement('tr');head.append(node('th','Your label / Clef choice'),...['general','jobs','demos_events','unclear'].map(k=>node('th',title(k))));table.append(head);for(const key of ['general','jobs','demos_events','unclear']){const row=document.createElement('tr');row.append(node('th',title(key)),...['general','jobs','demos_events','unclear'].map(k=>node('td',String(metrics!.matrix[key]?.[k]??0))));table.append(row);}const wrap=node('div','','routing-table');wrap.append(table);result.append(wrap);

@@ -29,3 +29,11 @@ export const REPLY_MAX_AGE_MS = 12 * 60 * 60 * 1000;
 export function withinReplyWindow(postedAt: number, now = Date.now()): boolean {
  return Number.isFinite(postedAt) && postedAt > 0 && postedAt <= now && now - postedAt <= REPLY_MAX_AGE_MS;
 }
+
+export type ReviewGateSettings={trial_started_at:number;review_waived_at?:number|null;review_waived_by?:string|null};
+export function reviewRequirementWaived(settings:ReviewGateSettings){
+ return Number.isSafeInteger(settings.review_waived_at)&&Number(settings.review_waived_at)>0&&typeof settings.review_waived_by==='string'&&settings.review_waived_by.trim().length>0;
+}
+export function routingTrialPassed(settings:ReviewGateSettings,reviewed:number,correct:number,now=Date.now()){
+ return now-settings.trial_started_at>=7*86400000&&(reviewRequirementWaived(settings)||(reviewed>=30&&correct/reviewed>=0.95));
+}
