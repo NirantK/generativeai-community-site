@@ -70,9 +70,10 @@ export class WhatsAppContainer extends Container<Env> {
   await this.startAndWaitForPorts();
   const r=await this.containerFetch('http://container/selftest',{method:'POST'});
    if(!r.ok){
-    const detail=await r.json<{error?:string}>().catch(()=>({error:'unknown'}));
-    const code=typeof detail.error==='string' && /^(exporter-selftest-failed|privacy-selftest-failed|wacli-binary-failed)$/.test(detail.error)?detail.error:'unknown';
-    throw new Error(`container-selftest-failed:${code}`);
+    const detail=await r.json<{error?:string;failedTests?:string[]}>().catch(()=>({error:'unknown',failedTests:[]}));
+    const code=typeof detail.error==='string' && /^(import|export|jobs|process|checkpoint|routing|exporter|privacy)-selftest-failed$|^wacli-binary-failed$/.test(detail.error)?detail.error:'unknown';
+    const tests=Array.isArray(detail.failedTests)?detail.failedTests.filter((name):name is string=>typeof name==='string'&&/^test_[a-z0-9_]{1,120}$/.test(name)).slice(0,10):[];
+    throw new Error(`container-selftest-failed:${code}${tests.length?':'+tests.join(','):''}`);
    }
    return await r.json<{passed:boolean;tests:number;wacli:boolean}>();
   }finally{try{await this.destroy();}catch{/* Preserve the startup failure when no container exists. */}}
@@ -288,7 +289,7 @@ export class ChatSyncWorkflow extends WorkflowEntrypoint<Env,SyncParams> {
   if(params.preflight){
    const instance=this.env.WACLI.getByName('preflight');
    await instance.acquire(event.instanceId);
-   try{return await step.do('cloud-container-preflight',()=>instance.preflight());}
+   try{return await step.do('cloud-container-preflight',{retries:{limit:0,delay:'1 second'},timeout:'5 minutes'},()=>instance.preflight());}
    finally{await instance.release(event.instanceId);}
   }
   if(this.env.SYNC_ENABLED!=='true' && !params.force)return {status:'paused'};
